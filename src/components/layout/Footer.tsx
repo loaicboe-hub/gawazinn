@@ -26,20 +26,16 @@ export const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-gray-200/80">
           
           {/* Logo & Slogan */}
-          <div className="flex items-center gap-3 text-center md:text-start">
-            <div className="w-10 h-10 rounded-xl bg-red-gradient p-0.5 shadow-sm">
-              <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center font-serif font-black text-[#D91B3E] text-sm">
-                GI
-              </div>
-            </div>
-            <div>
+          <div className="text-center md:text-start">
+            <div className="flex items-center justify-center md:justify-start gap-2">
               <span className="text-xl font-black text-[#2A1D20]">
                 {language === 'ar' ? 'جواز إن' : 'GAWAZ INN'}
               </span>
-              <p className="text-xs text-[#B31331] font-semibold">
-                {language === 'ar' ? 'من أول الشقة.. لحد ليلة العمر.' : 'From Apartment Keys.. To Your Dream Wedding.'}
-              </p>
+              <span className="w-2 h-2 rounded-full bg-[#D91B3E]"></span>
             </div>
+            <p className="text-xs text-[#B31331] font-semibold mt-1">
+              {language === 'ar' ? 'من أول الشقة.. لحد ليلة العمر.' : 'From Apartment Keys.. To Your Dream Wedding.'}
+            </p>
           </div>
 
           {/* Core Section Links */}

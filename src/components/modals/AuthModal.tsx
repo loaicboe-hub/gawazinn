@@ -31,8 +31,8 @@ export const AuthModal: React.FC = () => {
 
         {/* Header */}
         <div className="space-y-1 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-red-gradient text-white font-serif font-black mx-auto flex items-center justify-center text-base shadow-md">
-            GI
+          <div className="w-12 h-12 rounded-2xl bg-red-gradient text-white mx-auto flex items-center justify-center text-base shadow-md">
+            <UserIcon className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-xl font-black text-[#2A1D20] pt-2">
             {mode === 'login' ? (language === 'ar' ? 'تسجيل الدخول لحسابك' : 'Sign In to Your Account') : (language === 'ar' ? 'إنشاء حساب جديد' : 'Create an Account')}

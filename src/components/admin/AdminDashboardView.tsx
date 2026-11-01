@@ -127,15 +127,14 @@ export const AdminDashboardView: React.FC = () => {
         
         {/* Admin Brand Badge */}
         <div className="flex items-center gap-3 pb-6 border-b border-white/10">
-          <div className="w-10 h-10 rounded-xl bg-red-gradient text-white font-black flex items-center justify-center text-sm shadow-md">
-            GI
+          <div className="w-10 h-10 rounded-xl bg-red-gradient text-white font-black flex items-center justify-center shadow-md">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div>
             <h2 className="text-base font-bold text-white tracking-wide">
               {language === 'ar' ? 'إدارة جواز إن' : 'GAWAZ INN Admin'}
             </h2>
             <span className="text-[11px] text-rose-200 font-semibold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'لوحة القيادة المركزية' : 'Central Control Panel'}</span>
             </span>
           </div>

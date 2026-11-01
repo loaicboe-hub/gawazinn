@@ -76,23 +76,14 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           {/* Logo & Brand Name */}
           <div 
             onClick={() => handleNavClick('home')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center cursor-pointer group"
           >
-            {/* Romantic Red Emblem Logo */}
-            <div className="w-11 h-11 rounded-2xl bg-red-gradient p-0.5 shadow-md group-hover:scale-105 transition transform">
-              <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center relative overflow-hidden">
-                <span className="text-[#D91B3E] text-base font-black font-serif tracking-tighter">
-                  GI
-                </span>
-              </div>
-            </div>
-
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-[#2A1D20] tracking-tight group-hover:text-[#D91B3E] transition">
+                <span className="text-2xl sm:text-3xl font-black text-[#2A1D20] tracking-tight group-hover:text-[#D91B3E] transition">
                   {language === 'ar' ? 'جواز إن' : 'GAWAZ INN'}
                 </span>
-                <span className="w-2 h-2 rounded-full bg-[#D91B3E]"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D91B3E]"></span>
               </div>
               <span className="text-[11px] text-[#B31331] font-semibold hidden sm:block">
                 {language === 'ar' ? 'من أول الشقة.. لحد ليلة العمر' : 'Wedding & Home Platform'}
