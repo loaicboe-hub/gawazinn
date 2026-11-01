@@ -72,18 +72,18 @@ export const SplashHome: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-140px)] flex flex-col justify-center bg-white px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="min-h-[calc(100vh-140px)] flex flex-col justify-center bg-white px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-12">
       
       {/* Intro Heading - Minimal, Joyful & Romantic */}
-      <div className="max-w-3xl mx-auto text-center space-y-3 mb-8 sm:mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FDE8ED] border border-[#D91B3E]/20 text-[#D91B3E] text-xs font-bold tracking-wide">
-          <Heart className="w-3.5 h-3.5 fill-[#D91B3E] text-[#D91B3E]" />
+      <div className="max-w-3xl mx-auto text-center space-y-2 sm:space-y-3 mb-4 sm:mb-8 md:mb-10">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full bg-[#FDE8ED] border border-[#D91B3E]/20 text-[#D91B3E] text-[10px] sm:text-xs font-bold tracking-wide">
+          <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-[#D91B3E] text-[#D91B3E]" />
           <span>
             {language === 'ar' ? 'رحلة الزواج تبدأ من هنا' : 'Your Marriage Journey Begins Here'}
           </span>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#2A1D20] tracking-tight leading-tight">
+        <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-[#2A1D20] tracking-tight leading-tight">
           {language === 'ar' ? (
             <>
               من أول الشقة.. <span className="text-red-gradient">لحد ليلة العمر.</span>
@@ -95,7 +95,7 @@ export const SplashHome: React.FC = () => {
           )}
         </h1>
 
-        <p className="text-sm sm:text-base text-gray-600 font-medium max-w-xl mx-auto">
+        <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium max-w-xl mx-auto">
           {language === 'ar'
             ? 'اختر وجهتك من بين الأقسام الأربعة الرئيسية لتجهيز بيتك وفرحتك'
             : 'Select your destination from the four main wedding & home preparation pillars'
@@ -103,14 +103,14 @@ export const SplashHome: React.FC = () => {
         </p>
       </div>
 
-      {/* The Four Main Visual Cards – 2x2 Grid on Desktop, Stacked on Mobile */}
+      {/* The Four Main Visual Cards – 2x2 Grid on Mobile, Tablet & Desktop */}
       <div className="max-w-6xl mx-auto w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-7">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-5 md:gap-7">
           {cards.map((card) => (
             <div
               key={card.id}
               onClick={() => handleCardClick(card.id)}
-              className="group relative h-72 sm:h-84 md:h-96 rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1.5 border border-[#D91B3E]/15 flex flex-col justify-end"
+              className="group relative h-48 xs:h-56 sm:h-72 md:h-84 lg:h-96 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md sm:shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1.5 border border-[#D91B3E]/15 flex flex-col justify-end"
             >
               {/* Background Image with Smooth Hover Zoom */}
               <img 
@@ -123,37 +123,39 @@ export const SplashHome: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-[#2A0E15]/95 via-[#3D141F]/60 to-black/20 group-hover:from-[#3D141F] group-hover:via-[#591C2D]/65 transition-all duration-500"></div>
 
               {/* Top Accent Badge */}
-              <div className="absolute top-5 start-5 flex items-center gap-2 z-10">
-                <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md text-white font-black text-xs flex items-center justify-center border border-white/30">
+              <div className="absolute top-2.5 start-2.5 sm:top-5 sm:start-5 flex items-center gap-1.5 sm:gap-2 z-10">
+                <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md text-white font-black text-[10px] sm:text-xs flex items-center justify-center border border-white/30">
                   {card.num}
                 </span>
-                <span className="px-3 py-1 rounded-xl bg-[#D91B3E]/90 backdrop-blur-md text-white text-xs font-bold shadow-sm">
+                <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-[#D91B3E]/90 backdrop-blur-md text-white text-[9px] sm:text-xs font-bold shadow-sm">
                   {language === 'ar' ? card.badgeAr : card.badgeEn}
                 </span>
               </div>
 
               {/* Card Bottom Content */}
-              <div className="relative z-10 p-6 sm:p-8 space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:bg-[#D91B3E] transition duration-300">
-                    {card.icon}
+              <div className="relative z-10 p-2.5 sm:p-5 md:p-8 space-y-1 sm:space-y-2">
+                <div className="flex items-center gap-1.5 sm:gap-2.5">
+                  <div className="w-6 h-6 sm:w-8 sm:h-9 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 group-hover:bg-[#D91B3E] transition duration-300 shrink-0">
+                    {React.cloneElement(card.icon as React.ReactElement<any>, {
+                      className: 'w-3.5 h-3.5 sm:w-5 sm:h-5 text-white'
+                    })}
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white group-hover:text-[#FDE8ED] transition duration-300">
+                  <h2 className="text-sm xs:text-base sm:text-2xl md:text-3xl font-black text-white group-hover:text-[#FDE8ED] transition duration-300 truncate">
                     {language === 'ar' ? card.titleAr : card.titleEn}
                   </h2>
                 </div>
 
-                <p className="text-xs sm:text-sm text-gray-200/95 font-medium leading-relaxed max-w-md">
+                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-200/95 font-medium leading-relaxed max-w-md line-clamp-1 xs:line-clamp-2">
                   {language === 'ar' ? card.subtitleAr : card.subtitleEn}
                 </p>
 
                 {/* Explore Pill Button */}
-                <div className="pt-2 flex items-center gap-2 text-xs font-bold text-white group-hover:text-[#FDE8ED]">
+                <div className="pt-0.5 sm:pt-2 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold text-white group-hover:text-[#FDE8ED]">
                   <span className="underline underline-offset-4 decoration-[#D91B3E] group-hover:decoration-white transition">
                     {language === 'ar' ? 'دخول القسم' : 'Explore Section'}
                   </span>
-                  <div className="w-6 h-6 rounded-full bg-white/20 group-hover:bg-[#D91B3E] flex items-center justify-center transition-all duration-300 group-hover:translate-x-1">
-                    <ArrowIcon className="w-3.5 h-3.5 text-white" />
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white/20 group-hover:bg-[#D91B3E] flex items-center justify-center transition-all duration-300 group-hover:translate-x-1">
+                    <ArrowIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-white" />
                   </div>
                 </div>
               </div>
