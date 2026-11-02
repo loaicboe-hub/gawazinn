@@ -103,7 +103,7 @@
 }
 
 .animate-kenburns {
-  animation: kenburns 6s ease-out forwards;
+  animation: kenburns 9s ease-out forwards;
 }
 
 @keyframes fadeInUp {

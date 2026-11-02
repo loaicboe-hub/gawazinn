@@ -37,10 +37,10 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
   useEffect(() => {
     if (!isVisible) return;
 
-    // Start progress bar animation (5000ms)
+    // Start progress bar animation (8000ms - 8 seconds total)
     const startTime = Date.now();
-    const duration = 5000;
-    const fadeOutDuration = 600;
+    const duration = 8000;
+    const fadeOutDuration = 700;
 
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -88,7 +88,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
           src="/intro-proposal.jpg" 
           alt="GAWAZ INN Wedding Proposal" 
           className="w-full h-full object-cover object-center animate-kenburns scale-100"
-          style={{ animationDuration: '6s', animationFillMode: 'forwards' }}
+          style={{ animationDuration: '9s', animationFillMode: 'forwards' }}
         />
         
         {/* Multi-layered cinematic overlays for emotional atmosphere & high contrast */}
@@ -153,7 +153,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
 
       </div>
 
-      {/* Bottom Footer: 5-Second Animated Progress Bar */}
+      {/* Bottom Footer: 8-Second Animated Progress Bar */}
       <div className="relative z-20 p-5 sm:p-8 w-full max-w-xl mx-auto flex flex-col items-center gap-2">
         <div className="w-full bg-white/20 h-1.5 sm:h-2 rounded-full overflow-hidden backdrop-blur-md border border-white/20 p-0.5 shadow-inner">
           <div 
@@ -167,7 +167,7 @@ export const IntroSplashScreen: React.FC<IntroSplashScreenProps> = ({ onComplete
             <Heart className="w-3 h-3 fill-[#D91B3E] text-[#D91B3E]" />
             <span>جواز إن</span>
           </span>
-          <span>{Math.ceil(5 - (progress / 20))} ثوانٍ</span>
+          <span>{Math.max(1, Math.ceil(8 - (progress / 12.5)))} ثوانٍ</span>
         </div>
       </div>
 
