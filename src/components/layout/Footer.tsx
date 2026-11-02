@@ -116,6 +116,18 @@ export const Footer: React.FC = () => {
           <p>
             © {new Date().getFullYear()} {language === 'ar' ? 'منصة جواز إن (GAWAZ INN). جميع الحقوق محفوظة.' : 'GAWAZ INN Platform. All rights reserved.'}
           </p>
+
+          <button
+            onClick={() => {
+              try { sessionStorage.removeItem('gawazinn_intro_splash_seen'); } catch {}
+              window.dispatchEvent(new CustomEvent('gawazinn_replay_intro'));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="hover:text-[#D91B3E] hover:underline font-medium transition cursor-pointer"
+          >
+            {language === 'ar' ? '✨ إعادة مشاهدة مقدمة المنصة' : '✨ Replay Intro'}
+          </button>
+
           <p className="font-semibold text-[#D91B3E]">
             {language === 'ar' ? 'صنع بكل فخر وحب في مصر 🇪🇬' : 'Crafted with Love in Egypt 🇪🇬'}
           </p>

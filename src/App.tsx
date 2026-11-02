@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { Toast } from './components/layout/Toast';
+import { IntroSplashScreen } from './components/intro/IntroSplashScreen';
 import { SplashHome } from './components/home/SplashHome';
 import { FinishingView } from './components/finishing/FinishingView';
 import { GroomView } from './components/groom/GroomView';
@@ -37,6 +38,9 @@ const MainContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col justify-between bg-white text-[#2A1D20] selection:bg-[#D91B3E]/20 selection:text-[#D91B3E]">
       
+      {/* 5-Second Wedding Intro Splash Screen */}
+      <IntroSplashScreen />
+
       {/* Universal Wedding Header */}
       <Header onOpenCart={() => setIsCartOpen(true)} />
 
