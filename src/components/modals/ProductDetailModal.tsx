@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { ShoppingBag, Heart, CreditCard } from 'lucide-react';
+import { ShoppingBag, Heart, CreditCard, Layers, BookOpen } from 'lucide-react';
 import { ModalFrame } from '../common/ModalFrame';
 import { SmartImage } from '../common/SmartImage';
 
@@ -16,6 +17,8 @@ export const ProductDetailModal: React.FC = () => {
     isWishlisted,
     setInstallmentModalOpen,
     setInstallmentPrefillAmount,
+    compareProductIds,
+    toggleCompareProduct,
   } = useApp();
 
   const [quantity, setQuantity] = useState(1);
@@ -163,6 +166,37 @@ export const ProductDetailModal: React.FC = () => {
                   : 'Apply for Installment on this Item'}
               </span>
             </button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to={`/products/${selectedProduct.slug || selectedProduct.id}`}
+                onClick={() => setProductDetailModalOpen(false)}
+                className="py-2 px-3 rounded-xl border border-rose-200 bg-[#FFF8F9] hover:bg-[#FDE8ED] text-[#B31331] font-bold text-[11px] flex items-center justify-center gap-1.5 transition"
+              >
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span>{language === 'ar' ? 'المواصفات وتاريخ السعر' : 'Full Specs & Price'}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => toggleCompareProduct(selectedProduct.id)}
+                className={`py-2 px-3 rounded-xl border font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  compareProductIds.includes(selectedProduct.id)
+                    ? 'bg-[#2A1D20] text-white border-[#2A1D20]'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-[#D91B3E]/40'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {compareProductIds.includes(selectedProduct.id)
+                    ? language === 'ar'
+                      ? 'بالمقارنة ✓'
+                      : 'Comparing ✓'
+                    : language === 'ar'
+                      ? 'أضف للمقارنة'
+                      : 'Add to Compare'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

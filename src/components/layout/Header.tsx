@@ -121,6 +121,13 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
 
           <div className="flex items-center gap-3 shrink-0">
             <Link
+              to="/products"
+              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
+            >
+              <ShoppingBag className="w-3 h-3" />
+              <span>{language === 'ar' ? 'المنتجات والأسعار' : 'Products'}</span>
+            </Link>
+            <Link
               to="/onboarding"
               className="hidden xl:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
             >
@@ -349,6 +356,17 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
+                      to="/my/shopping-lists"
+                      onClick={closeMenus}
+                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 text-[#D91B3E]" />
+                      <span>
+                        {language === 'ar' ? 'سلال المشتريات وتنبيهات الأسعار' : 'Shopping Baskets & Alerts'}
+                      </span>
+                    </Link>
+
+                    <Link
                       to="/calculators"
                       onClick={closeMenus}
                       className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
@@ -468,6 +486,22 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <Wallet className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'مدير ميزانية الزواج' : 'Wedding Budget Manager'}</span>
+          </Link>
+          <Link
+            to="/products"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <ShoppingBag className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'موسوعة المنتجات ومقارنة الأسعار' : 'Products & Price Compare'}</span>
+          </Link>
+          <Link
+            to="/my/shopping-lists"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <ListTodo className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'سلال المشتريات وتنبيهات الأسعار' : 'Shopping Baskets & Alerts'}</span>
           </Link>
           <Link
             to="/finishing/materials"

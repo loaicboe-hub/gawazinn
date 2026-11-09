@@ -17,6 +17,7 @@ import {
   Layers,
   Gem,
   ListTodo,
+  ShoppingBag,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
 
@@ -265,6 +266,26 @@ export const SplashHome: React.FC = () => {
           >
             <CreditCard className="w-3.5 h-3.5 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'حاسبة التقسيط' : 'Installment Calculator'}</span>
+          </Link>
+
+          <Link
+            to="/products"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-products"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'موسوعة المنتجات ومقارنة الأسعار' : 'Product Encyclopedia & Prices'}</span>
+          </Link>
+
+          <Link
+            to="/my/shopping-lists"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-shopping-lists"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <ListTodo className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'سلال التجهيز وتنبيهات الأسعار' : 'Shopping Baskets & Alerts'}</span>
           </Link>
         </div>
       </div>

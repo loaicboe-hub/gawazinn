@@ -149,6 +149,7 @@ export const productUpsertSchema = z.object({
   nameAr: z.string().trim().min(2).max(200),
   nameEn: z.string().trim().min(2).max(200),
   brand: z.string().trim().min(1).max(100),
+  model: z.string().trim().max(100).optional(),
   price: z.number().min(1),
   originalPrice: z.number().min(1).optional(),
   sku: z.string().trim().min(2).max(64),
@@ -158,6 +159,22 @@ export const productUpsertSchema = z.object({
   descriptionEn: z.string().trim().min(2).max(2000),
   specsAr: z.record(z.string(), z.string()).default({}),
   specsEn: z.record(z.string(), z.string()).default({}),
+  dimensions: z.string().trim().max(120).optional(),
+  capacity: z.string().trim().max(120).optional(),
+  energyRating: z.string().trim().max(32).optional(),
+  warrantyMonths: z.number().int().min(0).max(240).optional(),
+  warrantyTermsAr: z.string().trim().max(400).optional(),
+  warrantyTermsEn: z.string().trim().max(400).optional(),
+  originCountryAr: z.string().trim().max(80).optional(),
+  originCountryEn: z.string().trim().max(80).optional(),
+  prosAr: z.array(z.string()).optional(),
+  prosEn: z.array(z.string()).optional(),
+  consAr: z.array(z.string()).optional(),
+  consEn: z.array(z.string()).optional(),
+  buyerWarningsAr: z.array(z.string()).optional(),
+  buyerWarningsEn: z.array(z.string()).optional(),
+  recommendedForAr: z.string().trim().max(300).optional(),
+  recommendedForEn: z.string().trim().max(300).optional(),
   isFeatured: z.boolean().optional(),
   isReadyPackageItem: z.boolean().optional(),
 });
@@ -587,4 +604,63 @@ export const patchUserAppointmentSchema = z.object({
   scheduledAt: z.string().trim().min(8).max(40).optional(),
   notes: z.string().trim().max(500).nullable().optional(),
 });
+
+// Stage 6 Schemas: Product Comparisons, Multi-List Shopping Baskets & Price Alerts
+export const compareProductsRequestSchema = z.object({
+  ids: z.array(z.string().trim().min(1).max(80)).min(1).max(4),
+});
+
+export const createShoppingListSchema = z.object({
+  titleAr: z.string().trim().min(2).max(160),
+  titleEn: z.string().trim().min(2).max(160),
+  listType: z
+    .enum(['groom_appliances', 'bride_kitchen', 'finishing_hardware', 'home_furniture', 'general'])
+    .default('general'),
+  isSharedWithPartner: z.boolean().default(false),
+  budgetTarget: z.number().min(0).max(50000000).default(0),
+  notes: z.string().trim().max(600).optional(),
+});
+
+export const patchShoppingListSchema = z.object({
+  titleAr: z.string().trim().min(2).max(160).optional(),
+  titleEn: z.string().trim().min(2).max(160).optional(),
+  listType: z
+    .enum(['groom_appliances', 'bride_kitchen', 'finishing_hardware', 'home_furniture', 'general'])
+    .optional(),
+  isSharedWithPartner: z.boolean().optional(),
+  budgetTarget: z.number().min(0).max(50000000).optional(),
+  notes: z.string().trim().max(600).nullable().optional(),
+});
+
+export const createShoppingListItemSchema = z.object({
+  productId: z.string().trim().max(80).nullable().optional(),
+  customTitle: z.string().trim().min(2).max(200),
+  categoryLabel: z.string().trim().min(1).max(80).default('general'),
+  quantity: z.number().int().min(1).max(200).default(1),
+  targetUnitPrice: z.number().min(0).max(50000000).default(0),
+  preferredMerchant: z.string().trim().max(120).optional(),
+  status: z.enum(['planned', 'shortlisted', 'ready_to_buy', 'purchased']).default('planned'),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+  notes: z.string().trim().max(600).optional(),
+});
+
+export const patchShoppingListItemSchema = z.object({
+  quantity: z.number().int().min(1).max(200).optional(),
+  targetUnitPrice: z.number().min(0).max(50000000).optional(),
+  preferredMerchant: z.string().trim().max(120).nullable().optional(),
+  status: z.enum(['planned', 'shortlisted', 'ready_to_buy', 'purchased']).optional(),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
+  notes: z.string().trim().max(600).nullable().optional(),
+});
+
+export const createPriceAlertSchema = z.object({
+  productId: z.string().trim().min(1).max(80),
+  targetPrice: z.number().int().min(10).max(50000000),
+});
+
+export const patchPriceAlertSchema = z.object({
+  targetPrice: z.number().int().min(10).max(50000000).optional(),
+  status: z.enum(['active', 'triggered', 'paused']).optional(),
+});
+
 

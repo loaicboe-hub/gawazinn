@@ -28,7 +28,7 @@ function upsertLink(rel: string, href: string, hreflang?: string): void {
 }
 
 export const SeoHead: React.FC = () => {
-  const { language, articles, locations } = useApp();
+  const { language, articles, locations, products } = useApp();
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export const SeoHead: React.FC = () => {
     const articleMatch = pathname.match(/^\/guides\/([^/]+)$/);
     const locMatch = pathname.match(/^\/locations\/([^/]+)$/);
     const calcMatch = pathname.match(/^\/calculators\/([^/]+)$/);
+    const productMatch = pathname.match(/^\/products\/([^/]+)$/);
 
     if (pathname === '/finishing') {
       titleAr = 'تشطيب الشقة والباقات الهندسية | جواز إن';
@@ -144,6 +145,28 @@ export const SeoHead: React.FC = () => {
     } else if (pathname.startsWith('/my/workspace')) {
       titleAr = 'مركز قيادة جواز إن ومساحة الزوجين المشتركة | جواز إن';
       titleEn = 'My Gawaz Inn 17-Module Hub & Shared Couple Workspace | GAWAZ INN';
+    } else if (pathname === '/products') {
+      titleAr = 'موسوعة المنتجات والأسعار والمواصفات الفنية | جواز إن';
+      titleEn = 'Egyptian Home & Marriage Product Encyclopedia & Price History | GAWAZ INN';
+      descAr =
+        'قارن مواصفات الأجهزة والأثاث والمطبخ في مصر، اقرأ تحذيرات المشتري، وتابع تاريخ الأسعار وضمان الوكيل مقابل السوق الموازي.';
+      descEn =
+        'Compare Egyptian appliances, furniture & kitchenware specs, historical EGP pricing, and official agent vs. gray-market warranties.';
+    } else if (pathname === '/products/compare') {
+      titleAr = 'مصفوفة مقارنة المنتجات والأسعار جنباً إلى جنب | جواز إن';
+      titleEn = 'Side-by-Side Product & Specification Comparison Matrix | GAWAZ INN';
+    } else if (productMatch && productMatch[1] !== 'compare') {
+      const slugOrId = decodeURIComponent(productMatch[1]);
+      const prod = products.find((p) => p.slug === slugOrId || p.id === slugOrId);
+      if (prod) {
+        titleAr = `${prod.nameAr} — السعر والمواصفات وتاريخ السعر | جواز إن`;
+        titleEn = `${prod.nameEn} — Specs, Merchant Offers & Price History | GAWAZ INN`;
+        descAr = prod.descriptionAr.slice(0, 158);
+        descEn = prod.descriptionEn.slice(0, 158);
+      }
+    } else if (pathname.startsWith('/my/shopping-lists')) {
+      titleAr = 'سلال المشتريات وتنبيهات الأسعار | جواز إن';
+      titleEn = 'Multi-List Shopping Baskets & Price Alerts | GAWAZ INN';
     } else if (pathname.startsWith('/portal')) {
       titleAr = 'بوابة طلباتي ومتابعاتي | جواز إن';
       titleEn = 'My Unified Requests Portal | GAWAZ INN';
@@ -217,8 +240,32 @@ export const SeoHead: React.FC = () => {
       ],
     };
 
-    scriptEl.textContent = JSON.stringify([ldOrg, ldBreadcrumbs]);
-  }, [pathname, language, articles, locations]);
+    const ldProduct =
+      productMatch && productMatch[1] !== 'compare'
+        ? (() => {
+            const slugOrId = decodeURIComponent(productMatch[1]);
+            const prod = products.find((p) => p.slug === slugOrId || p.id === slugOrId);
+            if (!prod) return null;
+            return {
+              '@context': 'https://schema.org',
+              '@type': 'Product',
+              name: language === 'ar' ? prod.nameAr : prod.nameEn,
+              description: language === 'ar' ? prod.descriptionAr : prod.descriptionEn,
+              sku: prod.sku,
+              brand: { '@type': 'Brand', name: prod.brand },
+              offers: {
+                '@type': 'Offer',
+                priceCurrency: 'EGP',
+                price: prod.price,
+                availability:
+                  prod.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              },
+            };
+          })()
+        : null;
+
+    scriptEl.textContent = JSON.stringify([ldOrg, ldBreadcrumbs, ...(ldProduct ? [ldProduct] : [])]);
+  }, [pathname, language, articles, locations, products]);
 
   return null;
 };

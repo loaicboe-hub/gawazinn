@@ -255,6 +255,16 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
                   {language === 'ar' ? 'موسوعة العريس (26 دليل)' : 'Groom Encyclopedia (26)'}
                 </span>
               </Link>
+
+              <Link
+                to="/products?trousseauType=groom"
+                className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl border border-white/20 transition flex items-center gap-2"
+              >
+                <Layers className="w-4 h-4 text-rose-200" />
+                <span>
+                  {language === 'ar' ? 'موسوعة الأجهزة وتاريخ الأسعار' : 'Product Specs & Price History'}
+                </span>
+              </Link>
             </div>
           </div>
         </div>
@@ -1011,6 +1021,14 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+
+                          <Link
+                            to={`/products/${p.slug || p.id}`}
+                            className="p-3 rounded-xl bg-[#FFF8F9] hover:bg-[#FDE8ED] text-[#B31331] border border-rose-200 transition"
+                            title={language === 'ar' ? 'المواصفات وتاريخ السعر' : 'Specs & Price History'}
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </Link>
                         </div>
 
                         <button

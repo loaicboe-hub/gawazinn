@@ -110,6 +110,7 @@ export interface Product {
   nameAr: string;
   nameEn: string;
   brand: string;
+  model?: string;
   price: number;
   originalPrice?: number;
   sku: string;
@@ -120,6 +121,22 @@ export interface Product {
   descriptionEn: string;
   specsAr: Record<string, string>;
   specsEn: Record<string, string>;
+  dimensions?: string;
+  capacity?: string;
+  energyRating?: string;
+  warrantyMonths?: number;
+  warrantyTermsAr?: string;
+  warrantyTermsEn?: string;
+  originCountryAr?: string;
+  originCountryEn?: string;
+  prosAr?: string[];
+  prosEn?: string[];
+  consAr?: string[];
+  consEn?: string[];
+  buyerWarningsAr?: string[];
+  buyerWarningsEn?: string[];
+  recommendedForAr?: string;
+  recommendedForEn?: string;
   priceSource?: string;
   priceUpdatedAt?: string;
   isFeatured?: boolean;
@@ -1409,4 +1426,119 @@ export interface ApiErrorResponse {
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+// ==================== STAGE 6: PRODUCT ENCYCLOPEDIA, COMPARISONS & SHOPPING LISTS ====================
+
+export type MerchantWarrantyType = 'official_agent' | 'authorized_dealer' | 'gray_market_importer';
+export type AlternativeRelationType = 'budget' | 'upgrade' | 'energy_saver' | 'compact';
+export type ShoppingListType =
+  | 'groom_appliances'
+  | 'bride_kitchen'
+  | 'finishing_hardware'
+  | 'home_furniture'
+  | 'general';
+export type ShoppingListItemStatus = 'planned' | 'shortlisted' | 'ready_to_buy' | 'purchased';
+export type PriceAlertStatus = 'active' | 'triggered' | 'paused';
+
+export interface ProductPricePoint {
+  id: string;
+  productId: string;
+  merchantName: string;
+  price: number;
+  source: string;
+  recordedAt: string;
+}
+
+export interface ProductMerchantOffer {
+  id: string;
+  productId: string;
+  merchantName: string;
+  warrantyType: MerchantWarrantyType;
+  price: number;
+  deliverySlaAr: string;
+  deliverySlaEn: string;
+  inStock: boolean;
+  notesAr?: string | null;
+  notesEn?: string | null;
+  updatedAt: string;
+}
+
+export interface ProductAlternativeLink {
+  id: string;
+  productId: string;
+  alternativeProductId: string;
+  relationType: AlternativeRelationType;
+  reasonAr: string;
+  reasonEn: string;
+  alternativeProduct?: Product;
+}
+
+export interface ProductEncyclopediaDetail {
+  product: Product;
+  priceHistory: ProductPricePoint[];
+  merchantOffers: ProductMerchantOffer[];
+  alternatives: ProductAlternativeLink[];
+}
+
+export interface ProductComparisonMatrixPayload {
+  products: Product[];
+  offersByProductId: Record<string, ProductMerchantOffer[]>;
+  highlights: {
+    lowestPriceProductId?: string;
+    longestWarrantyProductId?: string;
+    bestEnergyProductId?: string;
+    bestWarrantyValueProductId?: string;
+  };
+  unifiedSpecKeysAr: string[];
+  unifiedSpecKeysEn: string[];
+}
+
+export interface ShoppingListItem {
+  id: string;
+  listId: string;
+  productId?: string | null;
+  product?: Product | null;
+  customTitle: string;
+  categoryLabel: string;
+  quantity: number;
+  targetUnitPrice: number;
+  preferredMerchant?: string | null;
+  status: ShoppingListItemStatus;
+  priority: 'high' | 'medium' | 'low';
+  notes?: string | null;
+  addedByUserId?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingList {
+  id: string;
+  userId: string;
+  workspaceId?: string | null;
+  titleAr: string;
+  titleEn: string;
+  listType: ShoppingListType;
+  isSharedWithPartner: boolean;
+  budgetTarget: number;
+  notes?: string | null;
+  items: ShoppingListItem[];
+  totalEstimatedCost: number;
+  totalPurchasedCost: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PriceAlert {
+  id: string;
+  userId: string;
+  productId: string;
+  product?: Product | null;
+  targetPrice: number;
+  currentPriceSnapshot: number;
+  status: PriceAlertStatus;
+  triggeredAt?: string | null;
+  createdAt: string;
+}
+
 

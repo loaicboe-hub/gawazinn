@@ -38,6 +38,15 @@ import {
   ensureUserEngagementAndJourney,
   mapEngagementItemRow,
 } from './journeyWorkspaceService';
+import {
+  PRODUCT_ENCYCLOPEDIA_EXTENSIONS,
+  STAGE6_ADDITIONAL_PRODUCTS,
+  buildSeedPriceHistoryAndOffers,
+} from '../shared/productEncyclopediaData';
+import {
+  ensureStarterShoppingListsForKarim,
+  mapProductEncyclopediaRow,
+} from './productShoppingService';
 import { hashPassword, hashSensitiveField } from './security';
 
 export function seedDatabase(
@@ -49,25 +58,35 @@ export function seedDatabase(
   stage3Seeded: boolean;
   stage4Seeded: boolean;
   stage5Seeded: boolean;
+  stage6Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
   const stage3PlanCountRow = db.prepare('SELECT COUNT(*) as cnt FROM budget_plans').get() as { cnt: number };
   const stage4EarlyCountRow = db.prepare('SELECT COUNT(*) as cnt FROM early_start_profiles').get() as { cnt: number };
   const stage5JourneyCountRow = db.prepare('SELECT COUNT(*) as cnt FROM journey_tasks').get() as { cnt: number };
+  const stage6HistoryCountRow = db.prepare('SELECT COUNT(*) as cnt FROM product_price_history').get() as {
+    cnt: number;
+  };
+  const stage6SlugFixRow = db
+    .prepare("SELECT COUNT(*) as cnt FROM products WHERE id = 'groom-p1' AND (slug IS NULL OR slug = id)")
+    .get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
   const needsStage4 = stage4EarlyCountRow.cnt === 0;
   const needsStage5 = stage5JourneyCountRow.cnt === 0;
+  const needsStage6 = stage6HistoryCountRow.cnt === 0;
+  const needsBaseProductSlugFix = stage6SlugFixRow.cnt > 0;
 
-  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4 && !needsStage5) {
+  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4 && !needsStage5 && !needsStage6 && !needsBaseProductSlugFix) {
     return {
       seeded: false,
       stage2Seeded: false,
       stage3Seeded: false,
       stage4Seeded: false,
       stage5Seeded: false,
+      stage6Seeded: false,
     };
   }
 
@@ -1129,13 +1148,180 @@ export function seedDatabase(
       }
     }
 
+    if (needsStage6) {
+      // 1. Insert 8 additional Stage 6 Egyptian market products (idempotent)
+      const insProd = db.prepare(
+        `INSERT OR IGNORE INTO products
+          (id, slug, sku, trousseau_type, category, category_ar, category_en, name_ar, name_en, brand, model,
+           price, original_price, stock, image_url, gallery_json, description_ar, description_en,
+           specs_ar_json, specs_en_json, dimensions, capacity, energy_rating, warranty_months,
+           warranty_terms_ar, warranty_terms_en, origin_country_ar, origin_country_en,
+           pros_ar_json, pros_en_json, cons_ar_json, cons_en_json,
+           buyer_warnings_ar_json, buyer_warnings_en_json, recommended_for_ar, recommended_for_en,
+           price_source, price_updated_at, is_featured, is_ready_package_item, is_demo_data, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?)`,
+      );
+      for (const p of STAGE6_ADDITIONAL_PRODUCTS) {
+        insProd.run(
+          p.id,
+          p.slug ?? p.id,
+          p.sku,
+          p.trousseauType,
+          p.category,
+          p.categoryAr,
+          p.categoryEn,
+          p.nameAr,
+          p.nameEn,
+          p.brand,
+          p.model ?? null,
+          p.price,
+          p.originalPrice ?? null,
+          p.stock,
+          p.imageUrl,
+          JSON.stringify(p.galleryUrls ?? []),
+          p.descriptionAr,
+          p.descriptionEn,
+          JSON.stringify(p.specsAr),
+          JSON.stringify(p.specsEn),
+          p.dimensions ?? null,
+          p.capacity ?? null,
+          p.energyRating ?? null,
+          p.warrantyMonths ?? 12,
+          p.warrantyTermsAr ?? null,
+          p.warrantyTermsEn ?? null,
+          p.originCountryAr ?? null,
+          p.originCountryEn ?? null,
+          JSON.stringify(p.prosAr ?? []),
+          JSON.stringify(p.prosEn ?? []),
+          JSON.stringify(p.consAr ?? []),
+          JSON.stringify(p.consEn ?? []),
+          JSON.stringify(p.buyerWarningsAr ?? []),
+          JSON.stringify(p.buyerWarningsEn ?? []),
+          p.recommendedForAr ?? null,
+          p.recommendedForEn ?? null,
+          p.priceSource ?? 'GAWAZ INN Verified Official Distributor Tracker',
+          p.priceUpdatedAt ?? now.slice(0, 10),
+          p.isFeatured ? 1 : 0,
+          now,
+          now,
+        );
+      }
+
+      // 2. Backfill encyclopedia metadata + SEO slugs for existing Stage 1 11 products
+      const updMeta = db.prepare(
+        `UPDATE products SET
+          slug = ?,
+          model = ?,
+          dimensions = ?,
+          capacity = ?,
+          energy_rating = ?,
+          warranty_months = ?,
+          warranty_terms_ar = ?,
+          warranty_terms_en = ?,
+          origin_country_ar = ?,
+          origin_country_en = ?,
+          pros_ar_json = ?,
+          pros_en_json = ?,
+          cons_ar_json = ?,
+          cons_en_json = ?,
+          buyer_warnings_ar_json = ?,
+          buyer_warnings_en_json = ?,
+          recommended_for_ar = ?,
+          recommended_for_en = ?,
+          updated_at = ?
+         WHERE id = ?`,
+      );
+      for (const [productId, meta] of Object.entries(PRODUCT_ENCYCLOPEDIA_EXTENSIONS)) {
+        updMeta.run(
+          meta.slug,
+          meta.model,
+          meta.dimensions,
+          meta.capacity,
+          meta.energyRating,
+          meta.warrantyMonths,
+          meta.warrantyTermsAr,
+          meta.warrantyTermsEn,
+          meta.originCountryAr,
+          meta.originCountryEn,
+          JSON.stringify(meta.prosAr),
+          JSON.stringify(meta.prosEn),
+          JSON.stringify(meta.consAr),
+          JSON.stringify(meta.consEn),
+          JSON.stringify(meta.buyerWarningsAr),
+          JSON.stringify(meta.buyerWarningsEn),
+          meta.recommendedForAr,
+          meta.recommendedForEn,
+          now,
+          productId,
+        );
+      }
+
+      // 3. Populate price history, merchant comparison offers & alternatives across all products
+      const allProds = (
+        db.prepare('SELECT * FROM products').all() as Record<string, unknown>[]
+      ).map(mapProductEncyclopediaRow);
+      const { priceHistory, merchantOffers, alternatives } = buildSeedPriceHistoryAndOffers(allProds);
+
+      const insHist = db.prepare(
+        `INSERT OR IGNORE INTO product_price_history (id, product_id, merchant_name, price, source, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      for (const h of priceHistory) {
+        insHist.run(h.id, h.productId, h.merchantName, h.price, h.source, h.recordedAt);
+      }
+
+      const insOffer = db.prepare(
+        `INSERT OR IGNORE INTO product_merchant_offers
+          (id, product_id, merchant_name, warranty_type, price, delivery_sla_ar, delivery_sla_en, in_stock, notes_ar, notes_en, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const o of merchantOffers) {
+        insOffer.run(
+          o.id,
+          o.productId,
+          o.merchantName,
+          o.warrantyType,
+          o.price,
+          o.deliverySlaAr,
+          o.deliverySlaEn,
+          o.inStock ? 1 : 0,
+          o.notesAr ?? null,
+          o.notesEn ?? null,
+          o.updatedAt,
+        );
+      }
+
+      const insAlt = db.prepare(
+        `INSERT OR IGNORE INTO product_alternatives
+          (id, product_id, alternative_product_id, relation_type, reason_ar, reason_en)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      for (const alt of alternatives) {
+        insAlt.run(alt.id, alt.productId, alt.alternativeProductId, alt.relationType, alt.reasonAr, alt.reasonEn);
+      }
+
+      // 4. Seed starter Shopping Lists & Price Alerts for Karim
+      if (db.prepare("SELECT id FROM users WHERE id = 'usr-1'").get()) {
+        ensureStarterShoppingListsForKarim(db);
+      }
+    }
+
+    // Ensure SEO slugs on base products even if Stage 6 tables were seeded earlier
+    const updBaseSlug = db.prepare(
+      'UPDATE products SET slug = ?, updated_at = ? WHERE id = ? AND (slug IS NULL OR slug = id)',
+    );
+    for (const [productId, meta] of Object.entries(PRODUCT_ENCYCLOPEDIA_EXTENSIONS)) {
+      updBaseSlug.run(meta.slug, now, productId);
+    }
+
     db.exec('COMMIT;');
     return {
-      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4 || needsStage5,
+      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4 || needsStage5 || needsStage6,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
       stage5Seeded: needsStage5,
+      stage6Seeded: needsStage6,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

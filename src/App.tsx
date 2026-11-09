@@ -124,6 +124,26 @@ const MyGawazInnHubView = lazy(() =>
     default: m.MyGawazInnHubView,
   })),
 );
+const ProductsEncyclopediaView = lazy(() =>
+  import('./components/products/ProductsEncyclopediaView').then((m) => ({
+    default: m.ProductsEncyclopediaView,
+  })),
+);
+const ProductCompareView = lazy(() =>
+  import('./components/products/ProductCompareView').then((m) => ({
+    default: m.ProductCompareView,
+  })),
+);
+const ProductDetailPageView = lazy(() =>
+  import('./components/products/ProductDetailPageView').then((m) => ({
+    default: m.ProductDetailPageView,
+  })),
+);
+const ShoppingListsView = lazy(() =>
+  import('./components/products/ShoppingListsView').then((m) => ({
+    default: m.ShoppingListsView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -168,6 +188,10 @@ const MainContent: React.FC = () => {
             <Route path="/finishing/contractors" element={<FinishingEncyclopediaView />} />
             <Route path="/groom" element={<GroomView onOpenCompare={handleOpenCompare} />} />
             <Route path="/groom/encyclopedia" element={<GroomEncyclopediaView />} />
+            <Route path="/products" element={<ProductsEncyclopediaView />} />
+            <Route path="/products/compare" element={<ProductCompareView />} />
+            <Route path="/products/:idOrSlug" element={<ProductDetailPageView />} />
+            <Route path="/my/shopping-lists" element={<ShoppingListsView />} />
             <Route path="/bride" element={<BrideView />} />
             <Route path="/bride/encyclopedia" element={<BrideEncyclopediaView />} />
             <Route path="/wedding" element={<WeddingPlannerView />} />

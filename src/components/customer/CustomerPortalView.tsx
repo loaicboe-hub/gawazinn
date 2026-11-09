@@ -188,6 +188,15 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
               </Link>
 
               <Link
+                to="/my/shopping-lists"
+                data-testid="portal-open-shopping-lists-link"
+                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>{language === 'ar' ? 'سلال المشتريات' : 'Shopping Baskets'}</span>
+              </Link>
+
+              <Link
                 to="/calculators"
                 className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
               >

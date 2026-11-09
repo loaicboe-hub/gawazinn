@@ -42,13 +42,15 @@
 25. `finishing_packages` *(Implemented `001`)*: packages (`economic|medium|luxury|ultra_luxury` with `price_per_meter`).
 26. *(Planned Stage 6/9)* `content_relations`, `wedding_stories`: polymorphic joins and moderated customer stories.
 
-### Commerce, Products & Vendors (Modules K, L, F)
+### Commerce, Products, Shopping Baskets & Vendors (Modules K, L, F — **Stage 6 `006_stage6_products_shopping.sql` Implemented**)
 21. `locations`: `id`, `slug` (unique), `level` (`country|governorate|city|district|area`), `parent_id` (FK), `name_ar`, `name_en`, `is_featured`
-22. `products`: `id`, `slug` (unique), `sku` (unique), `trousseau_type` (`groom|bride|shared|finishing`), `category_slug`, `brand`, `model`, `name_ar`, `name_en`, `description_ar`, `description_en`, `specs_ar_json`, `specs_en_json`, `dimensions`, `capacity`, `energy_rating`, `warranty_months`, `pros_json`, `cons_json`, `price`, `original_price`, `price_source`, `price_updated_at`, `stock`, `availability_status`, `image_url`, `gallery_json`, `rating_avg`, `rating_count`, `is_featured`, `is_demo_data`
-23. `product_price_history`: `id`, `product_id` (FK), `merchant_name`, `price`, `source`, `recorded_at`
-24. `product_alternatives`: `product_id` (FK), `alternative_product_id` (FK), `reason_ar`, `reason_en`
-25. `shopping_lists` & `shopping_list_items`: multi-list user shopping baskets with quantities, notes, checked status, alternative selection.
-26. `vendors`: `id`, `owner_user_id` (FK), `slug` (unique), `business_name_ar`, `business_name_en`, `category_slug`, `governorate_id` (FK), `city_id` (FK), `service_areas_json`, `description_ar`, `description_en`, `logo_url`, `gallery_json`, `phone`, `whatsapp`, `email`, `verification_status` (`registered|verified|trusted|featured`), `verification_docs_json`, `subscription_plan_id` (FK), `rating_avg`, `reviews_count`, `is_demo_data`, `created_at`
+22. `products` *(Extended `006`)*: `id`, `slug` (unique SEO slug), `sku` (unique), `trousseau_type` (`groom|bride|shared|finishing`), `category_slug`, `brand`, `model`, `name_ar`, `name_en`, `description_ar`, `description_en`, `specs_ar_json`, `specs_en_json`, `dimensions`, `capacity`, `energy_rating`, `warranty_months`, `warranty_terms_ar/en`, `origin_country_ar/en`, `pros_ar/en_json`, `cons_ar/en_json`, `buyer_warnings_ar/en_json`, `recommended_for_ar/en`, `price`, `original_price`, `price_source`, `price_updated_at`, `stock`, `image_url`, `gallery_json`, `is_featured`, `is_demo_data`
+23. `product_price_history` *(Implemented `006`)*: `id`, `product_id` (FK -> `products` ON DELETE CASCADE), `merchant_name`, `price`, `source`, `recorded_at`
+24. `product_merchant_offers` *(Implemented `006`)*: `id`, `product_id` (FK), `merchant_name`, `warranty_type` (`official_agent|authorized_retailer|gray_market_importer`), `price`, `delivery_sla_ar/en`, `in_stock`, `notes_ar/en`, `updated_at`
+25. `product_alternatives` *(Implemented `006`)*: `id`, `product_id` (FK), `alternative_product_id` (FK), `relation_type` (`budget_alt|upgrade_alt|comparable`), `reason_ar`, `reason_en`
+26. `shopping_lists` & `shopping_list_items` *(Implemented `006`)*: multi-list user shopping baskets (`is_shared_with_partner`, `budget_target`, `list_type`), item quantities, `target_unit_price`, `preferred_merchant`, status (`planned|shortlisted|ready_to_buy|purchased`), priority, and partner permission enforcement.
+27. `price_alerts` *(Implemented `006`)*: `id`, `user_id` (FK), `product_id` (FK), `target_price`, `current_price_snapshot`, `status` (`active|triggered|paused`), `triggered_at`, `created_at` with automatic trigger evaluation inside `PATCH /api/v1/admin/products/:id`.
+28. `vendors`: `id`, `owner_user_id` (FK), `slug` (unique), `business_name_ar`, `business_name_en`, `category_slug`, `governorate_id` (FK), `city_id` (FK), `service_areas_json`, `description_ar`, `description_en`, `logo_url`, `gallery_json`, `phone`, `whatsapp`, `email`, `verification_status` (`registered|verified|trusted|featured`), `verification_docs_json`, `subscription_plan_id` (FK), `rating_avg`, `reviews_count`, `is_demo_data`, `created_at`
 27. `vendor_services` & `vendor_promotions`: service pricing ranges, capacity, active deals.
 28. `subscription_plans` & `vendor_subscriptions` & `billing_records`: configurable Free/Basic/Pro/Premium plans managed from Admin OS.
 

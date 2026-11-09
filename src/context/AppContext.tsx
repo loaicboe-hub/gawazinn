@@ -65,6 +65,11 @@ import type {
   UserNotification,
   UserWarrantyItem,
   WorkspacePermissions,
+  PriceAlert,
+  PriceAlertStatus,
+  ShoppingList,
+  ShoppingListItemStatus,
+  ShoppingListType,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -80,6 +85,10 @@ import {
   sampleFinancingApplications,
   sampleSupportCases,
 } from '../data/initialData';
+import {
+  PRODUCT_ENCYCLOPEDIA_EXTENSIONS,
+  STAGE6_ADDITIONAL_PRODUCTS,
+} from '../../shared/productEncyclopediaData';
 import { SEED_ARTICLES, SEED_CATEGORIES, SEED_LOCATIONS } from '../../shared/cmsSeedData';
 import {
   FINISHING_ENCYCLOPEDIA_CATEGORIES,
@@ -116,6 +125,9 @@ export type SectionKey =
   | 'calculators'
   | 'budget'
   | 'discover'
+  | 'products'
+  | 'compare'
+  | 'shoppingLists'
   | 'myHub'
   | 'customerPortal'
   | 'admin';
@@ -136,6 +148,9 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   calculators: '/calculators',
   budget: '/my/budget',
   discover: '/discover',
+  products: '/products',
+  compare: '/products/compare',
+  shoppingLists: '/my/shopping-lists',
   myHub: '/my/workspace',
   customerPortal: '/portal',
   admin: '/admin',
@@ -603,6 +618,66 @@ interface AppContextType {
   markNotificationRead: (notifId: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
 
+  // Stage 6: Product Encyclopedia, Multi-Product Comparison, Multi-List Shopping Baskets & Price Alerts
+  compareProductIds: string[];
+  toggleCompareProduct: (productId: string) => void;
+  clearCompareProducts: () => void;
+  shoppingLists: ShoppingList[];
+  priceAlerts: PriceAlert[];
+  refreshShoppingAndAlerts: () => Promise<void>;
+  createShoppingList: (input: {
+    titleAr: string;
+    titleEn: string;
+    listType?: ShoppingListType;
+    isSharedWithPartner?: boolean;
+    budgetTarget?: number;
+    notes?: string;
+  }) => Promise<string>;
+  updateShoppingList: (
+    listId: string,
+    patch: {
+      titleAr?: string;
+      titleEn?: string;
+      listType?: ShoppingListType;
+      isSharedWithPartner?: boolean;
+      budgetTarget?: number;
+      notes?: string | null;
+    },
+  ) => Promise<void>;
+  deleteShoppingList: (listId: string) => Promise<void>;
+  addShoppingListItem: (
+    listId: string,
+    input: {
+      productId?: string | null;
+      customTitle: string;
+      categoryLabel?: string;
+      quantity?: number;
+      targetUnitPrice?: number;
+      preferredMerchant?: string;
+      status?: ShoppingListItemStatus;
+      priority?: 'high' | 'medium' | 'low';
+      notes?: string;
+    },
+  ) => Promise<void>;
+  updateShoppingListItem: (
+    itemId: string,
+    patch: {
+      quantity?: number;
+      targetUnitPrice?: number;
+      preferredMerchant?: string | null;
+      status?: ShoppingListItemStatus;
+      priority?: 'high' | 'medium' | 'low';
+      notes?: string | null;
+    },
+  ) => Promise<void>;
+  deleteShoppingListItem: (itemId: string) => Promise<void>;
+  upsertPriceAlert: (productId: string, targetPrice: number) => Promise<PriceAlert>;
+  updatePriceAlert: (
+    alertId: string,
+    patch: { targetPrice?: number; status?: PriceAlertStatus },
+  ) => Promise<void>;
+  deletePriceAlert: (alertId: string) => Promise<void>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -672,7 +747,10 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/social-support')) return 'socialSupport';
   if (pathname.startsWith('/calculators')) return 'calculators';
   if (pathname.startsWith('/my/budget')) return 'budget';
+  if (pathname.startsWith('/my/shopping-lists')) return 'shoppingLists';
   if (pathname.startsWith('/my/workspace')) return 'myHub';
+  if (pathname.startsWith('/products/compare')) return 'compare';
+  if (pathname.startsWith('/products')) return 'products';
   if (
     pathname.startsWith('/encyclopedia') ||
     pathname.startsWith('/guides') ||
@@ -760,7 +838,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Catalog & Public CMS State
-  const [products, setProducts] = useState<Product[]>(() => [...initialGroomProducts, ...initialBrideProducts]);
+  const [products, setProducts] = useState<Product[]>(() => [
+    ...[...initialGroomProducts, ...initialBrideProducts].map((p) => {
+      const meta = PRODUCT_ENCYCLOPEDIA_EXTENSIONS[p.id];
+      return meta ? { ...p, ...meta } : { ...p, slug: p.slug ?? p.id };
+    }),
+    ...STAGE6_ADDITIONAL_PRODUCTS,
+  ]);
   const [weddingServices, setWeddingServices] = useState<WeddingServiceItem[]>(initialWeddingServices);
   const [finishingPackages, setFinishingPackages] = useState<FinishingPackage[]>(initialFinishingPackages);
   const [finishingServices, setFinishingServices] = useState<FinishingService[]>(initialFinishingServices);
@@ -815,6 +899,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Stage 5 Lifecycle, Engagement, Journey & Shared Couple Workspace State
   const [myHubPayload, setMyHubPayload] = useState<MyGawazInnHubPayload | null>(null);
 
+  // Stage 6 Product Comparison Tray (client persistent), Multi-List Shopping Baskets & Price Alerts
+  const [compareProductIds, setCompareProductIds] = useState<string[]>(() =>
+    getStoredItem<string[]>('compare_product_ids_v2', []),
+  );
+  useEffect(() => {
+    setStoredItem('compare_product_ids_v2', compareProductIds);
+  }, [compareProductIds]);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
+
   // Scoped Transaction State
   const [finishingInquiries, setFinishingInquiries] = useState<FinishingInquiry[]>([]);
   const [weddingBookings, setWeddingBookings] = useState<WeddingBookingRequest[]>([]);
@@ -855,6 +949,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setBudgetOverview(null);
       setEarlyStartOverview(null);
       setMyHubPayload(null);
+      setShoppingLists([]);
+      setPriceAlerts([]);
       setAdminStats(null);
       setAdminUsers([]);
       setAuditLogs([]);
@@ -892,7 +988,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget, uEarlyStart, uMyHub] =
+      const [
+        uOrders,
+        uFin,
+        uWed,
+        uFnc,
+        uSup,
+        uGroomPlan,
+        uBridePlan,
+        uCalcRuns,
+        uBudget,
+        uEarlyStart,
+        uMyHub,
+        uShoppingLists,
+        uPriceAlerts,
+      ] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
           apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
@@ -905,6 +1015,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<BudgetOverviewPayload>('/budget/overview').catch(() => null),
           apiRequest<EarlyStartOverviewPayload>('/early-start/overview').catch(() => null),
           apiRequest<MyGawazInnHubPayload>('/my/hub').catch(() => null),
+          apiRequest<ShoppingList[]>('/shopping-lists').catch(() => []),
+          apiRequest<PriceAlert[]>('/price-alerts').catch(() => []),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -919,6 +1031,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setBudgetOverview(uBudget);
       setEarlyStartOverview(uEarlyStart);
       setMyHubPayload(uMyHub);
+      setShoppingLists(uShoppingLists);
+      setPriceAlerts(uPriceAlerts);
     } catch {
       // Non-fatal fallback
     }
@@ -2563,6 +2677,205 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   }, []);
 
+  // Stage 6 Callbacks: Compare Tray, Multi-List Shopping Baskets & Price Alerts
+  const toggleCompareProduct = useCallback(
+    (productId: string) => {
+      setCompareProductIds((prev) => {
+        if (prev.includes(productId)) {
+          return prev.filter((id) => id !== productId);
+        }
+        if (prev.length >= 4) {
+          showToast(
+            language === 'ar'
+              ? 'الحد الأقصى للمقارنة هو 4 منتجات معاً.'
+              : 'Compare tray supports up to 4 products.',
+          );
+          return prev;
+        }
+        return [...prev, productId];
+      });
+    },
+    [language, showToast],
+  );
+
+  const clearCompareProducts = useCallback(() => {
+    setCompareProductIds([]);
+  }, []);
+
+  const refreshShoppingAndAlerts = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const [lists, alerts] = await Promise.all([
+      apiRequest<ShoppingList[]>('/shopping-lists').catch(() => []),
+      apiRequest<PriceAlert[]>('/price-alerts').catch(() => []),
+    ]);
+    setShoppingLists(lists);
+    setPriceAlerts(alerts);
+  }, [apiConnected, currentUser]);
+
+  const createShoppingList = useCallback(
+    async (input: {
+      titleAr: string;
+      titleEn: string;
+      listType?: ShoppingListType;
+      isSharedWithPartner?: boolean;
+      budgetTarget?: number;
+      notes?: string;
+    }) => {
+      const res = await apiRequest<{ listId: string; lists: ShoppingList[] }>('/shopping-lists', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setShoppingLists(res.lists);
+      showToast(language === 'ar' ? 'تم إنشاء سلة تسوق جديدة.' : 'Shopping basket created.');
+      return res.listId;
+    },
+    [language, showToast],
+  );
+
+  const updateShoppingList = useCallback(
+    async (
+      listId: string,
+      patch: {
+        titleAr?: string;
+        titleEn?: string;
+        listType?: ShoppingListType;
+        isSharedWithPartner?: boolean;
+        budgetTarget?: number;
+        notes?: string | null;
+      },
+    ) => {
+      const lists = await apiRequest<ShoppingList[]>(
+        `/shopping-lists/${encodeURIComponent(listId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setShoppingLists(lists);
+      showToast(language === 'ar' ? 'تم تحديث السلة بنجاح.' : 'Shopping basket updated.');
+    },
+    [language, showToast],
+  );
+
+  const deleteShoppingList = useCallback(
+    async (listId: string) => {
+      const lists = await apiRequest<ShoppingList[]>(
+        `/shopping-lists/${encodeURIComponent(listId)}`,
+        { method: 'DELETE' },
+      );
+      setShoppingLists(lists);
+      showToast(language === 'ar' ? 'تم حذف سلة التسوق.' : 'Shopping basket removed.');
+    },
+    [language, showToast],
+  );
+
+  const addShoppingListItem = useCallback(
+    async (
+      listId: string,
+      input: {
+        productId?: string | null;
+        customTitle: string;
+        categoryLabel?: string;
+        quantity?: number;
+        targetUnitPrice?: number;
+        preferredMerchant?: string;
+        status?: ShoppingListItemStatus;
+        priority?: 'high' | 'medium' | 'low';
+        notes?: string;
+      },
+    ) => {
+      const res = await apiRequest<{ itemId: string; lists: ShoppingList[] }>(
+        `/shopping-lists/${encodeURIComponent(listId)}/items`,
+        {
+          method: 'POST',
+          body: JSON.stringify(input),
+        },
+      );
+      setShoppingLists(res.lists);
+      showToast(language === 'ar' ? 'تمت إضافة الصنف لسلة التسوق.' : 'Item added to shopping basket.');
+    },
+    [language, showToast],
+  );
+
+  const updateShoppingListItem = useCallback(
+    async (
+      itemId: string,
+      patch: {
+        quantity?: number;
+        targetUnitPrice?: number;
+        preferredMerchant?: string | null;
+        status?: ShoppingListItemStatus;
+        priority?: 'high' | 'medium' | 'low';
+        notes?: string | null;
+      },
+    ) => {
+      const lists = await apiRequest<ShoppingList[]>(
+        `/shopping-list-items/${encodeURIComponent(itemId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setShoppingLists(lists);
+    },
+    [],
+  );
+
+  const deleteShoppingListItem = useCallback(async (itemId: string) => {
+    const lists = await apiRequest<ShoppingList[]>(
+      `/shopping-list-items/${encodeURIComponent(itemId)}`,
+      { method: 'DELETE' },
+    );
+    setShoppingLists(lists);
+  }, []);
+
+  const upsertPriceAlert = useCallback(
+    async (productId: string, targetPrice: number) => {
+      const res = await apiRequest<{ alert: PriceAlert; alerts: PriceAlert[] }>('/price-alerts', {
+        method: 'POST',
+        body: JSON.stringify({ productId, targetPrice }),
+      });
+      setPriceAlerts(res.alerts);
+      showToast(
+        res.alert.status === 'triggered'
+          ? language === 'ar'
+            ? 'السعر الحالي يطابق هدفك بالفعل! تم تفعيل التنبيه.'
+            : 'Current catalog price already meets your target! Alert triggered.'
+          : language === 'ar'
+            ? 'تم حفظ تنبيه السعر بنجاح.'
+            : 'Price alert saved.',
+      );
+      return res.alert;
+    },
+    [language, showToast],
+  );
+
+  const updatePriceAlert = useCallback(
+    async (alertId: string, patch: { targetPrice?: number; status?: PriceAlertStatus }) => {
+      const alerts = await apiRequest<PriceAlert[]>(
+        `/price-alerts/${encodeURIComponent(alertId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setPriceAlerts(alerts);
+    },
+    [],
+  );
+
+  const deletePriceAlert = useCallback(
+    async (alertId: string) => {
+      const alerts = await apiRequest<PriceAlert[]>(
+        `/price-alerts/${encodeURIComponent(alertId)}`,
+        { method: 'DELETE' },
+      );
+      setPriceAlerts(alerts);
+      showToast(language === 'ar' ? 'تم حذف تنبيه السعر.' : 'Price alert deleted.');
+    },
+    [language, showToast],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -2718,6 +3031,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         patchUserAppointment,
         markNotificationRead,
         markAllNotificationsRead,
+        compareProductIds,
+        toggleCompareProduct,
+        clearCompareProducts,
+        shoppingLists,
+        priceAlerts,
+        refreshShoppingAndAlerts,
+        createShoppingList,
+        updateShoppingList,
+        deleteShoppingList,
+        addShoppingListItem,
+        updateShoppingListItem,
+        deleteShoppingListItem,
+        upsertPriceAlert,
+        updatePriceAlert,
+        deletePriceAlert,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

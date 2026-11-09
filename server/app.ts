@@ -120,7 +120,24 @@ import {
   updateEngagementPlanSchema,
   updateWorkspaceMetaSchema,
   workspacePermissionsSchema,
+  compareProductsRequestSchema,
+  createShoppingListSchema,
+  patchShoppingListSchema,
+  createShoppingListItemSchema,
+  patchShoppingListItemSchema,
+  createPriceAlertSchema,
+  patchPriceAlertSchema,
 } from '../shared/schemas';
+import {
+  authorizeShoppingListAccess,
+  compareProductsByIds,
+  evaluateTriggeredPriceAlertsForProduct,
+  getProductEncyclopediaDetail,
+  listPriceAlertsForUser,
+  listShoppingListsForUser,
+  mapProductEncyclopediaRow,
+  upsertUserPriceAlert,
+} from './productShoppingService';
 import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
 import {
   SlidingWindowRateLimiter,
@@ -163,32 +180,7 @@ function mapUserRow(row: Record<string, unknown>): User {
 }
 
 function mapProductRow(row: Record<string, unknown>): Product {
-  return {
-    id: String(row.id),
-    slug: String(row.slug),
-    trousseauType: row.trousseau_type as Product['trousseauType'],
-    category: String(row.category),
-    categoryAr: String(row.category_ar),
-    categoryEn: String(row.category_en),
-    nameAr: String(row.name_ar),
-    nameEn: String(row.name_en),
-    brand: String(row.brand),
-    price: Number(row.price),
-    originalPrice: row.original_price != null ? Number(row.original_price) : undefined,
-    sku: String(row.sku),
-    stock: Number(row.stock),
-    imageUrl: String(row.image_url),
-    galleryUrls: JSON.parse(String(row.gallery_json || '[]')) as string[],
-    descriptionAr: String(row.description_ar),
-    descriptionEn: String(row.description_en),
-    specsAr: JSON.parse(String(row.specs_ar_json || '{}')) as Record<string, string>,
-    specsEn: JSON.parse(String(row.specs_en_json || '{}')) as Record<string, string>,
-    priceSource: row.price_source ? String(row.price_source) : undefined,
-    priceUpdatedAt: row.price_updated_at ? String(row.price_updated_at) : undefined,
-    isFeatured: Boolean(row.is_featured),
-    isReadyPackageItem: Boolean(row.is_ready_package_item),
-    isDemoData: Boolean(row.is_demo_data),
-  };
+  return mapProductEncyclopediaRow(row);
 }
 
 function mapWeddingServiceRow(row: Record<string, unknown>): WeddingServiceItem {
@@ -801,6 +793,8 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/onboarding',
           '/engagement',
           '/journey',
+          '/products',
+          '/products/compare',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -809,10 +803,17 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         const locations = db
           .prepare("SELECT slug FROM locations WHERE level IN ('governorate', 'city')")
           .all() as { slug: string }[];
+        const productSlugs = db
+          .prepare('SELECT slug, updated_at FROM products')
+          .all() as { slug: string; updated_at: string }[];
 
         const urlsXml = [
           ...staticRoutes.map(
             (r) => `<url><loc>${baseUrl}${r}</loc><changefreq>weekly</changefreq></url>`,
+          ),
+          ...productSlugs.map(
+            (p) =>
+              `<url><loc>${baseUrl}/products/${encodeURIComponent(p.slug)}</loc><lastmod>${p.updated_at.slice(0, 10)}</lastmod><changefreq>weekly</changefreq></url>`,
           ),
           ...articles.map(
             (a) =>
@@ -1199,10 +1200,71 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
       }
 
       if (method === 'GET' && route === '/products') {
-        const rows = db
-          .prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC')
-          .all() as Record<string, unknown>[];
-        sendJson(res, 200, { ok: true, data: rows.map(mapProductRow) });
+        const typeFilter = url.searchParams.get('type') || url.searchParams.get('trousseauType');
+        const categoryFilter = url.searchParams.get('category');
+        const brandFilter = (url.searchParams.get('brand') || '').trim().toLowerCase();
+        const energyFilter = url.searchParams.get('energyRating');
+        const maxPrice = Number(url.searchParams.get('maxPrice') || '0');
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        const sort = url.searchParams.get('sort') || url.searchParams.get('sortBy') || 'featured';
+
+        let items = (
+          db.prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC').all() as Record<
+            string,
+            unknown
+          >[]
+        ).map(mapProductRow);
+
+        if (typeFilter) items = items.filter((p) => p.trousseauType === typeFilter);
+        if (categoryFilter) items = items.filter((p) => p.category === categoryFilter);
+        if (brandFilter) items = items.filter((p) => p.brand.toLowerCase().includes(brandFilter));
+        if (energyFilter) items = items.filter((p) => p.energyRating === energyFilter);
+        if (maxPrice > 0) items = items.filter((p) => p.price <= maxPrice);
+        if (q) {
+          items = items.filter((p) =>
+            `${p.nameAr} ${p.nameEn} ${p.brand} ${p.model || ''} ${p.categoryAr} ${p.categoryEn} ${p.descriptionAr} ${p.descriptionEn}`
+              .toLowerCase()
+              .includes(q),
+          );
+        }
+
+        if (sort === 'price_asc') items.sort((a, b) => a.price - b.price);
+        else if (sort === 'price_desc') items.sort((a, b) => b.price - a.price);
+        else if (sort === 'warranty_desc') items.sort((a, b) => (b.warrantyMonths ?? 0) - (a.warrantyMonths ?? 0));
+
+        sendJson(res, 200, { ok: true, data: items });
+        return;
+      }
+
+      if (method === 'GET' && route === '/products/compare') {
+        const rawIds = url.searchParams.get('ids') || '';
+        const ids = rawIds
+          .split(',')
+          .map((s) => decodeURIComponent(s.trim()))
+          .filter(Boolean);
+        sendJson(res, 200, { ok: true, data: compareProductsByIds(db, ids) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/products/compare') {
+        const body = await readJsonBody(req);
+        const parsed = compareProductsRequestSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Provide 1 to 4 product IDs to compare', parsed.error.flatten());
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: compareProductsByIds(db, parsed.data.ids) });
+        return;
+      }
+
+      if (method === 'GET' && route.startsWith('/products/')) {
+        const token = decodeURIComponent(route.slice('/products/'.length));
+        const detail = getProductEncyclopediaDetail(db, token);
+        if (!detail) {
+          sendError(res, 404, 'NOT_FOUND', 'Product not found');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: detail });
         return;
       }
 
@@ -3540,6 +3602,326 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         }
       }
 
+      // ================= STAGE 6: MULTI-LIST SHOPPING BASKETS & PRICE ALERTS =================
+      if (
+        route === '/shopping-lists' ||
+        route.startsWith('/shopping-lists/') ||
+        route.startsWith('/shopping-list-items/') ||
+        route === '/price-alerts' ||
+        route.startsWith('/price-alerts/')
+      ) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication is required for shopping baskets and price alerts');
+          return;
+        }
+
+        if (method === 'GET' && route === '/shopping-lists') {
+          sendJson(res, 200, { ok: true, data: listShoppingListsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/shopping-lists') {
+          const body = await readJsonBody(req);
+          const parsed = createShoppingListSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid shopping list inputs', parsed.error.flatten());
+            return;
+          }
+          const { workspaceRow } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const id = `sl-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO shopping_lists
+               (id, user_id, workspace_id, title_ar, title_en, list_type, is_shared_with_partner, budget_target, notes, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            String(workspaceRow.id),
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.listType,
+            parsed.data.isSharedWithPartner ? 1 : 0,
+            parsed.data.budgetTarget,
+            parsed.data.notes ?? null,
+            now,
+            now,
+          );
+          sendJson(res, 201, {
+            ok: true,
+            data: { listId: id, lists: listShoppingListsForUser(db, authUser.id) },
+          });
+          return;
+        }
+
+        const listMatch = route.match(/^\/shopping-lists\/([^/]+)$/);
+        if (method === 'PATCH' && listMatch) {
+          const listId = decodeURIComponent(listMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM shopping_lists WHERE id = ?').get(listId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list not found or not owned by your account');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchShoppingListSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid shopping list update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE shopping_lists SET
+              title_ar = COALESCE(?, title_ar),
+              title_en = COALESCE(?, title_en),
+              list_type = COALESCE(?, list_type),
+              is_shared_with_partner = CASE WHEN ? IS NOT NULL THEN ? ELSE is_shared_with_partner END,
+              budget_target = COALESCE(?, budget_target),
+              notes = CASE WHEN ? IS NOT NULL THEN ? ELSE notes END,
+              updated_at = ?
+             WHERE id = ? AND user_id = ?`,
+          ).run(
+            d.titleAr ?? null,
+            d.titleEn ?? null,
+            d.listType ?? null,
+            d.isSharedWithPartner === undefined ? null : 'set',
+            d.isSharedWithPartner ? 1 : 0,
+            d.budgetTarget ?? null,
+            d.notes === undefined ? null : 'set',
+            d.notes ?? null,
+            new Date().toISOString(),
+            listId,
+            authUser.id,
+          );
+          sendJson(res, 200, { ok: true, data: listShoppingListsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && listMatch) {
+          const listId = decodeURIComponent(listMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM shopping_lists WHERE id = ?').get(listId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list not found or not owned by your account');
+            return;
+          }
+          db.prepare('DELETE FROM shopping_lists WHERE id = ? AND user_id = ?').run(listId, authUser.id);
+          sendJson(res, 200, { ok: true, data: listShoppingListsForUser(db, authUser.id) });
+          return;
+        }
+
+        const addItemMatch = route.match(/^\/shopping-lists\/([^/]+)\/items$/);
+        if (method === 'POST' && addItemMatch) {
+          const listId = decodeURIComponent(addItemMatch[1]);
+          const access = authorizeShoppingListAccess(db, listId, authUser.id, true);
+          if (access === 'not_found') {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list not found');
+            return;
+          }
+          if (access === 'forbidden') {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace permissions do not permit editing shopping lists');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = createShoppingListItemSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid shopping list item inputs', parsed.error.flatten());
+            return;
+          }
+
+          let resolvedProductId: string | null = null;
+          let resolvedPrice = parsed.data.targetUnitPrice;
+          if (parsed.data.productId) {
+            const prodRow = db
+              .prepare('SELECT id, price FROM products WHERE id = ? OR slug = ?')
+              .get(parsed.data.productId, parsed.data.productId) as { id: string; price: number } | undefined;
+            if (!prodRow) {
+              sendError(res, 400, 'INVALID_PRODUCT', 'Referenced product does not exist');
+              return;
+            }
+            resolvedProductId = prodRow.id;
+            if (resolvedPrice === 0) resolvedPrice = prodRow.price;
+          }
+
+          const itemId = `sli-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const maxOrd =
+            (
+              db
+                .prepare('SELECT MAX(sort_order) as max_ord FROM shopping_list_items WHERE list_id = ?')
+                .get(listId) as { max_ord: number | null }
+            ).max_ord ?? 0;
+
+          db.prepare(
+            `INSERT INTO shopping_list_items
+               (id, list_id, product_id, custom_title, category_label, quantity, target_unit_price, preferred_merchant, status, priority, notes, added_by_user_id, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            itemId,
+            listId,
+            resolvedProductId,
+            parsed.data.customTitle,
+            parsed.data.categoryLabel,
+            parsed.data.quantity,
+            resolvedPrice,
+            parsed.data.preferredMerchant ?? null,
+            parsed.data.status,
+            parsed.data.priority,
+            parsed.data.notes ?? null,
+            authUser.id,
+            maxOrd + 1,
+            now,
+            now,
+          );
+          db.prepare('UPDATE shopping_lists SET updated_at = ? WHERE id = ?').run(now, listId);
+          sendJson(res, 201, {
+            ok: true,
+            data: { itemId, lists: listShoppingListsForUser(db, authUser.id) },
+          });
+          return;
+        }
+
+        const itemMatch = route.match(/^\/shopping-list-items\/([^/]+)$/);
+        if (method === 'PATCH' && itemMatch) {
+          const itemId = decodeURIComponent(itemMatch[1]);
+          const row = db.prepare('SELECT list_id FROM shopping_list_items WHERE id = ?').get(itemId) as
+            | { list_id: string }
+            | undefined;
+          if (!row) {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list item not found');
+            return;
+          }
+          const access = authorizeShoppingListAccess(db, row.list_id, authUser.id, true);
+          if (access === 'not_found') {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list item not found');
+            return;
+          }
+          if (access === 'forbidden') {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace permissions do not permit editing this item');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchShoppingListItemSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid item updates', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE shopping_list_items SET
+              quantity = COALESCE(?, quantity),
+              target_unit_price = COALESCE(?, target_unit_price),
+              preferred_merchant = CASE WHEN ? IS NOT NULL THEN ? ELSE preferred_merchant END,
+              status = COALESCE(?, status),
+              priority = COALESCE(?, priority),
+              notes = CASE WHEN ? IS NOT NULL THEN ? ELSE notes END,
+              updated_at = ?
+             WHERE id = ?`,
+          ).run(
+            d.quantity ?? null,
+            d.targetUnitPrice ?? null,
+            d.preferredMerchant === undefined ? null : 'set',
+            d.preferredMerchant ?? null,
+            d.status ?? null,
+            d.priority ?? null,
+            d.notes === undefined ? null : 'set',
+            d.notes ?? null,
+            now,
+            itemId,
+          );
+          db.prepare('UPDATE shopping_lists SET updated_at = ? WHERE id = ?').run(now, row.list_id);
+          sendJson(res, 200, { ok: true, data: listShoppingListsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && itemMatch) {
+          const itemId = decodeURIComponent(itemMatch[1]);
+          const row = db.prepare('SELECT list_id FROM shopping_list_items WHERE id = ?').get(itemId) as
+            | { list_id: string }
+            | undefined;
+          if (!row) {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list item not found');
+            return;
+          }
+          const access = authorizeShoppingListAccess(db, row.list_id, authUser.id, true);
+          if (access === 'not_found') {
+            sendError(res, 404, 'NOT_FOUND', 'Shopping list item not found');
+            return;
+          }
+          if (access === 'forbidden') {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace permissions do not permit deleting this item');
+            return;
+          }
+          db.prepare('DELETE FROM shopping_list_items WHERE id = ?').run(itemId);
+          sendJson(res, 200, { ok: true, data: listShoppingListsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/price-alerts') {
+          sendJson(res, 200, { ok: true, data: listPriceAlertsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/price-alerts') {
+          const body = await readJsonBody(req);
+          const parsed = createPriceAlertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid price alert inputs', parsed.error.flatten());
+            return;
+          }
+          const alert = upsertUserPriceAlert(db, authUser.id, parsed.data.productId, parsed.data.targetPrice);
+          if (!alert) {
+            sendError(res, 404, 'NOT_FOUND', 'Product not found');
+            return;
+          }
+          sendJson(res, 201, { ok: true, data: { alert, alerts: listPriceAlertsForUser(db, authUser.id) } });
+          return;
+        }
+
+        const alertMatch = route.match(/^\/price-alerts\/([^/]+)$/);
+        if (method === 'PATCH' && alertMatch) {
+          const alertId = decodeURIComponent(alertMatch[1]);
+          const existing = db.prepare('SELECT * FROM price_alerts WHERE id = ?').get(alertId) as
+            | Record<string, unknown>
+            | undefined;
+          if (!existing || String(existing.user_id) !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Price alert not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchPriceAlertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid price alert update', parsed.error.flatten());
+            return;
+          }
+          db.prepare(
+            `UPDATE price_alerts SET
+              target_price = COALESCE(?, target_price),
+              status = COALESCE(?, status)
+             WHERE id = ? AND user_id = ?`,
+          ).run(parsed.data.targetPrice ?? null, parsed.data.status ?? null, alertId, authUser.id);
+          sendJson(res, 200, { ok: true, data: listPriceAlertsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && alertMatch) {
+          const alertId = decodeURIComponent(alertMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM price_alerts WHERE id = ?').get(alertId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Price alert not found');
+            return;
+          }
+          db.prepare('DELETE FROM price_alerts WHERE id = ? AND user_id = ?').run(alertId, authUser.id);
+          sendJson(res, 200, { ok: true, data: listPriceAlertsForUser(db, authUser.id) });
+          return;
+        }
+      }
+
       // ================= CUSTOMER ORDERS & INQUIRIES (OWNER-SCOPED) =================
       if (method === 'GET' && route === '/orders') {
         if (!authUser) {
@@ -4122,6 +4504,7 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
               name_ar = COALESCE(?, name_ar),
               name_en = COALESCE(?, name_en),
               brand = COALESCE(?, brand),
+              model = COALESCE(?, model),
               category = COALESCE(?, category),
               category_ar = COALESCE(?, category_ar),
               category_en = COALESCE(?, category_en),
@@ -4130,12 +4513,18 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
               image_url = COALESCE(?, image_url),
               description_ar = COALESCE(?, description_ar),
               description_en = COALESCE(?, description_en),
+              dimensions = COALESCE(?, dimensions),
+              capacity = COALESCE(?, capacity),
+              energy_rating = COALESCE(?, energy_rating),
+              warranty_months = COALESCE(?, warranty_months),
+              price_updated_at = CASE WHEN ? IS NOT NULL THEN ? ELSE price_updated_at END,
               updated_at = ?
              WHERE id = ?`,
           ).run(
             d.nameAr ?? null,
             d.nameEn ?? null,
             d.brand ?? null,
+            d.model ?? null,
             d.category ?? null,
             d.categoryAr ?? null,
             d.categoryEn ?? null,
@@ -4144,9 +4533,22 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             d.imageUrl ?? null,
             d.descriptionAr ?? null,
             d.descriptionEn ?? null,
+            d.dimensions ?? null,
+            d.capacity ?? null,
+            d.energyRating ?? null,
+            d.warrantyMonths ?? null,
+            d.price !== undefined ? 'set' : null,
+            now.slice(0, 10),
             now,
             id,
           );
+          if (d.price !== undefined && Number(d.price) !== Number(existing.price)) {
+            db.prepare(
+              `INSERT INTO product_price_history (id, product_id, merchant_name, price, source, recorded_at)
+               VALUES (?, ?, 'تحديث الكتالوج المعتمد', ?, 'Verified Catalog Price Update', ?)`,
+            ).run(`pph-${crypto.randomUUID().slice(0, 10)}`, id, d.price, now.slice(0, 10));
+            evaluateTriggeredPriceAlertsForProduct(db, id);
+          }
           const row = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Record<string, unknown>;
           sendJson(res, 200, { ok: true, data: mapProductRow(row) });
           return;

@@ -20,6 +20,7 @@ import {
   Layers,
   Gem,
   ListTodo,
+  ShoppingBag,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -219,6 +220,39 @@ export const Footer: React.FC = () => {
             >
               <MapPin className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'دليل المحافظات' : 'Egypt Locations'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/products"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'موسوعة المنتجات' : 'Product Encyclopedia'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/products/compare"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'مقارنة المنتجات' : 'Compare Matrix'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/my/shopping-lists"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <ListTodo className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'سلال المشتريات' : 'Shopping Baskets'}</span>
             </Link>
           </div>
 

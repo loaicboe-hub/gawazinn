@@ -70,6 +70,11 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
     addToCart,
     groomBudgetTarget,
     brideChecklist,
+    products,
+    shoppingLists,
+    priceAlerts,
+    compareProductIds,
+    toggleCompareProduct,
     updateWorkspaceMeta,
     inviteWorkspacePartner,
     respondWorkspaceInvitation,
@@ -677,62 +682,130 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
 
           {/* 6. SHOPPING LISTS & BASKET */}
           {activeTab === 'shopping' && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-5">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-lg font-black text-[#2A1D20]">
-                  {language === 'ar' ? 'سلة المشتريات وقوائم التجهيز' : 'Shopping Basket & Purchase Queue'}
-                </h2>
-                {onOpenCart && (
-                  <button
-                    type="button"
-                    onClick={onOpenCart}
-                    className="bg-red-gradient text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer"
+                <div>
+                  <h2 className="text-lg font-black text-[#2A1D20]">
+                    {language === 'ar' ? 'سلال المشتريات وتنبيهات الأسعار' : 'Multi-List Shopping Baskets & Price Alerts'}
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    {language === 'ar'
+                      ? `${shoppingLists.length} قوائم تسوق محفوظة • ${priceAlerts.filter((a) => a.status === 'active').length} تنبيهات سعر نشطة`
+                      : `${shoppingLists.length} saved shopping baskets • ${priceAlerts.filter((a) => a.status === 'active').length} active price alerts`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to="/my/shopping-lists"
+                    data-testid="hub-open-shopping-lists-link"
+                    className="bg-red-gradient text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5"
                   >
-                    {language === 'ar' ? 'فتح سلة الشراء' : 'Open Cart Drawer'} ({cart.length})
-                  </button>
-                )}
-              </div>
-              {cart.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  {language === 'ar'
-                    ? 'السلة فارغة حالياً. تصفح أقسام جهاز العريس والعروسة لإضافة المنتجات.'
-                    : 'Your shopping cart is empty. Browse Groom & Bride sections to add items.'}
-                </p>
-              ) : (
-                <div className="space-y-2.5">
-                  {cart.map((c) => (
-                    <div
-                      key={c.product.id}
-                      className="p-3.5 rounded-2xl bg-[#FAF7F2] flex items-center justify-between gap-2 text-xs"
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>{language === 'ar' ? 'إدارة سلال التجهيز والتنبيهات' : 'Manage Baskets & Alerts'}</span>
+                  </Link>
+                  {onOpenCart && (
+                    <button
+                      type="button"
+                      onClick={onOpenCart}
+                      className="bg-[#FAF7F2] border border-gray-200 text-[#2A1D20] font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer hover:border-[#D91B3E]/40"
                     >
-                      <span className="font-bold text-[#2A1D20]">
-                        {language === 'ar' ? c.product.nameAr : c.product.nameEn} × {c.quantity}
-                      </span>
-                      <strong className="text-[#D91B3E]">
-                        {fmtEgp(c.product.price * c.quantity, language)}
-                      </strong>
-                    </div>
+                      {language === 'ar' ? 'سلة الشراء' : 'Cart'} ({cart.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {shoppingLists.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {shoppingLists.slice(0, 4).map((list) => (
+                    <Link
+                      key={list.id}
+                      to="/my/shopping-lists"
+                      className="p-4 rounded-2xl bg-[#FAF7F2] border border-rose-100 hover:border-[#D91B3E]/40 transition space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-sm text-[#2A1D20]">
+                          {language === 'ar' ? list.titleAr : list.titleEn}
+                        </strong>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            list.isSharedWithPartner
+                              ? 'bg-[#FDE8ED] text-[#B31331]'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          {list.isSharedWithPartner
+                            ? language === 'ar'
+                              ? 'مشترك'
+                              : 'Shared'
+                            : language === 'ar'
+                              ? 'خاص'
+                              : 'Private'}
+                        </span>
+                      </div>
+                      <p className="text-gray-600">
+                        {list.items.length} {language === 'ar' ? 'عناصر' : 'items'} •{' '}
+                        <strong className="text-[#D91B3E]">{fmtEgp(list.totalEstimatedCost, language)}</strong>
+                      </p>
+                    </Link>
                   ))}
-                  <div className="pt-2 flex justify-between font-black text-sm">
-                    <span>{language === 'ar' ? 'الإجمالي:' : 'Total:'}</span>
-                    <span className="text-[#D91B3E]">{fmtEgp(cartTotal, language)}</span>
-                  </div>
                 </div>
               )}
+
+              <div className="pt-3 border-t border-gray-100 space-y-3">
+                <h3 className="text-xs font-black text-[#B31331]">
+                  {language === 'ar' ? 'سلة الشراء الفورية (Cart)' : 'Immediate Checkout Cart'}
+                </h3>
+                {cart.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    {language === 'ar'
+                      ? 'سلة الشراء الفورية فارغة. أضف أي منتج من موسوعة المنتجات أو سلال التجهيز.'
+                      : 'Immediate cart is empty. Browse Product Encyclopedia or transfer items from your baskets.'}
+                  </p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {cart.map((c) => (
+                      <div
+                        key={c.product.id}
+                        className="p-3.5 rounded-2xl bg-[#FAF7F2] flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="font-bold text-[#2A1D20]">
+                          {language === 'ar' ? c.product.nameAr : c.product.nameEn} × {c.quantity}
+                        </span>
+                        <strong className="text-[#D91B3E]">
+                          {fmtEgp(c.product.price * c.quantity, language)}
+                        </strong>
+                      </div>
+                    ))}
+                    <div className="pt-2 flex justify-between font-black text-sm">
+                      <span>{language === 'ar' ? 'الإجمالي:' : 'Total:'}</span>
+                      <span className="text-[#D91B3E]">{fmtEgp(cartTotal, language)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* 7. FAVORITES */}
           {activeTab === 'favorites' && (
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-5">
-              <h2 className="text-lg font-black text-[#2A1D20]">
-                {language === 'ar' ? 'المنتجات المفضلة المحفوظة' : 'Saved Favorites'}
-              </h2>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h2 className="text-lg font-black text-[#2A1D20]">
+                  {language === 'ar' ? 'المنتجات المفضلة المحفوظة' : 'Saved Favorites'}
+                </h2>
+                <Link
+                  to="/products"
+                  className="bg-[#FAF7F2] border border-gray-200 hover:border-[#D91B3E]/40 text-[#2A1D20] font-bold text-xs px-4 py-2 rounded-xl"
+                >
+                  {language === 'ar' ? 'تصفح موسوعة المنتجات' : 'Browse Product Encyclopedia'}
+                </Link>
+              </div>
               {savedFavoriteProducts.length === 0 ? (
                 <p className="text-xs text-gray-500">
                   {language === 'ar'
                     ? 'لم تضف منتجات للمفضلة بعد. اضغط على علامة القلب بجانب أي منتج.'
-                    : 'No saved favorites yet. Heart any product in Groom or Bride catalogs.'}
+                    : 'No saved favorites yet. Heart any product in Groom, Bride or Product Encyclopedia.'}
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -741,13 +814,16 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                       key={p.id}
                       className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-100 flex items-center justify-between gap-2 text-xs"
                     >
-                      <div>
-                        <p className="font-bold text-[#2A1D20]">
+                      <div className="min-w-0">
+                        <Link
+                          to={`/products/${p.slug || p.id}`}
+                          className="font-bold text-[#2A1D20] hover:text-[#D91B3E] block truncate"
+                        >
                           {language === 'ar' ? p.nameAr : p.nameEn}
-                        </p>
+                        </Link>
                         <strong className="text-[#D91B3E]">{fmtEgp(p.price, language)}</strong>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => addToCart(p, 1)}
@@ -772,18 +848,59 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
 
           {/* 8. COMPARISONS */}
           {activeTab === 'comparisons' && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-black text-[#2A1D20]">
-                  {language === 'ar' ? 'المقارنات وباقات الأجهزة المحفوظة' : 'Saved Comparisons & Groom Tier Config'}
+                  {language === 'ar' ? 'مصفوفة المقارنة وباقات الأجهزة' : 'Product Comparison Matrix & Groom Budget'}
                 </h2>
-                <Link
-                  to="/groom"
-                  className="bg-red-gradient text-white font-bold text-xs px-4 py-2 rounded-xl"
-                >
-                  {language === 'ar' ? 'مقارنة الأجهزة' : 'Compare Appliances'}
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={compareProductIds.length > 0 ? `/products/compare?ids=${compareProductIds.join(',')}` : '/products/compare'}
+                    data-testid="hub-open-compare-link"
+                    className="bg-red-gradient text-white font-bold text-xs px-4 py-2 rounded-xl"
+                  >
+                    {language === 'ar'
+                      ? `فتح مصفوفة المقارنة (${compareProductIds.length})`
+                      : `Open Comparison Matrix (${compareProductIds.length})`}
+                  </Link>
+                  <Link
+                    to="/products"
+                    className="bg-[#FAF7F2] border border-gray-200 hover:border-[#D91B3E]/40 text-[#2A1D20] font-bold text-xs px-4 py-2 rounded-xl"
+                  >
+                    {language === 'ar' ? 'تصفح المنتجات' : 'Product Catalog'}
+                  </Link>
+                </div>
               </div>
+
+              {compareProductIds.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {compareProductIds.map((pid) => {
+                    const p = products.find((item) => item.id === pid);
+                    if (!p) return null;
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100 flex items-center justify-between gap-2"
+                      >
+                        <Link
+                          to={`/products/${p.slug || p.id}`}
+                          className="font-bold text-[#2A1D20] hover:text-[#D91B3E] truncate"
+                        >
+                          {language === 'ar' ? p.nameAr : p.nameEn}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => toggleCompareProduct(p.id)}
+                          className="text-xs font-bold text-gray-500 hover:text-[#D91B3E] cursor-pointer px-2"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="p-4 rounded-2xl bg-[#FAF7F2] text-xs space-y-1">
                 <p className="font-bold text-[#2A1D20]">
                   {language === 'ar' ? 'سقف ميزانية باقة العريس:' : 'Groom Package Target Budget:'}{' '}
@@ -791,8 +908,8 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                 </p>
                 <p className="text-gray-600">
                   {language === 'ar'
-                    ? 'يمكنك مقارنة أي منتجات جنباً إلى جنب من صفحة جهاز العريس أو عبر الحاسبات الـ 20.'
-                    : 'Compare up to 4 appliances side by side inside Groom Essentials or compare scenarios in Calculators.'}
+                    ? 'قارن حتى 4 أجهزة جنباً إلى جنب حسب المواصفات والضمان الرسمي وتاريخ السعر في السوق المصري.'
+                    : 'Compare up to 4 products side by side across specs, official warranty terms, pros, cons, and Egyptian pricing.'}
                 </p>
               </div>
             </div>

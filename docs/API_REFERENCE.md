@@ -48,9 +48,12 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET/POST /api/v1/my/appointments`, `PATCH /api/v1/my/appointments/:id` — Showroom, contractor site-visit, and hall tour scheduling.
 - `POST /api/v1/my/notifications/read-all`, `POST /api/v1/my/notifications/:id/read` — Read-status management for user alerts and workspace invitations.
 
-## Products, Shopping Lists & Price Intelligence
-- `GET /api/v1/products`, `GET /api/v1/products/:idOrSlug`, `POST /api/v1/products/compare` — Catalog search, filtering, price history, alternatives.
-- `GET/POST/PATCH/DELETE /api/v1/shopping-lists` & `/items` — Multi-list baskets + price alerts.
+## Products, Shopping Lists & Price Intelligence *(Stage 6 Implemented)*
+- `GET /api/v1/products` — Catalog search & filtering (`?type=` / `?trousseauType=`, `?category=`, `?brand=`, `?energyRating=`, `?maxPrice=`, `?q=`, `?sort=` / `?sortBy=price_asc|price_desc|warranty_desc`).
+- `GET /api/v1/products/compare` & `POST /api/v1/products/compare` — Side-by-side up-to-4 product matrix computation (`highlights`, `unifiedSpecKeys`, `offersByProductId`).
+- `GET /api/v1/products/:idOrSlug` — Complete product encyclopedia payload (`product`, timestamped `priceHistory`, official/gray-market `merchantOffers`, curated `alternatives`).
+- `GET/POST /api/v1/shopping-lists`, `PATCH/DELETE /api/v1/shopping-lists/:id`, `POST /api/v1/shopping-lists/:id/items`, `PATCH/DELETE /api/v1/shopping-list-items/:itemId` *(Auth-Required)* — Multi-list private vs. partner-shared baskets honoring `isSharedWithPartner` and workspace `shoppingRead`/`shoppingWrite` RBAC permissions.
+- `GET/POST /api/v1/price-alerts`, `DELETE /api/v1/price-alerts/:id` *(Auth-Required)* — User price-drop watchlist triggered automatically when `PATCH /api/v1/admin/products/:id` lowers catalog pricing, creating an unread `budget_alert` notification.
 - `GET/POST /api/v1/orders` — Validated order creation (recomputing totals server-side from DB prices).
 
 ## Vendors, RFQ Engine & Appointments

@@ -1,4 +1,4 @@
-# GAWAZ INN — Feature Inventory & Implementation Tracker (Updated After Stage 5)
+# GAWAZ INN — Feature Inventory & Implementation Tracker (Updated After Stage 6)
 
 Status legend:
 - **Working Full-Stack (SQLite + API + UI)**: Persisted in SQLite via authenticated/validated `/api/v1/*` routes, tested in Vitest & Chrome E2E.
@@ -24,10 +24,10 @@ Status legend:
 | Bride's Trousseau & Planner (Module E) | `BrideView.tsx`, `BrideEncyclopediaView.tsx` | **Working Full-Stack** | 19 categories, 24 checklists, compact/balanced/extended presets, quantity steppers, missing-essentials detection, saved to `user_bride_plans` (`GET/PUT /api/v1/my/bride-plan`). |
 | Content Hub, Glossary & FAQs (Module O) | `EncyclopediaHubView.tsx`, `ArticleDetailView.tsx`, `GlossaryFaqView.tsx` | **Working Full-Stack** | 13 categories, 12 bilingual CMS articles (`view_count` tracked + direct calculator pills), 28 glossary terms, 12 FAQs, specialized guides hub. |
 | Wedding Planner (`فرحي`), Installments, Social Support | `WeddingPlannerView.tsx`, `FinancingView.tsx`, `SocialSupportView.tsx` | **Working Full-Stack** | Bookings, installments with masked/hashed 14-digit NID (`national_id_masked`), calculator cross-links, and confidential support cases scoped to user/admin. |
-| Auth, RBAC, Orders & SEO | `server/app.ts`, `server/security.ts`, `SeoHead.tsx` | **Working Full-Stack** | `scrypt` + HMAC sessions, RBAC, server-recomputed order totals + stock decrement, dynamic `/sitemap.xml` (including Early Start & all 20 calculators), `robots.txt`, JSON-LD. |
+| Auth, RBAC, Orders & SEO | `server/app.ts`, `server/security.ts`, `SeoHead.tsx` | **Working Full-Stack** | `scrypt` + HMAC sessions, RBAC, server-recomputed order totals + stock decrement, dynamic `/sitemap.xml` (including Early Start, 20 calculators & product slugs), `robots.txt`, JSON-LD (`Product` on `/products/:idOrSlug`, zero fake ratings). |
+| Product Encyclopedia, Compare Matrix & Multi-List Baskets (Module K — Stage 6) | `ProductsEncyclopediaView.tsx`, `ProductCompareView.tsx`, `ProductDetailPageView.tsx`, `ShoppingListsView.tsx`, `server/productShoppingService.ts` | **Working Full-Stack** | 19 enriched Egyptian catalog items with dimensions/energy/warranty/pros/cons/warnings, SVG price history chart, official agent vs gray-market offer caveats, up-to-4 side-by-side matrix, multi-list private vs shared shopping baskets, and automatic admin price-drop notifications. |
 
-## 2. Upcoming GAWAZ INN 2.0 Modules (Stages 6–12)
-- **Module K (Stage 6 — Next):** Product Encyclopedia, Specs/Energy/Warranties, Comparisons, Price Intelligence & Multi-List Shopping Baskets
+## 2. Upcoming GAWAZ INN 2.0 Modules (Stages 7–12)
 - **Module L, M, N, U (Stages 7–8):** Verified Vendor Directory, Location SEO, RFQ Engine, Appointments & Vendor CRM
 - **Module O/P + Admin OS (Stage 9):** My Wedding Story, Community Q&A, Expert Directory, Full Admin Analytics/CMS/Moderation
 - **Module Q, R, S (Stage 10):** Grounded AI Assistant, Smart Room Designer & Moodboards, Wedding Day Ops (RSVP/Guests/Seating/Registry)
