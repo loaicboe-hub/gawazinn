@@ -942,3 +942,124 @@ export const adminVerifyExpertSchema = z.object({
 
 
 
+
+// =========================================================================
+// STAGE 10: AI ASSISTANT, SMART ROOM DESIGNER & WEDDING DAY OPS SCHEMAS
+// =========================================================================
+
+export const aiAskSchema = z.object({
+  query: z.string().trim().min(2).max(1200),
+  conversationId: z.string().trim().min(2).max(120).optional(),
+  language: z.enum(['ar', 'en']).optional(),
+});
+
+export const createRoomMoodboardSchema = z.object({
+  titleAr: z.string().trim().min(2).max(140),
+  titleEn: z.string().trim().max(140).optional(),
+  roomType: z.enum(['living', 'bedroom', 'kitchen', 'bathroom', 'dining', 'reception', 'kids']),
+  lengthM: z.number().min(1.5).max(20),
+  widthM: z.number().min(1.5).max(20),
+  heightM: z.number().min(2.0).max(6).default(2.8),
+  themeSlug: z.enum([
+    'warm_beige',
+    'modern_cairo',
+    'classic_ivory',
+    'minimalist_nordic',
+    'romantic_wine',
+  ]),
+  paletteHex: z.array(z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/)).max(6).optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+  isSharedWithPartner: z.boolean().default(false),
+});
+
+export const updateRoomMoodboardSchema = createRoomMoodboardSchema.partial();
+
+export const addMoodboardItemSchema = z.object({
+  itemType: z.enum(['product', 'material', 'custom_furniture']),
+  productId: z.string().trim().min(1).max(120).nullable().optional(),
+  materialSlug: z.string().trim().min(1).max(120).nullable().optional(),
+  labelAr: z.string().trim().min(2).max(160),
+  labelEn: z.string().trim().max(160).optional(),
+  widthCm: z.number().int().min(20).max(600).default(120),
+  depthCm: z.number().int().min(20).max(600).default(80),
+  posXPct: z.number().min(5).max(95).default(50),
+  posYPct: z.number().min(5).max(95).default(50),
+  estimatedPriceEgp: z.number().int().min(0).max(5000000).default(0),
+  colorHex: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/).default('#D91B3E'),
+  notes: z.string().trim().max(300).nullable().optional(),
+});
+
+export const updateMoodboardItemSchema = z.object({
+  posXPct: z.number().min(5).max(95).optional(),
+  posYPct: z.number().min(5).max(95).optional(),
+  widthCm: z.number().int().min(20).max(600).optional(),
+  depthCm: z.number().int().min(20).max(600).optional(),
+  labelAr: z.string().trim().min(2).max(160).optional(),
+  estimatedPriceEgp: z.number().int().min(0).max(5000000).optional(),
+  notes: z.string().trim().max(300).nullable().optional(),
+});
+
+export const createSeatingTableSchema = z.object({
+  tableName: z.string().trim().min(2).max(100),
+  zone: z.enum(['vip_front', 'family_center', 'friends', 'outdoor']),
+  capacity: z.number().int().min(2).max(24).default(8),
+  notes: z.string().trim().max(300).nullable().optional(),
+});
+
+export const createWeddingGuestSchema = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  phone: z.string().trim().max(30).nullable().optional(),
+  side: z.enum(['groom', 'bride', 'shared']),
+  guestGroup: z.enum(['family', 'friends', 'colleagues', 'vip']),
+  invitedCount: z.number().int().min(1).max(10).default(1),
+  plusOneAllowed: z.boolean().default(false),
+  tableId: z.string().trim().min(1).max(120).nullable().optional(),
+});
+
+export const updateWeddingGuestSchema = z.object({
+  fullName: z.string().trim().min(2).max(120).optional(),
+  side: z.enum(['groom', 'bride', 'shared']).optional(),
+  guestGroup: z.enum(['family', 'friends', 'colleagues', 'vip']).optional(),
+  rsvpStatus: z.enum(['pending', 'confirmed', 'declined']).optional(),
+  attendingCount: z.number().int().min(0).max(12).optional(),
+  mealPreference: z.string().trim().min(2).max(60).optional(),
+  tableId: z.string().trim().min(1).max(120).nullable().optional(),
+});
+
+export const publicRsvpSubmitSchema = z.object({
+  rsvpStatus: z.enum(['confirmed', 'declined']),
+  attendingCount: z.number().int().min(0).max(12).default(1),
+  mealPreference: z.enum(['standard', 'vegetarian', 'kids', 'gluten_free']).default('standard'),
+  dietaryNotes: z.string().trim().max(400).nullable().optional(),
+});
+
+export const publicReserveGiftSchema = z.object({
+  giftId: z.string().trim().min(2).max(120),
+  guestName: z.string().trim().min(2).max(120).optional(),
+});
+
+export const createTimelineEventSchema = z.object({
+  startTime: z.string().trim().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().trim().regex(/^\d{2}:\d{2}$/),
+  titleAr: z.string().trim().min(2).max(160),
+  titleEn: z.string().trim().max(160).optional(),
+  assignee: z.string().trim().min(2).max(120),
+  locationNote: z.string().trim().max(180).nullable().optional(),
+});
+
+export const updateTimelineEventSchema = z.object({
+  status: z.enum(['planned', 'ready', 'completed']).optional(),
+  startTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
+  endTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
+  assignee: z.string().trim().min(2).max(120).optional(),
+});
+
+export const createGiftRegistryItemSchema = z.object({
+  productId: z.string().trim().min(1).max(120).nullable().optional(),
+  titleAr: z.string().trim().min(2).max(160),
+  titleEn: z.string().trim().max(160).optional(),
+  categoryLabel: z.string().trim().min(2).max(80),
+  targetPriceEgp: z.number().int().min(0).max(5000000).default(0),
+  priority: z.enum(['essential', 'nice_to_have', 'dream']).default('essential'),
+  notes: z.string().trim().max(300).nullable().optional(),
+});

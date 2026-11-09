@@ -179,6 +179,26 @@ const ExpertsDirectoryView = lazy(() =>
     default: m.ExpertsDirectoryView,
   })),
 );
+const AiAssistantView = lazy(() =>
+  import('./components/assistant/AiAssistantView').then((m) => ({
+    default: m.AiAssistantView,
+  })),
+);
+const RoomDesignerView = lazy(() =>
+  import('./components/tools/RoomDesignerView').then((m) => ({
+    default: m.RoomDesignerView,
+  })),
+);
+const WeddingDayOpsView = lazy(() =>
+  import('./components/wedding/WeddingDayOpsView').then((m) => ({
+    default: m.WeddingDayOpsView,
+  })),
+);
+const PublicRsvpView = lazy(() =>
+  import('./components/wedding/PublicRsvpView').then((m) => ({
+    default: m.PublicRsvpView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -245,6 +265,10 @@ const MainContent: React.FC = () => {
             <Route path="/real-weddings" element={<RealWeddingsView />} />
             <Route path="/community" element={<CommunityForumView />} />
             <Route path="/experts" element={<ExpertsDirectoryView />} />
+            <Route path="/assistant" element={<AiAssistantView />} />
+            <Route path="/room-designer" element={<RoomDesignerView />} />
+            <Route path="/wedding-day" element={<WeddingDayOpsView />} />
+            <Route path="/rsvp/:code" element={<PublicRsvpView />} />
             <Route path="/vendor" element={<VendorPortalView />} />
             <Route path="/rfq" element={<RfqCenterView />} />
             <Route path="/rfq/new" element={<RfqCenterView initialTab="new" />} />

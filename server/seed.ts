@@ -70,6 +70,7 @@ export function seedDatabase(
   stage7Seeded: boolean;
   stage8Seeded: boolean;
   stage9Seeded: boolean;
+  stage10Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
@@ -86,6 +87,7 @@ export function seedDatabase(
   const stage7LocCountRow = db.prepare('SELECT COUNT(*) as cnt FROM locations').get() as { cnt: number };
   const stage8RfqCountRow = db.prepare('SELECT COUNT(*) as cnt FROM rfq_requests').get() as { cnt: number };
   const stage9StoryCountRow = db.prepare('SELECT COUNT(*) as cnt FROM real_weddings').get() as { cnt: number };
+  const stage10BoardCountRow = db.prepare('SELECT COUNT(*) as cnt FROM room_moodboards').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
@@ -97,6 +99,7 @@ export function seedDatabase(
   const needsExtraLocs = stage7LocCountRow.cnt < 15;
   const needsStage8 = stage8RfqCountRow.cnt === 0;
   const needsStage9 = stage9StoryCountRow.cnt === 0;
+  const needsStage10 = stage10BoardCountRow.cnt === 0;
 
   if (
     !needsStage1 &&
@@ -109,7 +112,8 @@ export function seedDatabase(
     !needsStage7 &&
     !needsExtraLocs &&
     !needsStage8 &&
-    !needsStage9
+    !needsStage9 &&
+    !needsStage10
   ) {
     return {
       seeded: false,
@@ -121,6 +125,7 @@ export function seedDatabase(
       stage7Seeded: false,
       stage8Seeded: false,
       stage9Seeded: false,
+      stage10Seeded: false,
     };
   }
 
@@ -2200,6 +2205,168 @@ export function seedDatabase(
       );
     }
 
+    if (needsStage10) {
+      const sampleProd = db
+        .prepare("SELECT id, name_ar, name_en, price FROM products ORDER BY is_featured DESC, price ASC LIMIT 2")
+        .all() as { id: string; name_ar: string; name_en: string; price: number }[];
+      const firstProd = sampleProd[0];
+      const secondProd = sampleProd[1] || firstProd;
+
+      db.prepare(
+        `INSERT OR IGNORE INTO room_moodboards (
+          id, user_id, title_ar, title_en, room_type, length_m, width_m, height_m, theme_slug, palette_hex_json, notes, is_shared_with_partner, created_at, updated_at
+        ) VALUES (?, 'usr-1', ?, ?, 'living', 5.2, 4.0, 2.9, 'modern_cairo', ?, ?, 0, ?, ?)`,
+      ).run(
+        'mb-karim-living',
+        'غرفة المعيشة الرئيسية — 5.2×4.0م',
+        'Main Living Room — 5.2×4.0m',
+        JSON.stringify(['#FFFFFF', '#E5E7EB', '#4B5563', '#2A1D20', '#D91B3E']),
+        'توزيع مقترح للكنبة L مع وحدة التلفاز ومساحة حركة مريحة.',
+        now,
+        now,
+      );
+
+      const insItem = db.prepare(
+        `INSERT OR IGNORE INTO moodboard_items (
+          id, moodboard_id, user_id, item_type, product_id, material_slug, label_ar, label_en, width_cm, depth_cm, pos_x_pct, pos_y_pct, estimated_price_egp, color_hex, notes, created_at
+        ) VALUES (?, 'mb-karim-living', 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insItem.run(
+        'mbi-karim-1',
+        'custom_furniture',
+        null,
+        null,
+        'ركنة مودرن حرف L (3 مقاعد + شيزلونج)',
+        'Modern L-Shape Sofa',
+        260,
+        95,
+        30,
+        55,
+        28500,
+        '#2A1D20',
+        'قماش كتان رمادي معالج ضد البقع',
+        now,
+      );
+      if (firstProd) {
+        insItem.run(
+          'mbi-karim-2',
+          'product',
+          firstProd.id,
+          null,
+          firstProd.name_ar,
+          firstProd.name_en,
+          140,
+          45,
+          75,
+          35,
+          Number(firstProd.price),
+          '#D91B3E',
+          'منتج مربوط بأسعار الكتالوج المباشرة',
+          now,
+        );
+      }
+      insItem.run(
+        'mbi-karim-3',
+        'material',
+        null,
+        'porcelain-flooring-indian',
+        'أرضيات بورسلين مطفي 60×120',
+        'Matte Porcelain Flooring 60x120',
+        200,
+        160,
+        52,
+        75,
+        14800,
+        '#E5E7EB',
+        'تقدير مسطح 20.8م² بالوزر',
+        now,
+      );
+
+      // Seating tables
+      const insTbl = db.prepare(
+        `INSERT OR IGNORE INTO seating_tables (id, user_id, table_name, zone, capacity, notes, sort_order, created_at)
+         VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?)`,
+      );
+      insTbl.run('tbl-karim-vip', 'طاولة VIP العائلة 1', 'vip_front', 6, 'قريبة من المنصة الرئيسية', 1, now);
+      insTbl.run('tbl-karim-friends', 'طاولة الأصدقاء 2', 'friends', 8, 'قاعة الشباب', 2, now);
+      insTbl.run('tbl-karim-work', 'طاولة الزملاء 3', 'family_center', 8, null, 3, now);
+
+      // Wedding guests
+      const insGuest = db.prepare(
+        `INSERT OR IGNORE INTO wedding_guests (
+          id, user_id, full_name, phone, side, guest_group, invited_count, plus_one_allowed, rsvp_code, rsvp_status, attending_count, meal_preference, dietary_notes, table_id, responded_at, created_at, updated_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insGuest.run('wg-karim-1', 'طارق عبد الله وحرمه', '01012223344', 'groom', 'vip', 2, 0, 'GI-KARIM-101', 'confirmed', 2, 'standard', null, 'tbl-karim-vip', now, now, now);
+      insGuest.run('wg-karim-2', 'عمرو سامي', '01099887766', 'groom', 'friends', 2, 1, 'GI-KARIM-102', 'pending', 0, 'standard', null, null, null, now, now);
+      insGuest.run('wg-karim-3', 'د. نادية شوقي وأسرتها', '01122334455', 'shared', 'family', 3, 0, 'GI-KARIM-103', 'confirmed', 3, 'vegetarian', 'بدون مكسرات', 'tbl-karim-vip', now, now, now);
+      insGuest.run('wg-karim-4', 'هند مصطفى', '01234567891', 'bride', 'friends', 2, 0, 'GI-KARIM-104', 'pending', 0, 'standard', null, 'tbl-karim-friends', null, now, now);
+      insGuest.run('wg-karim-5', 'يوسف حسن', '01554433221', 'groom', 'colleagues', 1, 0, 'GI-KARIM-105', 'declined', 0, 'standard', 'مسافر يوم الحفل', null, now, now, now);
+
+      // Wedding day timeline
+      const insEv = db.prepare(
+        `INSERT OR IGNORE INTO wedding_timeline_events (
+          id, user_id, start_time, end_time, title_ar, title_en, assignee, location_note, status, sort_order, created_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insEv.run('wte-karim-1', '16:00', '17:30', 'الاستعداد والميكب والتجهيز', 'Hair, Makeup & Prep Session', 'العروسة ومساعدة التنسيق', 'الجناح الفندقي 402', 'completed', 1, now);
+      insEv.run('wte-karim-2', '18:00', '19:15', 'جلسة التصوير والـ First Look', 'First Look & Couple Portraits', 'المصور والفيديو', 'حديقة الفندق الشرقية', 'ready', 2, now);
+      insEv.run('wte-karim-3', '20:00', '20:45', 'الزفة والدخول الرئيسي للقاعة', 'Grand Zaffa & Hall Entrance', 'فريق الزفة والـ DJ', 'البوابة الرئيسية للقاعة', 'planned', 3, now);
+      insEv.run('wte-karim-4', '21:30', '22:30', 'العشاء المفتوح واستراحة العائلات', 'Dinner Service & Table Visits', 'مدير الضيافة', 'القاعة الرئيسية', 'planned', 4, now);
+      insEv.run('wte-karim-5', '23:15', '23:55', 'تقطيع التورتة والوداع', 'Cake Cutting & Farewell', 'منظم الحفل', 'الستيج الرئيسي', 'planned', 5, now);
+
+      // Gift registry items
+      const insGift = db.prepare(
+        `INSERT OR IGNORE INTO gift_registry_items (
+          id, user_id, product_id, title_ar, title_en, category_label, target_price_egp, priority, reservation_status, reserved_by_name, reserved_at, notes, created_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      if (secondProd) {
+        insGift.run(
+          'gift-karim-1',
+          secondProd.id,
+          secondProd.name_ar,
+          secondProd.name_en,
+          'أجهزة منزلية',
+          Number(secondProd.price),
+          'essential',
+          'reserved',
+          'خالتي منى',
+          now,
+          'تم التأكيد عبر العائلة',
+          now,
+        );
+      }
+      insGift.run(
+        'gift-karim-2',
+        null,
+        'ماكينة إسبرسو أوتوماتيك',
+        'Automatic Espresso Maker',
+        'ركن القهوة',
+        9500,
+        'nice_to_have',
+        'available',
+        null,
+        null,
+        'لون أسود مطفي أو ستانلس',
+        now,
+      );
+      insGift.run(
+        'gift-karim-3',
+        null,
+        'طقم عشاء بورسلين أبيض 32 قطعة',
+        '32-Piece White Porcelain Dinner Set',
+        'أدوات السفرة',
+        5800,
+        'essential',
+        'available',
+        null,
+        null,
+        'سهل الترصيص في المطبخ',
+        now,
+      );
+    }
+
     db.exec('COMMIT;');
     return {
       seeded:
@@ -2209,10 +2376,12 @@ export function seedDatabase(
         needsStage4 ||
         needsStage5 ||
         needsStage6 ||
+        needsBaseProductSlugFix ||
         needsStage7 ||
         needsExtraLocs ||
         needsStage8 ||
-        needsStage9,
+        needsStage9 ||
+        needsStage10,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
@@ -2221,6 +2390,7 @@ export function seedDatabase(
       stage7Seeded: needsStage7,
       stage8Seeded: needsStage8,
       stage9Seeded: needsStage9,
+      stage10Seeded: needsStage10,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

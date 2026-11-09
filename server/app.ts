@@ -217,6 +217,46 @@ import {
   resolveCommunityReport,
   toggleCommunityVote,
 } from './communityAdminService';
+import {
+  addMoodboardItemSchema,
+  aiAskSchema,
+  createGiftRegistryItemSchema,
+  createRoomMoodboardSchema,
+  createSeatingTableSchema,
+  createTimelineEventSchema,
+  createWeddingGuestSchema,
+  publicReserveGiftSchema,
+  publicRsvpSubmitSchema,
+  updateMoodboardItemSchema,
+  updateTimelineEventSchema,
+  updateWeddingGuestSchema,
+} from '../shared/schemas';
+import {
+  askGroundedAiAssistant,
+  listUserAiConversations,
+} from './aiAssistantService';
+import {
+  addMoodboardItem,
+  buildWeddingDayOverview,
+  createGiftRegistryItem,
+  createRoomMoodboard,
+  createSeatingTable,
+  createTimelineEvent,
+  createWeddingGuest,
+  deleteGiftRegistryItem,
+  deleteMoodboardItem,
+  deleteRoomMoodboard,
+  deleteSeatingTable,
+  deleteTimelineEvent,
+  deleteWeddingGuest,
+  getPublicRsvpByCode,
+  listRoomMoodboardsForUser,
+  reservePublicRegistryGift,
+  submitPublicRsvp,
+  updateMoodboardItem,
+  updateTimelineEvent,
+  updateWeddingGuest,
+} from './roomWeddingOpsService';
 import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
 import {
   SlidingWindowRateLimiter,
@@ -878,6 +918,8 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/real-weddings',
           '/community',
           '/experts',
+          '/assistant',
+          '/room-designer',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -6427,6 +6469,334 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         }
       }
 
+      // =====================================================================
+      // STAGE 10: GROUNDED AI ASSISTANT, SMART ROOM STUDIO & WEDDING DAY OPS
+      // =====================================================================
+      if (method === 'POST' && route === '/assistant/ask') {
+        const parsed = aiAskSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid AI query');
+          return;
+        }
+        const reply = askGroundedAiAssistant(db, authUser?.id ?? null, parsed.data);
+        sendJson(res, 200, { ok: true, data: reply });
+        return;
+      }
+
+      if (method === 'GET' && route === '/assistant/history') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        sendJson(res, 200, { ok: true, data: listUserAiConversations(db, user.id) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/room-studio/moodboards') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        sendJson(res, 200, { ok: true, data: listRoomMoodboardsForUser(db, user.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/room-studio/moodboards') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = createRoomMoodboardSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid room moodboard');
+          return;
+        }
+        const board = createRoomMoodboard(db, user.id, parsed.data);
+        sendJson(res, 201, { ok: true, data: board });
+        return;
+      }
+
+      const mbDeleteMatch = route.match(/^\/room-studio\/moodboards\/([^/]+)$/);
+      if (method === 'DELETE' && mbDeleteMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        deleteRoomMoodboard(db, user.id, decodeURIComponent(mbDeleteMatch[1]));
+        sendJson(res, 200, { ok: true, data: { deleted: true } });
+        return;
+      }
+
+      const mbItemsAddMatch = route.match(/^\/room-studio\/moodboards\/([^/]+)\/items$/);
+      if (method === 'POST' && mbItemsAddMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = addMoodboardItemSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid moodboard item');
+          return;
+        }
+        const board = addMoodboardItem(db, user.id, decodeURIComponent(mbItemsAddMatch[1]), parsed.data);
+        sendJson(res, 201, { ok: true, data: board });
+        return;
+      }
+
+      const mbItemMatch = route.match(/^\/room-studio\/items\/([^/]+)$/);
+      if (mbItemMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const itemId = decodeURIComponent(mbItemMatch[1]);
+        if (method === 'PATCH') {
+          const parsed = updateMoodboardItemSchema.safeParse(await readJsonBody(req));
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid item update');
+            return;
+          }
+          const board = updateMoodboardItem(db, user.id, itemId, parsed.data);
+          sendJson(res, 200, { ok: true, data: board });
+          return;
+        }
+        if (method === 'DELETE') {
+          const board = deleteMoodboardItem(db, user.id, itemId);
+          sendJson(res, 200, { ok: true, data: board });
+          return;
+        }
+      }
+
+      if (method === 'GET' && route === '/wedding-day/overview') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        sendJson(res, 200, { ok: true, data: buildWeddingDayOverview(db, user.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/wedding-day/tables') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = createSeatingTableSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid seating table');
+          return;
+        }
+        sendJson(res, 201, { ok: true, data: createSeatingTable(db, user.id, parsed.data) });
+        return;
+      }
+
+      const tblDeleteMatch = route.match(/^\/wedding-day\/tables\/([^/]+)$/);
+      if (method === 'DELETE' && tblDeleteMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        sendJson(res, 200, {
+          ok: true,
+          data: deleteSeatingTable(db, user.id, decodeURIComponent(tblDeleteMatch[1])),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/wedding-day/guests') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = createWeddingGuestSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid wedding guest');
+          return;
+        }
+        sendJson(res, 201, { ok: true, data: createWeddingGuest(db, user.id, parsed.data) });
+        return;
+      }
+
+      const guestMatch = route.match(/^\/wedding-day\/guests\/([^/]+)$/);
+      if (guestMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const guestId = decodeURIComponent(guestMatch[1]);
+        if (method === 'PATCH') {
+          const parsed = updateWeddingGuestSchema.safeParse(await readJsonBody(req));
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid guest update');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: updateWeddingGuest(db, user.id, guestId, parsed.data) });
+          return;
+        }
+        if (method === 'DELETE') {
+          sendJson(res, 200, { ok: true, data: deleteWeddingGuest(db, user.id, guestId) });
+          return;
+        }
+      }
+
+      if (method === 'POST' && route === '/wedding-day/timeline') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = createTimelineEventSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid timeline event');
+          return;
+        }
+        sendJson(res, 201, { ok: true, data: createTimelineEvent(db, user.id, parsed.data) });
+        return;
+      }
+
+      const timelineMatch = route.match(/^\/wedding-day\/timeline\/([^/]+)$/);
+      if (timelineMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const eventId = decodeURIComponent(timelineMatch[1]);
+        if (method === 'PATCH') {
+          const parsed = updateTimelineEventSchema.safeParse(await readJsonBody(req));
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid timeline update');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: updateTimelineEvent(db, user.id, eventId, parsed.data) });
+          return;
+        }
+        if (method === 'DELETE') {
+          sendJson(res, 200, { ok: true, data: deleteTimelineEvent(db, user.id, eventId) });
+          return;
+        }
+      }
+
+      if (method === 'POST' && route === '/wedding-day/registry') {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        const parsed = createGiftRegistryItemSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid gift registry item');
+          return;
+        }
+        sendJson(res, 201, { ok: true, data: createGiftRegistryItem(db, user.id, parsed.data) });
+        return;
+      }
+
+      const registryDeleteMatch = route.match(/^\/wedding-day\/registry\/([^/]+)$/);
+      if (method === 'DELETE' && registryDeleteMatch) {
+        const user = (() => {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return null;
+          }
+          return authUser;
+        })();
+        if (!user) return;
+        sendJson(res, 200, {
+          ok: true,
+          data: deleteGiftRegistryItem(db, user.id, decodeURIComponent(registryDeleteMatch[1])),
+        });
+        return;
+      }
+
+      const publicRsvpReserveMatch = route.match(/^\/rsvp\/([^/]+)\/reserve-gift$/);
+      if (method === 'POST' && publicRsvpReserveMatch) {
+        const parsed = publicReserveGiftSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid gift reservation');
+          return;
+        }
+        const updated = reservePublicRegistryGift(
+          db,
+          decodeURIComponent(publicRsvpReserveMatch[1]),
+          parsed.data.giftId,
+          parsed.data.guestName,
+        );
+        sendJson(res, 200, { ok: true, data: updated });
+        return;
+      }
+
+      const publicRsvpMatch = route.match(/^\/rsvp\/([^/]+)$/);
+      if (publicRsvpMatch) {
+        const code = decodeURIComponent(publicRsvpMatch[1]);
+        if (method === 'GET') {
+          sendJson(res, 200, { ok: true, data: getPublicRsvpByCode(db, code) });
+          return;
+        }
+        if (method === 'POST') {
+          const parsed = publicRsvpSubmitSchema.safeParse(await readJsonBody(req));
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid RSVP submission');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: submitPublicRsvp(db, code, parsed.data) });
+          return;
+        }
+      }
+
       sendError(res, 404, 'API_ROUTE_NOT_FOUND', `No handler for ${method} ${pathname}`);
     } catch (err) {
       if (err instanceof Error && err.message === 'INVALID_JSON') {
@@ -6435,6 +6805,11 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
       }
       if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
         sendError(res, 413, 'PAYLOAD_TOO_LARGE', 'Request payload exceeds 1MB limit');
+        return;
+      }
+      const httpErr = err as Error & { statusCode?: number; code?: string };
+      if (httpErr.statusCode && httpErr.code) {
+        sendError(res, httpErr.statusCode, httpErr.code, httpErr.message);
         return;
       }
       console.error('[GAWAZ INN API Error]', err);

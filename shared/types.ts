@@ -2107,3 +2107,243 @@ export interface AdminAnalyticsPayload {
 
 
 
+
+// =========================================================================
+// STAGE 10: GROUNDED AI ASSISTANT, SMART ROOM DESIGNER & WEDDING DAY OPS
+// =========================================================================
+
+export type AiCitationKind = 'product' | 'vendor' | 'material' | 'article' | 'calculator' | 'story' | 'user_budget';
+
+export interface AiCitation {
+  kind: AiCitationKind;
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  route: string;
+  priceEgp?: number | null;
+  metaText?: string | null;
+}
+
+export interface AiCalculationSnippet {
+  calculatorSlug: string;
+  nameAr: string;
+  nameEn: string;
+  primaryLabelAr: string;
+  primaryLabelEn: string;
+  primaryValue: number;
+  unit: string;
+  assumptionsAr: string[];
+  assumptionsEn: string[];
+}
+
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  contentAr: string;
+  contentEn: string;
+  citations: AiCitation[];
+  calculations: AiCalculationSnippet[];
+  createdAt: string;
+}
+
+export interface AiAssistantReplyPayload {
+  conversationId: string;
+  intent: string;
+  providerMode: 'deterministic_db_rag' | 'external_llm_rag';
+  groundedFactsCount: number;
+  usedPersonalContext: boolean;
+  disclaimerAr: string;
+  disclaimerEn: string;
+  userMessage: AiChatMessage;
+  assistantMessage: AiChatMessage;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  sessionTitle: string;
+  lastIntent: string;
+  messages: AiChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RoomType =
+  | 'living'
+  | 'bedroom'
+  | 'kitchen'
+  | 'bathroom'
+  | 'dining'
+  | 'reception'
+  | 'kids';
+
+export type RoomThemeSlug =
+  | 'warm_beige'
+  | 'modern_cairo'
+  | 'classic_ivory'
+  | 'minimalist_nordic'
+  | 'romantic_wine';
+
+export type MoodboardItemType = 'product' | 'material' | 'custom_furniture';
+
+export interface MoodboardItem {
+  id: string;
+  moodboardId: string;
+  userId: string;
+  itemType: MoodboardItemType;
+  productId?: string | null;
+  materialSlug?: string | null;
+  labelAr: string;
+  labelEn: string;
+  widthCm: number;
+  depthCm: number;
+  posXPct: number;
+  posYPct: number;
+  estimatedPriceEgp: number;
+  colorHex: string;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface RoomMoodboard {
+  id: string;
+  userId: string;
+  titleAr: string;
+  titleEn: string;
+  roomType: RoomType;
+  lengthM: number;
+  widthM: number;
+  heightM: number;
+  themeSlug: RoomThemeSlug;
+  paletteHex: string[];
+  notes?: string | null;
+  isSharedWithPartner: boolean;
+  items: MoodboardItem[];
+  totalEstimatedCostEgp: number;
+  floorAreaSqm: number;
+  occupiedAreaPercent: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type GuestSide = 'groom' | 'bride' | 'shared';
+export type GuestGroup = 'family' | 'friends' | 'colleagues' | 'vip';
+export type RsvpStatus = 'pending' | 'confirmed' | 'declined';
+export type TableZone = 'vip_front' | 'family_center' | 'friends' | 'outdoor';
+export type TimelineEventStatus = 'planned' | 'ready' | 'completed';
+export type GiftPriority = 'essential' | 'nice_to_have' | 'dream';
+export type GiftReservationStatus = 'available' | 'reserved' | 'received';
+
+export interface SeatingTable {
+  id: string;
+  userId: string;
+  tableName: string;
+  zone: TableZone;
+  capacity: number;
+  notes?: string | null;
+  sortOrder: number;
+  assignedHeadcount: number;
+  assignedGuestsCount: number;
+  isFull: boolean;
+  createdAt: string;
+}
+
+export interface WeddingGuest {
+  id: string;
+  userId: string;
+  fullName: string;
+  phone?: string | null;
+  side: GuestSide;
+  guestGroup: GuestGroup;
+  invitedCount: number;
+  plusOneAllowed: boolean;
+  rsvpCode: string;
+  rsvpStatus: RsvpStatus;
+  attendingCount: number;
+  mealPreference: string;
+  dietaryNotes?: string | null;
+  tableId?: string | null;
+  respondedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeddingTimelineEvent {
+  id: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  titleAr: string;
+  titleEn: string;
+  assignee: string;
+  locationNote?: string | null;
+  status: TimelineEventStatus;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface GiftRegistryItem {
+  id: string;
+  userId: string;
+  productId?: string | null;
+  titleAr: string;
+  titleEn: string;
+  categoryLabel: string;
+  targetPriceEgp: number;
+  priority: GiftPriority;
+  reservationStatus: GiftReservationStatus;
+  reservedByName?: string | null;
+  reservedAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface WeddingDayOverviewPayload {
+  guests: WeddingGuest[];
+  tables: SeatingTable[];
+  timelineEvents: WeddingTimelineEvent[];
+  giftRegistry: GiftRegistryItem[];
+  stats: {
+    totalInvitedParties: number;
+    totalInvitedSeats: number;
+    confirmedParties: number;
+    confirmedHeadcount: number;
+    pendingParties: number;
+    declinedParties: number;
+    totalTableSeats: number;
+    seatedHeadcount: number;
+    timelineTotal: number;
+    timelineReadyOrDone: number;
+    registryTotal: number;
+    registryReservedOrReceived: number;
+  };
+}
+
+export interface PublicRsvpPayload {
+  guest: {
+    id: string;
+    fullName: string;
+    side: GuestSide;
+    guestGroup: GuestGroup;
+    invitedCount: number;
+    plusOneAllowed: boolean;
+    maxAllowedHeadcount: number;
+    rsvpCode: string;
+    rsvpStatus: RsvpStatus;
+    attendingCount: number;
+    mealPreference: string;
+    dietaryNotes?: string | null;
+    respondedAt?: string | null;
+  };
+  hostCoupleName: string;
+  expectedWeddingDate?: string | null;
+  giftRegistry: {
+    id: string;
+    productId?: string | null;
+    titleAr: string;
+    titleEn: string;
+    categoryLabel: string;
+    targetPriceEgp: number;
+    priority: GiftPriority;
+    reservationStatus: GiftReservationStatus;
+  }[];
+}

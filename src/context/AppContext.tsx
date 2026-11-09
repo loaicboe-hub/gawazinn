@@ -91,6 +91,19 @@ import type {
   ExpertVerificationStatus,
   AdminAnalyticsPayload,
   AdminModerationOverview,
+  AiAssistantReplyPayload,
+  AiConversationSummary,
+  GiftPriority,
+  GuestGroup,
+  GuestSide,
+  MoodboardItemType,
+  RoomMoodboard,
+  RoomThemeSlug,
+  RoomType,
+  RsvpStatus,
+  TableZone,
+  TimelineEventStatus,
+  WeddingDayOverviewPayload,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -159,6 +172,9 @@ export type SectionKey =
   | 'stories'
   | 'community'
   | 'experts'
+  | 'assistant'
+  | 'roomDesigner'
+  | 'weddingDay'
   | 'rfq'
   | 'vendorPortal'
   | 'myHub'
@@ -188,6 +204,9 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   stories: '/real-weddings',
   community: '/community',
   experts: '/experts',
+  assistant: '/assistant',
+  roomDesigner: '/room-designer',
+  weddingDay: '/wedding-day',
   rfq: '/rfq',
   vendorPortal: '/vendor',
   myHub: '/my/workspace',
@@ -895,6 +914,91 @@ interface AppContextType {
   ) => Promise<Article>;
   adminUpdateUserStatus: (userId: string, status: User['status']) => Promise<User>;
 
+  // Stage 10: Grounded AI Assistant, Smart Room Designer & Wedding Day Operations
+  aiConversations: AiConversationSummary[];
+  roomMoodboards: RoomMoodboard[];
+  weddingDayOverview: WeddingDayOverviewPayload | null;
+  askAiAssistant: (query: string, conversationId?: string) => Promise<AiAssistantReplyPayload>;
+  refreshRoomMoodboards: () => Promise<void>;
+  createRoomMoodboard: (input: {
+    titleAr: string;
+    titleEn?: string;
+    roomType: RoomType;
+    lengthM: number;
+    widthM: number;
+    heightM?: number;
+    themeSlug: RoomThemeSlug;
+    isSharedWithPartner?: boolean;
+  }) => Promise<RoomMoodboard>;
+  deleteRoomMoodboard: (moodboardId: string) => Promise<void>;
+  addMoodboardItem: (
+    moodboardId: string,
+    input: {
+      itemType: MoodboardItemType;
+      productId?: string | null;
+      materialSlug?: string | null;
+      labelAr: string;
+      labelEn?: string;
+      widthCm: number;
+      depthCm: number;
+      posXPct: number;
+      posYPct: number;
+      estimatedPriceEgp: number;
+      colorHex?: string;
+      notes?: string | null;
+    },
+  ) => Promise<RoomMoodboard>;
+  updateMoodboardItem: (
+    itemId: string,
+    patch: { posXPct?: number; posYPct?: number; widthCm?: number; depthCm?: number },
+  ) => Promise<RoomMoodboard>;
+  deleteMoodboardItem: (itemId: string) => Promise<RoomMoodboard>;
+  refreshWeddingDayOverview: () => Promise<void>;
+  createSeatingTable: (input: {
+    tableName: string;
+    zone: TableZone;
+    capacity: number;
+    notes?: string | null;
+  }) => Promise<WeddingDayOverviewPayload>;
+  deleteSeatingTable: (tableId: string) => Promise<WeddingDayOverviewPayload>;
+  createWeddingGuest: (input: {
+    fullName: string;
+    phone?: string | null;
+    side: GuestSide;
+    guestGroup: GuestGroup;
+    invitedCount: number;
+    plusOneAllowed: boolean;
+    tableId?: string | null;
+  }) => Promise<WeddingDayOverviewPayload>;
+  updateWeddingGuest: (
+    guestId: string,
+    patch: { rsvpStatus?: RsvpStatus; tableId?: string | null; attendingCount?: number },
+  ) => Promise<WeddingDayOverviewPayload>;
+  deleteWeddingGuest: (guestId: string) => Promise<WeddingDayOverviewPayload>;
+  createTimelineEvent: (input: {
+    startTime: string;
+    endTime: string;
+    titleAr: string;
+    titleEn?: string;
+    assignee: string;
+    locationNote?: string | null;
+  }) => Promise<WeddingDayOverviewPayload>;
+  updateTimelineEvent: (
+    eventId: string,
+    patch: { status?: TimelineEventStatus },
+  ) => Promise<WeddingDayOverviewPayload>;
+  deleteTimelineEvent: (eventId: string) => Promise<WeddingDayOverviewPayload>;
+  createGiftRegistryItem: (input: {
+    productId?: string | null;
+    titleAr: string;
+    titleEn?: string;
+    categoryLabel: string;
+    targetPriceEgp: number;
+    priority: GiftPriority;
+    notes?: string | null;
+  }) => Promise<WeddingDayOverviewPayload>;
+  deleteGiftRegistryItem: (itemId: string) => Promise<WeddingDayOverviewPayload>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -980,6 +1084,9 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/real-weddings')) return 'stories';
   if (pathname.startsWith('/community')) return 'community';
   if (pathname.startsWith('/experts')) return 'experts';
+  if (pathname.startsWith('/assistant')) return 'assistant';
+  if (pathname.startsWith('/room-designer')) return 'roomDesigner';
+  if (pathname.startsWith('/wedding-day') || pathname.startsWith('/rsvp/')) return 'weddingDay';
   if (pathname === '/rfq' || pathname.startsWith('/rfq/')) return 'rfq';
   if (pathname.startsWith('/vendors')) return 'vendors';
   if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
@@ -1180,6 +1287,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [adminAnalytics, setAdminAnalytics] = useState<AdminAnalyticsPayload | null>(null);
   const [adminModeration, setAdminModeration] = useState<AdminModerationOverview | null>(null);
 
+  // Stage 10 AI Assistant, Room Studio & Wedding Day Operations State
+  const [aiConversations, setAiConversations] = useState<AiConversationSummary[]>([]);
+  const [roomMoodboards, setRoomMoodboards] = useState<RoomMoodboard[]>([]);
+  const [weddingDayOverview, setWeddingDayOverview] = useState<WeddingDayOverviewPayload | null>(null);
+
   const loadUserScopedData = useCallback(async (user: User | null, connected: boolean) => {
     if (!user) {
       setOrders([]);
@@ -1202,6 +1314,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setMySubmittedStories([]);
       setAdminAnalytics(null);
       setAdminModeration(null);
+      setAiConversations([]);
+      setRoomMoodboards([]);
+      setWeddingDayOverview(null);
       setCommunityQuestions((prev) =>
         prev.map((q) => ({
           ...q,
@@ -1261,6 +1376,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         uAppointments,
         uMyStories,
         uQuestions,
+        uAiConvs,
+        uMoodboards,
+        uWeddingDay,
       ] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
@@ -1280,6 +1398,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<MarketplaceAppointment[]>('/appointments').catch(() => []),
           apiRequest<RealWeddingStory[]>('/stories?mine=1').catch(() => []),
           apiRequest<CommunityQuestion[]>('/community/questions').catch(() => null),
+          apiRequest<AiConversationSummary[]>('/assistant/history').catch(() => []),
+          apiRequest<RoomMoodboard[]>('/room-studio/moodboards').catch(() => []),
+          apiRequest<WeddingDayOverviewPayload>('/wedding-day/overview').catch(() => null),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -1300,6 +1421,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setMarketplaceAppointments(uAppointments);
       setMySubmittedStories(uMyStories);
       if (uQuestions) setCommunityQuestions(uQuestions);
+      setAiConversations(uAiConvs);
+      setRoomMoodboards(uMoodboards);
+      setWeddingDayOverview(uWeddingDay);
     } catch {
       // Non-fatal fallback
     }
@@ -3822,6 +3946,278 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [language, showToast],
   );
 
+  // Stage 10: Grounded AI Assistant, Smart Room Designer & Wedding Day Operations Actions
+  const askAiAssistant = useCallback(
+    async (query: string, conversationId?: string): Promise<AiAssistantReplyPayload> => {
+      const res = await apiRequest<AiAssistantReplyPayload>('/assistant/ask', {
+        method: 'POST',
+        body: JSON.stringify({ query, conversationId, language }),
+      });
+      if (currentUser) {
+        const hist = await apiRequest<AiConversationSummary[]>('/assistant/history').catch(() => null);
+        if (hist) setAiConversations(hist);
+      }
+      return res;
+    },
+    [currentUser, language],
+  );
+
+  const refreshRoomMoodboards = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const boards = await apiRequest<RoomMoodboard[]>('/room-studio/moodboards');
+    setRoomMoodboards(boards);
+  }, [apiConnected, currentUser]);
+
+  const createRoomMoodboard = useCallback(
+    async (input: {
+      titleAr: string;
+      titleEn?: string;
+      roomType: RoomType;
+      lengthM: number;
+      widthM: number;
+      heightM?: number;
+      themeSlug: RoomThemeSlug;
+      isSharedWithPartner?: boolean;
+    }) => {
+      const created = await apiRequest<RoomMoodboard>('/room-studio/moodboards', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setRoomMoodboards((prev) => [created, ...prev]);
+      showToast(language === 'ar' ? 'تم إنشاء لوحة الغرفة وحفظ الأبعاد.' : 'Room moodboard created.');
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const deleteRoomMoodboard = useCallback(
+    async (moodboardId: string) => {
+      await apiRequest(`/room-studio/moodboards/${encodeURIComponent(moodboardId)}`, {
+        method: 'DELETE',
+      });
+      setRoomMoodboards((prev) => prev.filter((b) => b.id !== moodboardId));
+      showToast(language === 'ar' ? 'تم حذف لوحة التصميم.' : 'Moodboard deleted.');
+    },
+    [language, showToast],
+  );
+
+  const addMoodboardItem = useCallback(
+    async (
+      moodboardId: string,
+      input: {
+        itemType: MoodboardItemType;
+        productId?: string | null;
+        materialSlug?: string | null;
+        labelAr: string;
+        labelEn?: string;
+        widthCm: number;
+        depthCm: number;
+        posXPct: number;
+        posYPct: number;
+        estimatedPriceEgp: number;
+        colorHex?: string;
+        notes?: string | null;
+      },
+    ) => {
+      const updated = await apiRequest<RoomMoodboard>(
+        `/room-studio/moodboards/${encodeURIComponent(moodboardId)}/items`,
+        {
+          method: 'POST',
+          body: JSON.stringify(input),
+        },
+      );
+      setRoomMoodboards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      showToast(language === 'ar' ? 'تمت إضافة العنصر للمخطط الهندسي.' : 'Item placed on floor plan.');
+      return updated;
+    },
+    [language, showToast],
+  );
+
+  const updateMoodboardItem = useCallback(
+    async (
+      itemId: string,
+      patch: { posXPct?: number; posYPct?: number; widthCm?: number; depthCm?: number },
+    ) => {
+      const updated = await apiRequest<RoomMoodboard>(
+        `/room-studio/items/${encodeURIComponent(itemId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setRoomMoodboards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      return updated;
+    },
+    [],
+  );
+
+  const deleteMoodboardItem = useCallback(
+    async (itemId: string) => {
+      const updated = await apiRequest<RoomMoodboard>(
+        `/room-studio/items/${encodeURIComponent(itemId)}`,
+        { method: 'DELETE' },
+      );
+      setRoomMoodboards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      showToast(language === 'ar' ? 'تمت إزالة القطعة من الغرفة.' : 'Removed item from floor plan.');
+      return updated;
+    },
+    [language, showToast],
+  );
+
+  const refreshWeddingDayOverview = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const ov = await apiRequest<WeddingDayOverviewPayload>('/wedding-day/overview');
+    setWeddingDayOverview(ov);
+  }, [apiConnected, currentUser]);
+
+  const createSeatingTable = useCallback(
+    async (input: { tableName: string; zone: TableZone; capacity: number; notes?: string | null }) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>('/wedding-day/tables', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setWeddingDayOverview(ov);
+      showToast(language === 'ar' ? 'تمت إضافة الطاولة بنجاح.' : 'Seating table added.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteSeatingTable = useCallback(
+    async (tableId: string) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>(
+        `/wedding-day/tables/${encodeURIComponent(tableId)}`,
+        { method: 'DELETE' },
+      );
+      setWeddingDayOverview(ov);
+      return ov;
+    },
+    [],
+  );
+
+  const createWeddingGuest = useCallback(
+    async (input: {
+      fullName: string;
+      phone?: string | null;
+      side: GuestSide;
+      guestGroup: GuestGroup;
+      invitedCount: number;
+      plusOneAllowed: boolean;
+      tableId?: string | null;
+    }) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>('/wedding-day/guests', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setWeddingDayOverview(ov);
+      showToast(language === 'ar' ? 'تمت إضافة المدعو وإنشاء رابط RSVP.' : 'Guest added with RSVP code.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const updateWeddingGuest = useCallback(
+    async (
+      guestId: string,
+      patch: { rsvpStatus?: RsvpStatus; tableId?: string | null; attendingCount?: number },
+    ) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>(
+        `/wedding-day/guests/${encodeURIComponent(guestId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setWeddingDayOverview(ov);
+      showToast(language === 'ar' ? 'تم تحديث بيانات وتسكين الضيف.' : 'Guest & seating updated.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteWeddingGuest = useCallback(async (guestId: string) => {
+    const ov = await apiRequest<WeddingDayOverviewPayload>(
+      `/wedding-day/guests/${encodeURIComponent(guestId)}`,
+      { method: 'DELETE' },
+    );
+    setWeddingDayOverview(ov);
+    return ov;
+  }, []);
+
+  const createTimelineEvent = useCallback(
+    async (input: {
+      startTime: string;
+      endTime: string;
+      titleAr: string;
+      titleEn?: string;
+      assignee: string;
+      locationNote?: string | null;
+    }) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>('/wedding-day/timeline', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setWeddingDayOverview(ov);
+      showToast(language === 'ar' ? 'تمت إضافة الفقرة لجدول يوم الزفاف.' : 'Timeline event added.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const updateTimelineEvent = useCallback(
+    async (eventId: string, patch: { status?: TimelineEventStatus }) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>(
+        `/wedding-day/timeline/${encodeURIComponent(eventId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setWeddingDayOverview(ov);
+      return ov;
+    },
+    [],
+  );
+
+  const deleteTimelineEvent = useCallback(async (eventId: string) => {
+    const ov = await apiRequest<WeddingDayOverviewPayload>(
+      `/wedding-day/timeline/${encodeURIComponent(eventId)}`,
+      { method: 'DELETE' },
+    );
+    setWeddingDayOverview(ov);
+    return ov;
+  }, []);
+
+  const createGiftRegistryItem = useCallback(
+    async (input: {
+      productId?: string | null;
+      titleAr: string;
+      titleEn?: string;
+      categoryLabel: string;
+      targetPriceEgp: number;
+      priority: GiftPriority;
+      notes?: string | null;
+    }) => {
+      const ov = await apiRequest<WeddingDayOverviewPayload>('/wedding-day/registry', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setWeddingDayOverview(ov);
+      showToast(language === 'ar' ? 'تمت إضافة الهدية لقائمة الرغبات.' : 'Gift added to registry.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteGiftRegistryItem = useCallback(async (itemId: string) => {
+    const ov = await apiRequest<WeddingDayOverviewPayload>(
+      `/wedding-day/registry/${encodeURIComponent(itemId)}`,
+      { method: 'DELETE' },
+    );
+    setWeddingDayOverview(ov);
+    return ov;
+  }, []);
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -4030,6 +4426,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         verifyExpertProfileDecision,
         adminUpdateArticleStatus,
         adminUpdateUserStatus,
+        aiConversations,
+        roomMoodboards,
+        weddingDayOverview,
+        askAiAssistant,
+        refreshRoomMoodboards,
+        createRoomMoodboard,
+        deleteRoomMoodboard,
+        addMoodboardItem,
+        updateMoodboardItem,
+        deleteMoodboardItem,
+        refreshWeddingDayOverview,
+        createSeatingTable,
+        deleteSeatingTable,
+        createWeddingGuest,
+        updateWeddingGuest,
+        deleteWeddingGuest,
+        createTimelineEvent,
+        updateTimelineEvent,
+        deleteTimelineEvent,
+        createGiftRegistryItem,
+        deleteGiftRegistryItem,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

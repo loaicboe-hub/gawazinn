@@ -93,7 +93,19 @@ export const WeddingPlannerView: React.FC = () => {
               <p className="leading-relaxed">{t.wedding.importantNotice}</p>
             </div>
 
-            <div className="pt-1">
+            <div className="pt-1 flex flex-wrap gap-2">
+              <Link
+                to="/wedding-day"
+                data-testid="wedding-to-ops-link"
+                className="inline-flex items-center gap-2 text-xs font-bold bg-white text-[#D91B3E] hover:bg-rose-50 px-4 py-2 rounded-xl shadow-sm transition"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>
+                  {language === 'ar'
+                    ? 'إدارة الضيوف والطاولات وقائمة الهدايا (يوم الفرح)'
+                    : 'Wedding Day Ops: Guests, Seating & Gift Registry'}
+                </span>
+              </Link>
               <Link
                 to="/discover"
                 className="inline-flex items-center gap-2 text-xs font-bold bg-white/15 hover:bg-white/25 text-white px-4 py-2 rounded-xl border border-white/20 transition"

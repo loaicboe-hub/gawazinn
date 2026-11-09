@@ -37,6 +37,8 @@ export const SeoHead: React.FC = () => {
       pathname.startsWith('/my') ||
       pathname.startsWith('/rfq') ||
       pathname.startsWith('/admin') ||
+      pathname.startsWith('/wedding-day') ||
+      pathname.startsWith('/rsvp') ||
       pathname === '/vendor' ||
       pathname.startsWith('/vendor/');
     const cleanPath = pathname === '/' ? '' : pathname;
@@ -218,6 +220,26 @@ export const SeoHead: React.FC = () => {
         'مهندسو تشطيب، مخططو ميزانيات، ومستشارو زواج مفحوصو المؤهلات إدارياً في مصر.';
       descEn =
         'Admin-verified Egyptian finishing engineers, marriage financial coaches, and bridal trousseau specialists.';
+    } else if (pathname === '/assistant') {
+      titleAr = 'مستشار جواز إن الذكي الموثق من قاعدة البيانات | جواز إن';
+      titleEn = 'Grounded AI Marriage & Home Planning Advisor | GAWAZ INN';
+      descAr =
+        'اسأل عن أسعار المنتجات الحقيقية، تكاليف تشطيب الشقق في مصر، وحسابات التجهيز والزفاف بمصادر موثقة من المنصة.';
+      descEn =
+        'Ask grounded questions backed by live Egyptian product prices, finishing calculators, and vetted vendor records.';
+    } else if (pathname === '/room-designer') {
+      titleAr = 'مصمم الغرف 2D ولوحات الإلهام بالأسعار الحقيقية | جواز إن';
+      titleEn = '2D Smart Room Designer & Priced Moodboards | GAWAZ INN';
+      descAr =
+        'ارسم أبعاد غرف شقتك، رتب الأثاث والأجهزة والخامات على شبكة 2D، واحسب إجمالي التكلفة الحقيقية من الكتالوج.';
+      descEn =
+        'Plan apartment room dimensions, place furniture & appliances on a 2D canvas, and pin live catalog prices.';
+    } else if (pathname === '/wedding-day') {
+      titleAr = 'إدارة يوم الفرح والضيوف والطاولات والهدايا | جواز إن';
+      titleEn = 'Wedding Day Operations: Guests, Seating, Timeline & Gift Registry | GAWAZ INN';
+    } else if (pathname.startsWith('/rsvp/')) {
+      titleAr = 'تأكيد حضور الفرح وقائمة الهدايا | جواز إن';
+      titleEn = 'Wedding Invitation RSVP & Gift Registry | GAWAZ INN';
     } else if (vendorMatch) {
       const slugOrId = decodeURIComponent(vendorMatch[1]);
       const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);

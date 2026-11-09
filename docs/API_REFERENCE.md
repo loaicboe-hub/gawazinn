@@ -88,10 +88,15 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET /api/v1/experts` — Public directory listing **only** admin-verified advisors (`verificationStatus === 'verified'`, `?specialty=`, `?governorate=`).
 - `POST /api/v1/experts/apply` *(Auth-Required)* — Submits an Expert Credential Verification request locked initially to `pending` (`409 EXPERT_APPLICATION_EXISTS` on duplicates).
 
-## Upcoming Stage 10–11 Endpoints
-- `POST /api/v1/ai/assist` *(Stage 10)* — Grounded assistant querying live DB catalogs + calculators + user's own authorized journey context.
-- `GET/POST/PATCH/DELETE /api/v1/wedding-day/*` *(Stage 10)* — Invitations, public `/rsvp/:code`, guests, tables, schedule, registry.
-- `GET/POST/PATCH/DELETE /api/v1/home-care/*` *(Stage 11)* — Inventory, warranties, maintenance reminders, home documents.
+## Grounded AI Assistant, 2D Room Designer & Wedding Day Operations *(Stage 10 Implemented)*
+- `POST /api/v1/assistant/ask` — Grounded DB-RAG advisor calling deterministic `shared/calculators/` (`finishing-cost`, `paint-quantities`, `wedding-cost`), querying live `products`, `vendors`, `finishing_materials`, and `articles` for clickable citations, and injecting authenticated user budget/Early Start/journey snapshots strictly when signed in (`403` on cross-user `conversationId`).
+- `GET /api/v1/assistant/history` *(Auth-Required)* — Lists the authenticated user's persisted `ai_conversations`.
+- `GET/POST /api/v1/room-studio/moodboards`, `DELETE /api/v1/room-studio/moodboards/:id`, `POST /api/v1/room-studio/moodboards/:id/items`, `PATCH/DELETE /api/v1/room-studio/items/:itemId` *(Auth-Required, Owner-Isolated)* — Interactive 2D scaled room boards, floor occupancy percentages, palette swatches, and server-pinned catalog pricing.
+- `GET /api/v1/wedding-day/overview`, `POST/DELETE /api/v1/wedding-day/tables/*`, `POST/PATCH/DELETE /api/v1/wedding-day/guests/*`, `POST/PATCH/DELETE /api/v1/wedding-day/timeline/*`, `POST/DELETE /api/v1/wedding-day/registry/*` *(Auth-Required, Owner-Isolated)* — Wedding Day Command Center enforcing `409 TABLE_CAPACITY_EXCEEDED` on seating overfill, timeline tracking, and registry management.
+- `GET/POST /api/v1/rsvp/:code` & `POST /api/v1/rsvp/:code/reserve-gift` *(Public Invite Code)* — Unauthenticated guest RSVP submission (attendance headcount & meal choice) and atomic gift reservation (`409 GIFT_ALREADY_RESERVED` on duplicate attempt) triggering real-time host notifications.
+
+## Upcoming Stage 11 Endpoints
+- `GET/POST/PATCH/DELETE /api/v1/home-care/*` *(Stage 11)* — Inventory, Digital Home File assets, warranty tracking integration, maintenance reminders.
 
 ## Administration (`Admin OS`, RBAC-guarded — Stage 9 Completed)
 - `GET /api/v1/admin/analytics` *(MODERATION_ROLES | editor)* — Real SQLite aggregates (users by lifecycle stage, public content vs. private non-exposed counts, RFQ funnel & quote response rate, community Q&A & expert totals, top viewed CMS guides — privacy notice excludes personal savings/PII).
