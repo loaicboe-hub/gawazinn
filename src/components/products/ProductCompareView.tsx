@@ -83,7 +83,7 @@ export const ProductCompareView: React.FC = () => {
     <div className="min-h-screen bg-[#FAF7F2] pb-20">
       <section className="bg-red-gradient text-white py-9 px-4 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Link
               to="/products"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-white/90 hover:text-white"
@@ -92,7 +92,7 @@ export const ProductCompareView: React.FC = () => {
               <span>{isAr ? 'العودة لموسوعة المنتجات' : 'Back to Product Encyclopedia'}</span>
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
-              <GitCompare className="w-6 h-6" />
+              <GitCompare className="w-6 h-6 shrink-0" />
               <span>
                 {isAr
                   ? 'مصفوفة المقارنة الموضوعية للمنتجات'
@@ -106,7 +106,7 @@ export const ProductCompareView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
             {addCandidateProducts.length > 0 && comparedProducts.length < 4 && (
               <select
                 data-testid="compare-add-product-select"
@@ -118,14 +118,14 @@ export const ProductCompareView: React.FC = () => {
                   }
                 }}
                 aria-label={isAr ? 'أضف منتجاً للمقارنة' : 'Add product to compare'}
-                className="px-3 py-2 rounded-xl bg-white text-[#2A1D20] text-xs font-bold shadow cursor-pointer"
+                className="w-full sm:w-72 max-w-full min-w-0 truncate px-3 py-2 rounded-xl bg-white text-[#2A1D20] text-xs font-bold shadow cursor-pointer"
               >
                 <option value="">
                   {isAr ? '+ أضف منتجاً للمقارنة...' : '+ Add Product to Compare...'}
                 </option>
                 {addCandidateProducts.map((cand) => (
                   <option key={cand.id} value={cand.id}>
-                    {(isAr ? cand.nameAr : cand.nameEn).slice(0, 48)} — {cand.price.toLocaleString()}
+                    {(isAr ? cand.nameAr : cand.nameEn).slice(0, 34)} — {cand.price.toLocaleString()}
                   </option>
                 ))}
               </select>
