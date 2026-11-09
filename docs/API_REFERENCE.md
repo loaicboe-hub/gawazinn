@@ -56,9 +56,18 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET/POST /api/v1/price-alerts`, `DELETE /api/v1/price-alerts/:id` *(Auth-Required)* — User price-drop watchlist triggered automatically when `PATCH /api/v1/admin/products/:id` lowers catalog pricing, creating an unread `budget_alert` notification.
 - `GET/POST /api/v1/orders` — Validated order creation (recomputing totals server-side from DB prices).
 
-## Vendors, RFQ Engine & Appointments
-- `GET /api/v1/vendors`, `GET /api/v1/vendors/:slug`, `POST /api/v1/vendors/register`
-- `GET/PATCH/POST /api/v1/vendor-portal/*` — Owner-guarded vendor profile, services, promotions, CRM leads, subscription info.
+## Vendors Marketplace, Verification Governance & Local SEO *(Stage 7 Implemented)*
+- `GET /api/v1/vendor-categories` — Lists all 17 structured wedding & home sectors (`finishing|groom|bride|wedding|post_marriage`) with bilingual buyer checklists.
+- `GET /api/v1/subscription-plans` — Lists commercial plans (`free|basic|professional|premium`) detailing service, promo & portfolio limits (strictly commercial; never alters verification).
+- `GET /api/v1/vendors` — Search & filter marketplace businesses (`?domain=`, `?category=`, `?governorate=`, `?verification=registered|verified|trusted`, `?priceTier=`, `?planCode=`, `?q=`, `?sort=` / `?sortBy=verification_desc|price_asc|price_desc|rating_desc|featured_commercial`). Excludes `rejected` listings from public view.
+- `GET /api/v1/vendors/:slug` — Public business detail payload (services, promotions, authentic reviews, verification docs/audit notes) with honest zero-rating representation (`reviewsCount: 0`, `ratingAvg: 0`) and automatic view increment.
+- `POST /api/v1/vendors/register` *(Auth-Required)* — Self-registers a new vendor profile locked initially to `verificationStatus = 'registered'` and `plan_free`.
+- `POST /api/v1/vendors/:slug/reviews` *(Auth-Required)* — Customer review submission blocking owner self-reviews (`403 SELF_REVIEW_FORBIDDEN`) and duplicate user reviews (`409 DUPLICATE_REVIEW`), dynamically recomputing `rating_avg` & `reviews_count`.
+- `GET /api/v1/locations/:govSlug/:catSlug` — Dynamic Governorate × Category SEO guide (120m² regional cost range benchmark, category buyer checklist, vetted matching vendors, local district children).
+- `GET /api/v1/vendor-portal/overview`, `PATCH /api/v1/vendor-portal/profile`, `POST/DELETE /api/v1/vendor-portal/services`, `POST/DELETE /api/v1/vendor-portal/promotions`, `POST /api/v1/vendor-portal/subscription` *(Owner-Guarded RBAC)* — Enforces strict owner/admin checks when `?vendorId=` targets a business (`403 FORBIDDEN`), enforces commercial plan service/promo/portfolio quotas (`403 PLAN_QUOTA_EXCEEDED`), creates billing ledger records (`vendor_billing_records`), and preserves existing `verificationStatus`.
+- `GET /api/v1/admin/vendors`, `PATCH /api/v1/admin/vendors/:id/verify`, `GET /api/v1/admin/subscription-plans`, `PATCH /api/v1/admin/subscription-plans/:id`, `GET /api/v1/admin/audit-logs` *(Full Admin RBAC)* — Audit-only verification governance decoupled from commercial plans + plan quota/price configurator + immutable `audit_logs` feed.
+
+## RFQ Engine & Appointments *(Planned Stage 8)*
 - `POST /api/v1/rfq` (Customer), `GET /api/v1/rfq` (Owner or authorized matched vendor only), `POST /api/v1/rfq/:id/quotes` (Vendor), `POST /api/v1/rfq/:id/quotes/:quoteId/decide` (Customer accepts/rejects, linking to budget).
 - `GET/POST/PATCH /api/v1/appointments` — Slot booking & explicit vendor confirmation/reschedule/cancel.
 

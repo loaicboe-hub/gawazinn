@@ -74,6 +74,21 @@ const LocalDiscoveryView = lazy(() =>
     default: m.LocalDiscoveryView,
   })),
 );
+const VendorDirectoryView = lazy(() =>
+  import('./components/vendors/VendorDirectoryView').then((m) => ({
+    default: m.VendorDirectoryView,
+  })),
+);
+const VendorProfileView = lazy(() =>
+  import('./components/vendors/VendorProfileView').then((m) => ({
+    default: m.VendorProfileView,
+  })),
+);
+const VendorPortalView = lazy(() =>
+  import('./components/vendors/VendorPortalView').then((m) => ({
+    default: m.VendorPortalView,
+  })),
+);
 const CustomerPortalView = lazy(() =>
   import('./components/customer/CustomerPortalView').then((m) => ({
     default: m.CustomerPortalView,
@@ -204,6 +219,10 @@ const MainContent: React.FC = () => {
             <Route path="/guides/:slug" element={<ArticleDetailView />} />
             <Route path="/discover" element={<LocalDiscoveryView />} />
             <Route path="/locations/:govSlug" element={<LocalDiscoveryView />} />
+            <Route path="/locations/:govSlug/:catSlug" element={<LocalDiscoveryView />} />
+            <Route path="/vendors" element={<VendorDirectoryView />} />
+            <Route path="/vendors/:slug" element={<VendorProfileView />} />
+            <Route path="/vendor" element={<VendorPortalView />} />
             <Route path="/calculators" element={<CalculatorsHubView />} />
             <Route path="/calculators/:slug" element={<CalculatorDetailView />} />
             <Route path="/my/budget" element={<BudgetManagerView />} />

@@ -20,11 +20,25 @@ import {
   BookOpen,
   History,
   AlertCircle,
+  Store,
+  RefreshCw,
 } from 'lucide-react';
-import type { Product, WeddingServiceItem, Article } from '../../types';
+import type {
+  Product,
+  WeddingServiceItem,
+  Article,
+  VendorListing,
+  VendorVerificationStatus,
+  SubscriptionPlan,
+} from '../../types';
 import { getRoleLabel } from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
 import { ModalFrame } from '../common/ModalFrame';
+import {
+  CommercialPlanBadge,
+  HonestRatingBadge,
+  VerificationBadge,
+} from '../vendors/VendorBadges';
 
 export const AdminDashboardView: React.FC = () => {
   const {
@@ -32,6 +46,7 @@ export const AdminDashboardView: React.FC = () => {
     t,
     currentUser,
     isStaff,
+    isAdmin,
     setAuthModalOpen,
     finishingInquiries,
     updateFinishingStatus,
@@ -60,6 +75,12 @@ export const AdminDashboardView: React.FC = () => {
     auditLogs,
     settings,
     updateSettings,
+    vendors,
+    adminVendors,
+    subscriptionPlans,
+    refreshAdminVendors,
+    adminVerifyVendor,
+    adminUpdateSubscriptionPlan,
   } = useApp();
 
   const [activeModule, setActiveModule] = useState<
@@ -68,6 +89,7 @@ export const AdminDashboardView: React.FC = () => {
     | 'groom'
     | 'bride'
     | 'wedding'
+    | 'vendors'
     | 'cms'
     | 'customers'
     | 'financing'
@@ -75,6 +97,31 @@ export const AdminDashboardView: React.FC = () => {
     | 'audit'
     | 'settings'
   >('overview');
+
+  const [verifyDrafts, setVerifyDrafts] = useState<
+    Record<
+      string,
+      {
+        verificationStatus: VendorVerificationStatus;
+        verificationDocs: string;
+        verificationNotes: string;
+      }
+    >
+  >({});
+  const [planDrafts, setPlanDrafts] = useState<
+    Record<
+      string,
+      {
+        monthlyPriceEgp: number;
+        annualPriceEgp: number;
+        maxServices: number;
+        maxPromotions: number;
+        maxPortfolioItems: number;
+      }
+    >
+  >({});
+  const [savingVerifyId, setSavingVerifyId] = useState<string | null>(null);
+  const [savingPlanId, setSavingPlanId] = useState<string | null>(null);
 
   // Product Add/Edit Modal State
   const [showProductModal, setShowProductModal] = useState(false);
@@ -119,6 +166,12 @@ export const AdminDashboardView: React.FC = () => {
   useEffect(() => {
     setSettingsForm(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (isAdmin && activeModule === 'vendors' && adminVendors.length === 0) {
+      void refreshAdminVendors();
+    }
+  }, [isAdmin, activeModule, adminVendors.length, refreshAdminVendors]);
 
   // Strict RBAC Enforcement
   if (!currentUser || !isStaff) {
@@ -384,6 +437,17 @@ export const AdminDashboardView: React.FC = () => {
       icon: <Heart className="w-4 h-4" />,
       badge: weddingBookings.length,
     },
+    ...(isAdmin
+      ? [
+          {
+            key: 'vendors' as const,
+            labelAr: 'الشركاء والتوثيق والباقات',
+            labelEn: 'Vendors & Verification',
+            icon: <Store className="w-4 h-4" />,
+            badge: adminVendors.length || vendors.length,
+          },
+        ]
+      : []),
     {
       key: 'cms',
       labelAr: 'الموسوعة والمحتوى (CMS)',
@@ -886,6 +950,369 @@ export const AdminDashboardView: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5B. VENDORS VERIFICATION GOVERNANCE & SUBSCRIPTION PLANS */}
+        {activeModule === 'vendors' && isAdmin && (
+          <div className="space-y-8" data-testid="admin-vendors-panel">
+            <div className="bg-gradient-to-br from-[#1C1819] to-[#261618] text-white p-6 rounded-3xl border border-rose-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-rose-300">
+                  {language === 'ar'
+                    ? 'حوكمة الفصل التام بين التوثيق والاشتراك'
+                    : 'STRICT GOVERNANCE: AUDIT VS. COMMERCIAL'}
+                </span>
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  {language === 'ar'
+                    ? 'مراجعة وتوثيق الشركاء (مجاني بالإدارة فقط — لا يُشترى بالمال)'
+                    : 'Admin-Only Vendor Verification & Commercial Tier Configurator'}
+                </h2>
+                <p className="text-xs text-gray-300 max-w-2xl">
+                  {language === 'ar'
+                    ? 'ترقية الباقة التجارية في بوابة الشريك لا تعدّل حالة التوثيق نهائياً. هذه الشاشة هي المسار الوحيد لترقية الشريك إلى موثق أو ثقة موثقة مع تسجيل كامل في سجل التدقيق.'
+                    : 'Upgrading paid plans in the Vendor Portal never grants verification. Only this audited workflow alters verification status and records audit_logs.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshAdminVendors()}
+                data-testid="admin-refresh-vendors-btn"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>{language === 'ar' ? 'تحديث القائمة' : 'Refresh'}</span>
+              </button>
+            </div>
+
+            {/* Vendor Verification Cards */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-5">
+              <h3 className="text-base font-bold text-gray-900">
+                {language === 'ar'
+                  ? `ملفات الشركاء والموردين (${adminVendors.length})`
+                  : `Registered Business Listings (${adminVendors.length})`}
+              </h3>
+
+              <div className="space-y-4">
+                {adminVendors.map((v: VendorListing) => {
+                  const draft = verifyDrafts[v.id] || {
+                    verificationStatus: v.verificationStatus,
+                    verificationDocs: (v.verificationDocs || []).join(', '),
+                    verificationNotes: v.verificationNotes || '',
+                  };
+                  return (
+                    <div
+                      key={v.id}
+                      data-testid={`admin-vendor-row-${v.slug}`}
+                      className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-4"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong className="text-sm font-black text-gray-900">
+                              {language === 'ar' ? v.businessNameAr : v.businessNameEn}
+                            </strong>
+                            <VerificationBadge
+                              status={v.verificationStatus}
+                              language={language}
+                              compact
+                            />
+                            <CommercialPlanBadge
+                              planCode={v.subscriptionPlanCode || 'free'}
+                              isFeaturedCommercial={v.isFeaturedCommercial}
+                              language={language}
+                            />
+                            <HonestRatingBadge
+                              ratingAvg={v.ratingAvg}
+                              reviewsCount={v.reviewsCount}
+                              language={language}
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-600">
+                            {v.primaryCategorySlug} • {v.governorateSlug} •{' '}
+                            <span className="font-mono">{v.phone}</span> •{' '}
+                            <span className="font-bold text-[#B31331]">
+                              Plan: {v.subscriptionPlanCode || 'free'} ({v.commercialStatus})
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-700">
+                            {language === 'ar' ? 'حالة التوثيق الإدارية' : 'Verification Status'}
+                          </label>
+                          <select
+                            data-testid={`admin-verify-status-${v.slug}`}
+                            value={draft.verificationStatus}
+                            onChange={(e) =>
+                              setVerifyDrafts((prev) => ({
+                                ...prev,
+                                [v.id]: {
+                                  ...draft,
+                                  verificationStatus: e.target.value as VendorVerificationStatus,
+                                },
+                              }))
+                            }
+                            className="w-full max-w-full min-w-0 p-2 rounded-xl border border-gray-300 bg-white text-xs font-bold focus:border-[#D91B3E] outline-none"
+                          >
+                            <option value="registered">registered</option>
+                            <option value="verified">verified</option>
+                            <option value="trusted">trusted</option>
+                            <option value="rejected">rejected</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-700">
+                            {language === 'ar' ? 'مستندات التحقق (مفصولة بفاصلة)' : 'Audit Documents'}
+                          </label>
+                          <input
+                            type="text"
+                            value={draft.verificationDocs}
+                            onChange={(e) =>
+                              setVerifyDrafts((prev) => ({
+                                ...prev,
+                                [v.id]: { ...draft, verificationDocs: e.target.value },
+                              }))
+                            }
+                            placeholder="Commercial Reg, Tax Card..."
+                            className="w-full p-2 rounded-xl border border-gray-300 bg-white text-xs outline-none focus:border-[#D91B3E]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-gray-700">
+                            {language === 'ar' ? 'ملاحظات المراجع' : 'Audit Notes'}
+                          </label>
+                          <input
+                            type="text"
+                            data-testid={`admin-verify-notes-${v.slug}`}
+                            value={draft.verificationNotes}
+                            onChange={(e) =>
+                              setVerifyDrafts((prev) => ({
+                                ...prev,
+                                [v.id]: { ...draft, verificationNotes: e.target.value },
+                              }))
+                            }
+                            placeholder={
+                              language === 'ar'
+                                ? 'مثال: تم فحص السجل التجاري والبطاقة الضريبية'
+                                : 'Checked commercial registry & national ID'
+                            }
+                            className="w-full p-2 rounded-xl border border-gray-300 bg-white text-xs outline-none focus:border-[#D91B3E]"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={savingVerifyId === v.id}
+                          data-testid={`admin-verify-save-${v.slug}`}
+                          onClick={() => {
+                            setSavingVerifyId(v.id);
+                            void adminVerifyVendor(v.id, {
+                              verificationStatus: draft.verificationStatus,
+                              verificationDocs: draft.verificationDocs
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                              verificationNotes: draft.verificationNotes.trim() || null,
+                            })
+                              .then((updated) => {
+                                setVerifyDrafts((prev) => ({
+                                  ...prev,
+                                  [v.id]: {
+                                    verificationStatus: updated.verificationStatus,
+                                    verificationDocs: (updated.verificationDocs || []).join(', '),
+                                    verificationNotes: updated.verificationNotes || '',
+                                  },
+                                }));
+                              })
+                              .finally(() => setSavingVerifyId(null));
+                          }}
+                          className="py-2.5 px-4 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-sm hover:opacity-95 disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>
+                            {savingVerifyId === v.id
+                              ? language === 'ar'
+                                ? 'جاري الحفظ...'
+                                : 'Saving...'
+                              : language === 'ar'
+                                ? 'اعتماد التوثيق'
+                                : 'Save Verification'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Commercial Subscription Plans Configurator */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-5">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {language === 'ar'
+                    ? 'إعدادات وأسعار الباقات التجارية (الاشتراك الشهري والسنوي والحصص)'
+                    : 'Commercial Subscription Plans & Quotas'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {language === 'ar'
+                    ? 'تتحكم الباقات في حصص الخدمات والعروض الترويجية فقط ولا تمنح أي شارة توثيق.'
+                    : 'Controls listing quotas and sponsored visibility only — never grants audit badges.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {subscriptionPlans.map((plan: SubscriptionPlan) => {
+                  const pDraft = planDrafts[plan.id] || {
+                    monthlyPriceEgp: plan.monthlyPriceEgp,
+                    annualPriceEgp: plan.annualPriceEgp,
+                    maxServices: plan.maxServices,
+                    maxPromotions: plan.maxPromotions,
+                    maxPortfolioItems: plan.maxPortfolioItems,
+                  };
+                  return (
+                    <div
+                      key={plan.id}
+                      data-testid={`admin-plan-card-${plan.code}`}
+                      className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-sm font-black text-gray-900">
+                          {language === 'ar' ? plan.nameAr : plan.nameEn}
+                        </strong>
+                        <span className="px-2 py-0.5 rounded-lg bg-white border text-[11px] font-mono font-bold text-[#D91B3E]">
+                          {plan.code}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                        <label className="space-y-1">
+                          <span className="text-[10px] font-bold text-gray-600 block">
+                            {language === 'ar' ? 'شهري (ج.م)' : 'Monthly EGP'}
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={pDraft.monthlyPriceEgp}
+                            onChange={(e) =>
+                              setPlanDrafts((prev) => ({
+                                ...prev,
+                                [plan.id]: {
+                                  ...pDraft,
+                                  monthlyPriceEgp: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full p-2 rounded-lg border bg-white text-xs font-bold"
+                          />
+                        </label>
+                        <label className="space-y-1">
+                          <span className="text-[10px] font-bold text-gray-600 block">
+                            {language === 'ar' ? 'سنوي (ج.م)' : 'Annual EGP'}
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={pDraft.annualPriceEgp}
+                            onChange={(e) =>
+                              setPlanDrafts((prev) => ({
+                                ...prev,
+                                [plan.id]: {
+                                  ...pDraft,
+                                  annualPriceEgp: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full p-2 rounded-lg border bg-white text-xs font-bold"
+                          />
+                        </label>
+                        <label className="space-y-1">
+                          <span className="text-[10px] font-bold text-gray-600 block">
+                            {language === 'ar' ? 'حد الخدمات' : 'Max Services'}
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={pDraft.maxServices}
+                            onChange={(e) =>
+                              setPlanDrafts((prev) => ({
+                                ...prev,
+                                [plan.id]: {
+                                  ...pDraft,
+                                  maxServices: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full p-2 rounded-lg border bg-white text-xs font-bold"
+                          />
+                        </label>
+                        <label className="space-y-1">
+                          <span className="text-[10px] font-bold text-gray-600 block">
+                            {language === 'ar' ? 'حد العروض' : 'Max Promos'}
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={pDraft.maxPromotions}
+                            onChange={(e) =>
+                              setPlanDrafts((prev) => ({
+                                ...prev,
+                                [plan.id]: {
+                                  ...pDraft,
+                                  maxPromotions: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full p-2 rounded-lg border bg-white text-xs font-bold"
+                          />
+                        </label>
+                        <label className="space-y-1">
+                          <span className="text-[10px] font-bold text-gray-600 block">
+                            {language === 'ar' ? 'حد المعرض' : 'Max Portfolio'}
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={pDraft.maxPortfolioItems}
+                            onChange={(e) =>
+                              setPlanDrafts((prev) => ({
+                                ...prev,
+                                [plan.id]: {
+                                  ...pDraft,
+                                  maxPortfolioItems: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full p-2 rounded-lg border bg-white text-xs font-bold"
+                          />
+                        </label>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={savingPlanId === plan.id}
+                        data-testid={`admin-plan-save-${plan.code}`}
+                        onClick={() => {
+                          setSavingPlanId(plan.id);
+                          void adminUpdateSubscriptionPlan(plan.id, pDraft).finally(() =>
+                            setSavingPlanId(null),
+                          );
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#1C1819] hover:bg-[#D91B3E] text-white text-xs font-bold transition disabled:opacity-60 cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{t.admin.saveChanges}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

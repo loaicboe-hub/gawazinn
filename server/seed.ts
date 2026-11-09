@@ -47,6 +47,14 @@ import {
   ensureStarterShoppingListsForKarim,
   mapProductEncyclopediaRow,
 } from './productShoppingService';
+import {
+  EXTRA_EGYPTIAN_LOCATIONS,
+  STAGE7_VENDORS_SEED,
+  STAGE7_VENDOR_PROMOTIONS_SEED,
+  STAGE7_VENDOR_SERVICES_SEED,
+  SUBSCRIPTION_PLANS_SEED,
+  VENDOR_CATEGORIES_SEED,
+} from '../shared/vendorMarketplaceData';
 import { hashPassword, hashSensitiveField } from './security';
 
 export function seedDatabase(
@@ -59,6 +67,7 @@ export function seedDatabase(
   stage4Seeded: boolean;
   stage5Seeded: boolean;
   stage6Seeded: boolean;
+  stage7Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
@@ -71,6 +80,8 @@ export function seedDatabase(
   const stage6SlugFixRow = db
     .prepare("SELECT COUNT(*) as cnt FROM products WHERE id = 'groom-p1' AND (slug IS NULL OR slug = id)")
     .get() as { cnt: number };
+  const stage7VendorCountRow = db.prepare('SELECT COUNT(*) as cnt FROM vendors').get() as { cnt: number };
+  const stage7LocCountRow = db.prepare('SELECT COUNT(*) as cnt FROM locations').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
@@ -78,8 +89,20 @@ export function seedDatabase(
   const needsStage5 = stage5JourneyCountRow.cnt === 0;
   const needsStage6 = stage6HistoryCountRow.cnt === 0;
   const needsBaseProductSlugFix = stage6SlugFixRow.cnt > 0;
+  const needsStage7 = stage7VendorCountRow.cnt === 0;
+  const needsExtraLocs = stage7LocCountRow.cnt < 15;
 
-  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4 && !needsStage5 && !needsStage6 && !needsBaseProductSlugFix) {
+  if (
+    !needsStage1 &&
+    !needsStage2 &&
+    !needsStage3 &&
+    !needsStage4 &&
+    !needsStage5 &&
+    !needsStage6 &&
+    !needsBaseProductSlugFix &&
+    !needsStage7 &&
+    !needsExtraLocs
+  ) {
     return {
       seeded: false,
       stage2Seeded: false,
@@ -87,6 +110,7 @@ export function seedDatabase(
       stage4Seeded: false,
       stage5Seeded: false,
       stage6Seeded: false,
+      stage7Seeded: false,
     };
   }
 
@@ -1314,14 +1338,195 @@ export function seedDatabase(
       updBaseSlug.run(meta.slug, now, productId);
     }
 
+    // Stage 7: Expand Egyptian locations tree + 17 Vendor Categories + 4 Plans + 18 Sample Vendors
+    if (needsExtraLocs) {
+      const insExtraLoc = db.prepare(
+        `INSERT OR IGNORE INTO locations (id, slug, level, parent_id, name_ar, name_en, summary_ar, summary_en, cost_factor, is_featured, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const loc of EXTRA_EGYPTIAN_LOCATIONS) {
+        insExtraLoc.run(
+          loc.id,
+          loc.slug,
+          loc.level,
+          loc.parentId ?? null,
+          loc.nameAr,
+          loc.nameEn,
+          loc.summaryAr,
+          loc.summaryEn,
+          loc.costFactor,
+          loc.isFeatured ? 1 : 0,
+          loc.sortOrder,
+        );
+      }
+    }
+
+    if (needsStage7) {
+      // 1. 17 Vendor Categories
+      const insVcat = db.prepare(
+        `INSERT OR IGNORE INTO vendor_categories
+          (id, slug, domain, name_ar, name_en, summary_ar, summary_en, icon_name, buyer_checklist_ar_json, buyer_checklist_en_json, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const cat of VENDOR_CATEGORIES_SEED) {
+        insVcat.run(
+          cat.id,
+          cat.slug,
+          cat.domain,
+          cat.nameAr,
+          cat.nameEn,
+          cat.summaryAr,
+          cat.summaryEn,
+          cat.iconName,
+          JSON.stringify(cat.buyerChecklistAr),
+          JSON.stringify(cat.buyerChecklistEn),
+          cat.sortOrder,
+        );
+      }
+
+      // 2. 4 Commercial Subscription Plans
+      const insPlan = db.prepare(
+        `INSERT OR IGNORE INTO subscription_plans
+          (id, code, name_ar, name_en, monthly_price_egp, annual_price_egp, max_services, max_promotions, max_portfolio_items, lead_priority_boost, analytics_tier, features_ar_json, features_en_json, is_active, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const sp of SUBSCRIPTION_PLANS_SEED) {
+        insPlan.run(
+          sp.id,
+          sp.code,
+          sp.nameAr,
+          sp.nameEn,
+          sp.monthlyPriceEgp,
+          sp.annualPriceEgp,
+          sp.maxServices,
+          sp.maxPromotions,
+          sp.maxPortfolioItems,
+          sp.leadPriorityBoost,
+          sp.analyticsTier,
+          JSON.stringify(sp.featuresAr),
+          JSON.stringify(sp.featuresEn),
+          sp.isActive ? 1 : 0,
+          sp.sortOrder,
+        );
+      }
+
+      // 3. 18 Egyptian Vendors across all 17 Categories (Zero fake ratings: 0 / 0)
+      const insVendor = db.prepare(
+        `INSERT OR IGNORE INTO vendors
+          (id, owner_user_id, slug, business_name_ar, business_name_en, primary_category_slug, extra_category_slugs_json,
+           governorate_slug, city_slug, service_areas_json, address_ar, address_en, phone, whatsapp, email, website_url,
+           bio_ar, bio_en, cover_image, logo_image, portfolio_images_json, price_tier, starting_price_egp, years_experience,
+           verification_status, verification_docs_json, verification_notes, verified_at, verified_by_user_id,
+           subscription_plan_id, commercial_status, subscription_started_at, subscription_renews_at,
+           rating_avg, reviews_count, profile_views, is_featured_commercial, is_demo_data, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, 1, ?, ?)`,
+      );
+      for (const v of STAGE7_VENDORS_SEED) {
+        insVendor.run(
+          v.id,
+          v.ownerUserId,
+          v.slug,
+          v.businessNameAr,
+          v.businessNameEn,
+          v.primaryCategorySlug,
+          JSON.stringify(v.extraCategorySlugs),
+          v.governorateSlug,
+          v.citySlug ?? null,
+          JSON.stringify(v.serviceAreas),
+          v.addressAr,
+          v.addressEn,
+          v.phone,
+          v.whatsapp ?? null,
+          v.email ?? null,
+          v.websiteUrl ?? null,
+          v.bioAr,
+          v.bioEn,
+          v.coverImage,
+          v.logoImage ?? null,
+          JSON.stringify(v.portfolioImages),
+          v.priceTier,
+          v.startingPriceEgp,
+          v.yearsExperience,
+          v.verificationStatus,
+          JSON.stringify(v.verificationDocs),
+          v.verificationNotes ?? null,
+          v.verifiedAt ?? null,
+          v.verifiedByUserId ?? null,
+          v.subscriptionPlanId,
+          v.commercialStatus,
+          v.subscriptionStartedAt ?? now,
+          v.subscriptionRenewsAt ?? null,
+          v.profileViews,
+          v.isFeaturedCommercial ? 1 : 0,
+          v.createdAt || now,
+          v.updatedAt || now,
+        );
+      }
+
+      // 4. Vendor Services & Seasonal Promotions
+      const insVsrv = db.prepare(
+        `INSERT OR IGNORE INTO vendor_services
+          (id, vendor_id, title_ar, title_en, description_ar, description_en, unit_label_ar, unit_label_en, starting_price_egp, turnaround_days, warranty_months, is_active, sort_order, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const s of STAGE7_VENDOR_SERVICES_SEED) {
+        insVsrv.run(
+          s.id,
+          s.vendorId,
+          s.titleAr,
+          s.titleEn,
+          s.descriptionAr,
+          s.descriptionEn,
+          s.unitLabelAr,
+          s.unitLabelEn,
+          s.startingPriceEgp,
+          s.turnaroundDays ?? null,
+          s.warrantyMonths,
+          s.isActive ? 1 : 0,
+          s.sortOrder,
+          s.createdAt || now,
+        );
+      }
+
+      const insVprm = db.prepare(
+        `INSERT OR IGNORE INTO vendor_promotions
+          (id, vendor_id, title_ar, title_en, description_ar, description_en, discount_percent, promo_code, valid_until, is_active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const p of STAGE7_VENDOR_PROMOTIONS_SEED) {
+        insVprm.run(
+          p.id,
+          p.vendorId,
+          p.titleAr,
+          p.titleEn,
+          p.descriptionAr,
+          p.descriptionEn,
+          p.discountPercent,
+          p.promoCode ?? null,
+          p.validUntil,
+          p.isActive ? 1 : 0,
+          p.createdAt || now,
+        );
+      }
+    }
+
     db.exec('COMMIT;');
     return {
-      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4 || needsStage5 || needsStage6,
+      seeded:
+        needsStage1 ||
+        needsStage2 ||
+        needsStage3 ||
+        needsStage4 ||
+        needsStage5 ||
+        needsStage6 ||
+        needsStage7 ||
+        needsExtraLocs,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
       stage5Seeded: needsStage5,
       stage6Seeded: needsStage6,
+      stage7Seeded: needsStage7,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

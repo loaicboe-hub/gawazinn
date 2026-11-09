@@ -711,6 +711,30 @@ export const FinishingEncyclopediaView: React.FC = () => {
                       <span>{language === 'ar' ? 'طلب معاينة أو استشارة' : 'Request Consultation'}</span>
                       <ArrowIcon className="w-3.5 h-3.5" />
                     </button>
+
+                    <Link
+                      to={
+                        cntr.slug === 'el-rowad-engineering-finishing'
+                          ? '/vendors/el-rowad-contracting'
+                          : `/vendors?domain=finishing&category=${
+                              cntr.specialtyGroup === 'mep'
+                                ? 'mep_contractors'
+                                : cntr.specialtyGroup === 'carpentry_kitchens'
+                                  ? 'kitchens_dressing'
+                                  : cntr.specialtyGroup === 'architect_3d'
+                                    ? 'interior_design_3d'
+                                    : 'turnkey_finishing'
+                            }`
+                      }
+                      data-testid={`contractor-marketplace-link-${cntr.slug}`}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#B31331] border border-[#D91B3E]/20 text-[11px] font-bold transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>
+                        {language === 'ar'
+                          ? 'عرض الملف في دليل الشركاء'
+                          : 'View in Partner Marketplace'}
+                      </span>
+                    </Link>
                   </div>
                 </article>
               ))}

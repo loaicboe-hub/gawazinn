@@ -506,3 +506,4 @@ export function ensureStarterShoppingListsForKarim(db: DatabaseSync): void {
      VALUES (?, 'usr-1', ?, ?, ?, 'triggered', ?, ?)`,
   ).run('pal-seed-2', 'groom-p9', 22000, 21400, now, now);
 }
+

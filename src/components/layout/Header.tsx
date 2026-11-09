@@ -25,6 +25,7 @@ import {
   Layers,
   Gem,
   ListTodo,
+  Store,
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
@@ -120,6 +121,13 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            <Link
+              to="/vendors"
+              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
+            >
+              <Store className="w-3 h-3" />
+              <span>{language === 'ar' ? 'دليل الشركاء' : 'Vendors'}</span>
+            </Link>
             <Link
               to="/products"
               className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
@@ -375,6 +383,25 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                       <span>{language === 'ar' ? '20 حاسبة ذكية' : '20 Smart Calculators'}</span>
                     </Link>
 
+                    <Link
+                      to="/vendors"
+                      onClick={closeMenus}
+                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
+                    >
+                      <Store className="w-3.5 h-3.5 text-[#D91B3E]" />
+                      <span>{language === 'ar' ? 'دليل الشركاء (17 تصنيفاً)' : 'Vendors Directory'}</span>
+                    </Link>
+
+                    <Link
+                      to="/vendor"
+                      onClick={closeMenus}
+                      data-testid="usermenu-vendor-portal"
+                      className="w-full px-4 py-2 text-start text-xs text-[#D91B3E] bg-[#FFF8F9] hover:bg-[#FDE8ED] font-bold flex items-center gap-2"
+                    >
+                      <Briefcase className="w-3.5 h-3.5 text-[#D91B3E]" />
+                      <span>{language === 'ar' ? 'بوابة الشريك التجاري' : 'Vendor Partner Portal'}</span>
+                    </Link>
+
                     {isStaff && (
                       <Link
                         to="/admin"
@@ -494,6 +521,22 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <ShoppingBag className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'موسوعة المنتجات ومقارنة الأسعار' : 'Products & Price Compare'}</span>
+          </Link>
+          <Link
+            to="/vendors"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-[#D91B3E] bg-[#FFF8F9] hover:bg-[#FDE8ED]"
+          >
+            <Store className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'دليل الشركاء والموردين (17 تصنيفاً)' : 'Vendors Directory'}</span>
+          </Link>
+          <Link
+            to="/vendor"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <Briefcase className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'بوابة الشريك التجاري' : 'Vendor Partner Portal'}</span>
           </Link>
           <Link
             to="/my/shopping-lists"

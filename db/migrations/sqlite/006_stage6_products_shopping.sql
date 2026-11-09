@@ -107,3 +107,4 @@ CREATE TABLE IF NOT EXISTS price_alerts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id, status);
+

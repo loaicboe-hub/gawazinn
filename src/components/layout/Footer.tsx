@@ -21,6 +21,7 @@ import {
   Gem,
   ListTodo,
   ShoppingBag,
+  Store,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -253,6 +254,28 @@ export const Footer: React.FC = () => {
             >
               <ListTodo className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'سلال المشتريات' : 'Shopping Baskets'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/vendors"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Store className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'دليل الشركاء (17 تصنيفاً)' : 'Vendors Directory'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/vendor"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'بوابة الشركاء' : 'Vendor Portal'}</span>
             </Link>
           </div>
 

@@ -28,11 +28,16 @@ function upsertLink(rel: string, href: string, hreflang?: string): void {
 }
 
 export const SeoHead: React.FC = () => {
-  const { language, articles, locations, products } = useApp();
+  const { language, articles, locations, products, vendors, vendorCategories } = useApp();
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const isPrivate = pathname.startsWith('/portal') || pathname.startsWith('/my') || pathname.startsWith('/admin');
+    const isPrivate =
+      pathname.startsWith('/portal') ||
+      pathname.startsWith('/my') ||
+      pathname.startsWith('/admin') ||
+      pathname === '/vendor' ||
+      pathname.startsWith('/vendor/');
     const cleanPath = pathname === '/' ? '' : pathname;
     const canonicalUrl = `${BASE_ORIGIN}${cleanPath}`;
 
@@ -44,9 +49,11 @@ export const SeoHead: React.FC = () => {
       "Egypt's unified marriage & home planning ecosystem: apartment finishing, groom & bride trousseau, wedding planning, local guides & budgeting.";
 
     const articleMatch = pathname.match(/^\/guides\/([^/]+)$/);
+    const locCatMatch = pathname.match(/^\/locations\/([^/]+)\/([^/]+)$/);
     const locMatch = pathname.match(/^\/locations\/([^/]+)$/);
     const calcMatch = pathname.match(/^\/calculators\/([^/]+)$/);
     const productMatch = pathname.match(/^\/products\/([^/]+)$/);
+    const vendorMatch = pathname.match(/^\/vendors\/([^/]+)$/);
 
     if (pathname === '/finishing') {
       titleAr = 'تشطيب الشقة والباقات الهندسية | جواز إن';
@@ -182,6 +189,42 @@ export const SeoHead: React.FC = () => {
         descAr = art.excerptAr.slice(0, 158);
         descEn = art.excerptEn.slice(0, 158);
       }
+    } else if (pathname === '/vendors') {
+      titleAr = 'دليل الشركاء والموردين الموثقين (17 تصنيفاً) | جواز إن';
+      titleEn = 'Vetted Vendors & Partners Directory (17 Categories) | GAWAZ INN';
+      descAr =
+        'تصفح مقاولي التشطيب، معارض الأثاث والأجهزة، الأتيليهات، قاعات الزفاف، وخدمات ما بعد الزواج في مصر مع شارات توثيق مستقلة وتقييمات حقيقية فقط.';
+      descEn =
+        'Browse finishing contractors, furniture & appliance showrooms, bridal ateliers, wedding venues, and home-care partners across Egypt with audit-only badges.';
+    } else if (vendorMatch) {
+      const slugOrId = decodeURIComponent(vendorMatch[1]);
+      const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);
+      if (vnd) {
+        titleAr = `${vnd.businessNameAr} | دليل شركاء جواز إن`;
+        titleEn = `${vnd.businessNameEn} | GAWAZ INN Vendors`;
+        descAr = vnd.bioAr.slice(0, 158);
+        descEn = vnd.bioEn.slice(0, 158);
+      }
+    } else if (pathname === '/vendor' || pathname.startsWith('/vendor/')) {
+      titleAr = 'بوابة الشركاء وإدارة الخدمات والباقات | جواز إن';
+      titleEn = 'Vendor Partner Portal — Services, Promos & Subscriptions | GAWAZ INN';
+    } else if (locCatMatch) {
+      const govSlug = decodeURIComponent(locCatMatch[1]);
+      const catSlug = decodeURIComponent(locCatMatch[2]);
+      const loc = locations.find((l) => l.slug === govSlug);
+      const cat = vendorCategories.find((c) => c.slug === catSlug);
+      if (loc && cat) {
+        titleAr = `${cat.nameAr} في ${loc.nameAr} — دليل جواز إن المحلي`;
+        titleEn = `${cat.nameEn} in ${loc.nameEn} — GAWAZ INN Local Guide`;
+        descAr = `${cat.summaryAr} — استعرض الشركاء الموثقين وقائمة التحقق قبل التعاقد ومؤشر الأسعار في ${loc.nameAr}.`.slice(
+          0,
+          158,
+        );
+        descEn = `${cat.summaryEn} — Compare vetted partners, pre-contract checklists, and EGP benchmarks in ${loc.nameEn}.`.slice(
+          0,
+          158,
+        );
+      }
     } else if (locMatch) {
       const slug = decodeURIComponent(locMatch[1]);
       const loc = locations.find((l) => l.slug === slug);
@@ -264,8 +307,43 @@ export const SeoHead: React.FC = () => {
           })()
         : null;
 
-    scriptEl.textContent = JSON.stringify([ldOrg, ldBreadcrumbs, ...(ldProduct ? [ldProduct] : [])]);
-  }, [pathname, language, articles, locations, products]);
+    const ldVendor = vendorMatch
+      ? (() => {
+          const slugOrId = decodeURIComponent(vendorMatch[1]);
+          const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);
+          if (!vnd) return null;
+          return {
+            '@context': 'https://schema.org',
+            '@type': 'LocalBusiness',
+            name: language === 'ar' ? vnd.businessNameAr : vnd.businessNameEn,
+            description: language === 'ar' ? vnd.bioAr : vnd.bioEn,
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: language === 'ar' ? vnd.addressAr : vnd.addressEn,
+              addressCountry: 'EG',
+            },
+            telephone: vnd.phone,
+            priceRange: `From ${vnd.startingPriceEgp.toLocaleString()} EGP`,
+            ...(vnd.reviewsCount > 0
+              ? {
+                  aggregateRating: {
+                    '@type': 'AggregateRating',
+                    ratingValue: Number(vnd.ratingAvg.toFixed(1)),
+                    reviewCount: vnd.reviewsCount,
+                  },
+                }
+              : {}),
+          };
+        })()
+      : null;
+
+    scriptEl.textContent = JSON.stringify([
+      ldOrg,
+      ldBreadcrumbs,
+      ...(ldProduct ? [ldProduct] : []),
+      ...(ldVendor ? [ldVendor] : []),
+    ]);
+  }, [pathname, language, articles, locations, products, vendors, vendorCategories]);
 
   return null;
 };

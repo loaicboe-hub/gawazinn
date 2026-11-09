@@ -663,4 +663,82 @@ export const patchPriceAlertSchema = z.object({
   status: z.enum(['active', 'triggered', 'paused']).optional(),
 });
 
+// Stage 7 Schemas: Vendor Marketplace, Subscriptions, Reviews & Verification
+export const registerVendorSchema = z.object({
+  businessNameAr: z.string().trim().min(2).max(160),
+  businessNameEn: z.string().trim().min(2).max(160),
+  primaryCategorySlug: z.string().trim().min(2).max(80),
+  extraCategorySlugs: z.array(z.string().trim().min(2).max(80)).max(5).optional(),
+  governorateSlug: z.string().trim().min(2).max(80),
+  citySlug: z.string().trim().max(80).nullable().optional(),
+  serviceAreas: z.array(z.string().trim().min(2).max(80)).max(12).optional(),
+  addressAr: z.string().trim().min(4).max(240),
+  addressEn: z.string().trim().min(4).max(240),
+  phone: z.string().trim().min(8).max(24),
+  whatsapp: z.string().trim().max(24).optional(),
+  email: z.string().trim().email().optional().or(z.literal('')),
+  websiteUrl: z.string().trim().max(240).optional(),
+  bioAr: z.string().trim().min(12).max(1500),
+  bioEn: z.string().trim().min(12).max(1500),
+  coverImage: z.string().trim().min(10).max(500).optional(),
+  portfolioImages: z.array(z.string().trim().min(10).max(500)).max(20).optional(),
+  priceTier: z.enum(['economy', 'mid', 'luxury']).default('mid'),
+  startingPriceEgp: z.number().int().min(0).max(50000000).default(5000),
+  yearsExperience: z.number().int().min(1).max(80).default(3),
+  verificationDocs: z.array(z.string().trim().min(2).max(120)).max(10).optional(),
+});
+
+export const updateVendorProfileSchema = registerVendorSchema.partial();
+
+export const vendorServiceUpsertSchema = z.object({
+  titleAr: z.string().trim().min(2).max(180),
+  titleEn: z.string().trim().min(2).max(180),
+  descriptionAr: z.string().trim().min(6).max(800),
+  descriptionEn: z.string().trim().min(6).max(800),
+  unitLabelAr: z.string().trim().min(1).max(60).default('مشروع / باقة'),
+  unitLabelEn: z.string().trim().min(1).max(60).default('Package / Project'),
+  startingPriceEgp: z.number().int().min(0).max(50000000).default(1000),
+  turnaroundDays: z.string().trim().max(60).nullable().optional(),
+  warrantyMonths: z.number().int().min(0).max(240).default(12),
+  isActive: z.boolean().default(true),
+});
+
+export const vendorPromotionCreateSchema = z.object({
+  titleAr: z.string().trim().min(3).max(160),
+  titleEn: z.string().trim().min(3).max(160),
+  descriptionAr: z.string().trim().min(6).max(500),
+  descriptionEn: z.string().trim().min(6).max(500),
+  discountPercent: z.number().int().min(1).max(90),
+  promoCode: z.string().trim().max(32).optional(),
+  validUntil: z.string().trim().min(8).max(32),
+});
+
+export const vendorReviewCreateSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().min(3).max(120),
+  comment: z.string().trim().min(6).max(1000),
+});
+
+export const switchVendorSubscriptionSchema = z.object({
+  planCode: z.enum(['free', 'basic', 'professional', 'premium']),
+  billingCycle: z.enum(['monthly', 'annual']).default('monthly'),
+});
+
+export const adminVerifyVendorSchema = z.object({
+  verificationStatus: z.enum(['registered', 'verified', 'trusted', 'rejected']),
+  verificationDocs: z.array(z.string().trim().min(2).max(120)).max(12).optional(),
+  verificationNotes: z.string().trim().max(600).nullable().optional(),
+});
+
+export const adminUpdateSubscriptionPlanSchema = z.object({
+  monthlyPriceEgp: z.number().int().min(0).max(500000).optional(),
+  annualPriceEgp: z.number().int().min(0).max(5000000).optional(),
+  maxServices: z.number().int().min(1).max(500).optional(),
+  maxPromotions: z.number().int().min(0).max(200).optional(),
+  maxPortfolioItems: z.number().int().min(1).max(200).optional(),
+  leadPriorityBoost: z.number().int().min(0).max(100).optional(),
+  isActive: z.boolean().optional(),
+});
+
+
 

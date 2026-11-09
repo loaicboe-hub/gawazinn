@@ -70,6 +70,11 @@ import type {
   ShoppingList,
   ShoppingListItemStatus,
   ShoppingListType,
+  SubscriptionPlan,
+  VendorCategory,
+  VendorListing,
+  VendorReview,
+  VendorVerificationStatus,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -91,6 +96,12 @@ import {
 } from '../../shared/productEncyclopediaData';
 import { SEED_ARTICLES, SEED_CATEGORIES, SEED_LOCATIONS } from '../../shared/cmsSeedData';
 import {
+  EXTRA_EGYPTIAN_LOCATIONS,
+  STAGE7_VENDORS_SEED,
+  SUBSCRIPTION_PLANS_SEED,
+  VENDOR_CATEGORIES_SEED,
+} from '../../shared/vendorMarketplaceData';
+import {
   FINISHING_ENCYCLOPEDIA_CATEGORIES,
   FINISHING_MATERIALS_DB,
   STAGE2_BEFORE_AFTER_PROJECTS,
@@ -105,7 +116,7 @@ import {
 import { STAGE2_GLOSSARY_TERMS, STAGE2_FAQ_ITEMS } from '../../shared/knowledgeGlossaryData';
 import { listCalculatorSummaries, runCalculator } from '../../shared/calculators';
 import { EARLY_START_ACADEMY_LESSONS } from '../../shared/earlyStartData';
-import { ADMIN_PANEL_ROLES, hasAnyRole } from '../../shared/rbac';
+import { ADMIN_PANEL_ROLES, FULL_ADMIN_ROLES, hasAnyRole } from '../../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../../shared/catalogMeta';
 import { apiRequest, ApiClientError } from '../services/api';
 
@@ -128,6 +139,8 @@ export type SectionKey =
   | 'products'
   | 'compare'
   | 'shoppingLists'
+  | 'vendors'
+  | 'vendorPortal'
   | 'myHub'
   | 'customerPortal'
   | 'admin';
@@ -151,6 +164,8 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   products: '/products',
   compare: '/products/compare',
   shoppingLists: '/my/shopping-lists',
+  vendors: '/vendors',
+  vendorPortal: '/vendor',
   myHub: '/my/workspace',
   customerPortal: '/portal',
   admin: '/admin',
@@ -199,6 +214,9 @@ interface BootstrapPayload {
   locations: LocationNode[];
   articles: Article[];
   settings: PlatformSettings | null;
+  vendorCategories?: VendorCategory[];
+  vendors?: VendorListing[];
+  subscriptionPlans?: SubscriptionPlan[];
 }
 
 interface AdminOverviewPayload {
@@ -678,6 +696,59 @@ interface AppContextType {
   ) => Promise<void>;
   deletePriceAlert: (alertId: string) => Promise<void>;
 
+  // Stage 7: Vendor Marketplace, Subscriptions, Reviews & Admin Verification
+  vendorCategories: VendorCategory[];
+  vendors: VendorListing[];
+  subscriptionPlans: SubscriptionPlan[];
+  adminVendors: VendorListing[];
+  refreshVendors: (filters?: Record<string, string>) => Promise<VendorListing[]>;
+  registerVendor: (input: {
+    businessNameAr: string;
+    businessNameEn: string;
+    primaryCategorySlug: string;
+    governorateSlug: string;
+    citySlug?: string | null;
+    serviceAreas?: string[];
+    addressAr: string;
+    addressEn: string;
+    phone: string;
+    whatsapp?: string;
+    email?: string;
+    websiteUrl?: string;
+    bioAr: string;
+    bioEn: string;
+    coverImage?: string;
+    priceTier?: 'economy' | 'mid' | 'luxury';
+    startingPriceEgp?: number;
+    yearsExperience?: number;
+    verificationDocs?: string[];
+  }) => Promise<VendorListing>;
+  submitVendorReview: (
+    slugOrId: string,
+    input: { rating: number; title: string; comment: string },
+  ) => Promise<{ review: VendorReview; vendor: VendorListing }>;
+  refreshAdminVendors: () => Promise<void>;
+  adminVerifyVendor: (
+    vendorId: string,
+    input: {
+      verificationStatus: VendorVerificationStatus;
+      verificationDocs?: string[];
+      verificationNotes?: string | null;
+    },
+  ) => Promise<VendorListing>;
+  adminUpdateSubscriptionPlan: (
+    planId: string,
+    patch: {
+      monthlyPriceEgp?: number;
+      annualPriceEgp?: number;
+      maxServices?: number;
+      maxPromotions?: number;
+      maxPortfolioItems?: number;
+      leadPriorityBoost?: number;
+      isActive?: boolean;
+    },
+  ) => Promise<SubscriptionPlan[]>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -760,6 +831,8 @@ function resolveSectionFromPath(pathname: string): SectionKey {
     return 'encyclopedia';
   }
   if (pathname.startsWith('/discover') || pathname.startsWith('/locations')) return 'discover';
+  if (pathname.startsWith('/vendors')) return 'vendors';
+  if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
   if (pathname.startsWith('/portal') || pathname.startsWith('/my')) return 'customerPortal';
   if (pathname.startsWith('/admin')) return 'admin';
   return 'home';
@@ -850,8 +923,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [finishingServices, setFinishingServices] = useState<FinishingService[]>(initialFinishingServices);
   const [categories, setCategories] = useState<ContentCategory[]>(SEED_CATEGORIES);
   const [articles, setArticles] = useState<Article[]>(SEED_ARTICLES);
-  const [locations, setLocations] = useState<LocationNode[]>(SEED_LOCATIONS);
+  const [locations, setLocations] = useState<LocationNode[]>([
+    ...SEED_LOCATIONS,
+    ...EXTRA_EGYPTIAN_LOCATIONS,
+  ]);
   const [settings, setSettings] = useState<PlatformSettings>(initialSettings);
+
+  // Stage 7 Vendor Marketplace State
+  const [vendorCategories, setVendorCategories] = useState<VendorCategory[]>(VENDOR_CATEGORIES_SEED);
+  const [vendors, setVendors] = useState<VendorListing[]>(STAGE7_VENDORS_SEED);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>(SUBSCRIPTION_PLANS_SEED);
 
   // Stage 2 Encyclopedia Catalog State
   const [finishingCategories, setFinishingCategories] = useState<FinishingEncyclopediaCategory[]>(
@@ -936,6 +1017,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Admin Overview State
   const [adminStats, setAdminStats] = useState<AdminOverviewStats | null>(null);
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [adminVendors, setAdminVendors] = useState<VendorListing[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   const loadUserScopedData = useCallback(async (user: User | null, connected: boolean) => {
@@ -953,6 +1035,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setPriceAlerts([]);
       setAdminStats(null);
       setAdminUsers([]);
+      setAdminVendors([]);
       setAuditLogs([]);
       setUserGroomPlan(getStoredItem<UserGroomPlanState>('user_groom_plan_v2', DEFAULT_GUEST_GROOM_PLAN));
       setUserBridePlan(
@@ -1038,6 +1121,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, []);
 
+  const refreshAdminVendors = useCallback(async () => {
+    if (!apiConnected || !currentUser || !hasAnyRole(currentUser.role, FULL_ADMIN_ROLES)) {
+      return;
+    }
+    const [vList, pList] = await Promise.all([
+      apiRequest<VendorListing[]>('/admin/vendors'),
+      apiRequest<SubscriptionPlan[]>('/admin/subscription-plans'),
+    ]);
+    setAdminVendors(vList);
+    if (pList.length > 0) setSubscriptionPlans(pList);
+  }, [apiConnected, currentUser]);
+
   const refreshAdminData = useCallback(async () => {
     if (!apiConnected || !currentUser || !hasAnyRole(currentUser.role, ADMIN_PANEL_ROLES)) {
       return;
@@ -1057,6 +1152,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setSupportCases(overview.supportCases);
     }
     setArticles(overview.articles);
+    if (hasAnyRole(currentUser.role, FULL_ADMIN_ROLES)) {
+      const [vList, pList] = await Promise.all([
+        apiRequest<VendorListing[]>('/admin/vendors').catch(() => null),
+        apiRequest<SubscriptionPlan[]>('/admin/subscription-plans').catch(() => null),
+      ]);
+      if (vList) setAdminVendors(vList);
+      if (pList && pList.length > 0) setSubscriptionPlans(pList);
+    }
   }, [apiConnected, currentUser]);
 
   // Initial Bootstrap from Backend API
@@ -1085,6 +1188,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (payload.categories.length > 0) setCategories(payload.categories);
         if (payload.articles.length > 0) setArticles(payload.articles);
         if (payload.locations.length > 0) setLocations(payload.locations);
+        if (payload.vendorCategories && payload.vendorCategories.length > 0) {
+          setVendorCategories(payload.vendorCategories);
+        }
+        if (payload.vendors && payload.vendors.length > 0) setVendors(payload.vendors);
+        if (payload.subscriptionPlans && payload.subscriptionPlans.length > 0) {
+          setSubscriptionPlans(payload.subscriptionPlans);
+        }
         if (payload.settings) setSettings(payload.settings);
         if (encBundle) {
           if (encBundle.finishingCategories.length > 0) {
@@ -1128,6 +1238,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
             setSupportCases(ov.supportCases);
             setArticles(ov.articles);
+            if (hasAnyRole(payload.user.role, FULL_ADMIN_ROLES)) {
+              const [vList, pList] = await Promise.all([
+                apiRequest<VendorListing[]>('/admin/vendors').catch(() => null),
+                apiRequest<SubscriptionPlan[]>('/admin/subscription-plans').catch(() => null),
+              ]);
+              if (!active) return;
+              if (vList) setAdminVendors(vList);
+              if (pList && pList.length > 0) setSubscriptionPlans(pList);
+            }
           }
         }
       } catch {
@@ -1173,6 +1292,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       setSupportCases(ov.supportCases);
       setArticles(ov.articles);
+      if (hasAnyRole(res.user.role, FULL_ADMIN_ROLES)) {
+        const [vList, pList] = await Promise.all([
+          apiRequest<VendorListing[]>('/admin/vendors').catch(() => null),
+          apiRequest<SubscriptionPlan[]>('/admin/subscription-plans').catch(() => null),
+        ]);
+        if (vList) setAdminVendors(vList);
+        if (pList && pList.length > 0) setSubscriptionPlans(pList);
+      }
     }
     showToast(
       language === 'ar' ? `أهلاً بك، ${res.user.name}!` : `Welcome back, ${res.user.nameEn || res.user.name}!`,
@@ -2876,6 +3003,146 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [language, showToast],
   );
 
+  // Stage 7: Vendor Marketplace, Subscriptions, Reviews & Admin Verification
+  const refreshVendors = useCallback(
+    async (filters?: Record<string, string>) => {
+      if (!apiConnected) return vendors;
+      const qs = filters
+        ? new URLSearchParams(
+            Object.entries(filters).filter(([, v]) => Boolean(v) && v !== 'all'),
+          ).toString()
+        : '';
+      const list = await apiRequest<VendorListing[]>(`/vendors${qs ? `?${qs}` : ''}`);
+      if (!qs) {
+        setVendors(list);
+      }
+      return list;
+    },
+    [apiConnected, vendors],
+  );
+
+  const registerVendor = useCallback(
+    async (input: {
+      businessNameAr: string;
+      businessNameEn: string;
+      primaryCategorySlug: string;
+      governorateSlug: string;
+      citySlug?: string | null;
+      serviceAreas?: string[];
+      addressAr: string;
+      addressEn: string;
+      phone: string;
+      whatsapp?: string;
+      email?: string;
+      websiteUrl?: string;
+      bioAr: string;
+      bioEn: string;
+      coverImage?: string;
+      priceTier?: 'economy' | 'mid' | 'luxury';
+      startingPriceEgp?: number;
+      yearsExperience?: number;
+      verificationDocs?: string[];
+    }) => {
+      const created = await apiRequest<VendorListing>('/vendors/register', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setVendors((prev) => [created, ...prev.filter((v) => v.id !== created.id)]);
+      showToast(
+        language === 'ar'
+          ? 'تم تسجيل ملف النشاط التجاري بحالة "مسجل" وعلى الباقة المجانية.'
+          : 'Business profile registered with "Registered" status on the Free plan.',
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const submitVendorReview = useCallback(
+    async (slugOrId: string, input: { rating: number; title: string; comment: string }) => {
+      const res = await apiRequest<{ review: VendorReview; vendor: VendorListing }>(
+        `/vendors/${encodeURIComponent(slugOrId)}/reviews`,
+        {
+          method: 'POST',
+          body: JSON.stringify(input),
+        },
+      );
+      setVendors((prev) => prev.map((v) => (v.id === res.vendor.id ? { ...v, ...res.vendor } : v)));
+      showToast(
+        language === 'ar'
+          ? 'شكراً لمشاركتك تقييمك الحقيقي بنجاح!'
+          : 'Thank you! Your authentic review has been published.',
+      );
+      return res;
+    },
+    [language, showToast],
+  );
+
+  const adminVerifyVendor = useCallback(
+    async (
+      vendorId: string,
+      input: {
+        verificationStatus: VendorVerificationStatus;
+        verificationDocs?: string[];
+        verificationNotes?: string | null;
+      },
+    ) => {
+      const updated = await apiRequest<VendorListing>(
+        `/admin/vendors/${encodeURIComponent(vendorId)}/verify`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(input),
+        },
+      );
+      setAdminVendors((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
+      setVendors((prev) => {
+        if (updated.verificationStatus === 'rejected') {
+          return prev.filter((v) => v.id !== updated.id);
+        }
+        const exists = prev.some((v) => v.id === updated.id);
+        return exists ? prev.map((v) => (v.id === updated.id ? updated : v)) : [updated, ...prev];
+      });
+      showToast(
+        language === 'ar'
+          ? `تم تحديث حالة التوثيق إلى "${updated.verificationStatus}".`
+          : `Vendor verification status updated to "${updated.verificationStatus}".`,
+      );
+      return updated;
+    },
+    [language, showToast],
+  );
+
+  const adminUpdateSubscriptionPlan = useCallback(
+    async (
+      planId: string,
+      patch: {
+        monthlyPriceEgp?: number;
+        annualPriceEgp?: number;
+        maxServices?: number;
+        maxPromotions?: number;
+        maxPortfolioItems?: number;
+        leadPriorityBoost?: number;
+        isActive?: boolean;
+      },
+    ) => {
+      const plans = await apiRequest<SubscriptionPlan[]>(
+        `/admin/subscription-plans/${encodeURIComponent(planId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setSubscriptionPlans(plans);
+      showToast(
+        language === 'ar'
+          ? 'تم حفظ حدود وتسعير الباقة التجارية.'
+          : 'Commercial subscription plan limits and pricing updated.',
+      );
+      return plans;
+    },
+    [language, showToast],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -3046,6 +3313,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         upsertPriceAlert,
         updatePriceAlert,
         deletePriceAlert,
+        vendorCategories,
+        vendors,
+        subscriptionPlans,
+        adminVendors,
+        refreshVendors,
+        registerVendor,
+        submitVendorReview,
+        refreshAdminVendors,
+        adminVerifyVendor,
+        adminUpdateSubscriptionPlan,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

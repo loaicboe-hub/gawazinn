@@ -138,6 +138,31 @@ import {
   mapProductEncyclopediaRow,
   upsertUserPriceAlert,
 } from './productShoppingService';
+import {
+  adminVerifyVendorSchema,
+  adminUpdateSubscriptionPlanSchema,
+  registerVendorSchema,
+  switchVendorSubscriptionSchema,
+  updateVendorProfileSchema,
+  vendorPromotionCreateSchema,
+  vendorReviewCreateSchema,
+  vendorServiceUpsertSchema,
+} from '../shared/schemas';
+import {
+  adminUpdateVendorVerification,
+  buildLocalCategoryGuide,
+  getVendorDetailBySlugOrId,
+  getVendorPortalOverview,
+  listSubscriptionPlans,
+  listVendorCategories,
+  listVendors,
+  mapVendorPromotionRow,
+  mapVendorReviewRow,
+  mapVendorServiceRow,
+  recalculateVendorReviewStats,
+  slugifyVendorName,
+  switchVendorSubscriptionPlan,
+} from './vendorMarketplaceService';
 import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
 import {
   SlidingWindowRateLimiter,
@@ -795,6 +820,7 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/journey',
           '/products',
           '/products/compare',
+          '/vendors',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -806,6 +832,19 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         const productSlugs = db
           .prepare('SELECT slug, updated_at FROM products')
           .all() as { slug: string; updated_at: string }[];
+        const vendorSlugs = db
+          .prepare("SELECT slug, updated_at FROM vendors WHERE verification_status != 'rejected'")
+          .all() as { slug: string; updated_at: string }[];
+        const vendorCats = db
+          .prepare('SELECT slug FROM vendor_categories ORDER BY sort_order ASC')
+          .all() as { slug: string }[];
+
+        const localCategoryUrls = locations.slice(0, 8).flatMap((l) =>
+          vendorCats.map(
+            (vc) =>
+              `<url><loc>${baseUrl}/locations/${encodeURIComponent(l.slug)}/${encodeURIComponent(vc.slug)}</loc><changefreq>weekly</changefreq></url>`,
+          ),
+        );
 
         const urlsXml = [
           ...staticRoutes.map(
@@ -815,6 +854,10 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             (p) =>
               `<url><loc>${baseUrl}/products/${encodeURIComponent(p.slug)}</loc><lastmod>${p.updated_at.slice(0, 10)}</lastmod><changefreq>weekly</changefreq></url>`,
           ),
+          ...vendorSlugs.map(
+            (v) =>
+              `<url><loc>${baseUrl}/vendors/${encodeURIComponent(v.slug)}</loc><lastmod>${v.updated_at.slice(0, 10)}</lastmod><changefreq>weekly</changefreq></url>`,
+          ),
           ...articles.map(
             (a) =>
               `<url><loc>${baseUrl}/guides/${encodeURIComponent(a.slug)}</loc><lastmod>${a.updated_at.slice(0, 10)}</lastmod><changefreq>monthly</changefreq></url>`,
@@ -823,6 +866,7 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             (l) =>
               `<url><loc>${baseUrl}/locations/${encodeURIComponent(l.slug)}</loc><changefreq>monthly</changefreq></url>`,
           ),
+          ...localCategoryUrls,
         ].join('');
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urlsXml}</urlset>`;
@@ -878,6 +922,9 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           | { value_json: string }
           | undefined;
         const settings = settingsRow ? (JSON.parse(settingsRow.value_json) as PlatformSettings) : null;
+        const vendorCategories = listVendorCategories(db);
+        const vendors = listVendors(db, { includeRejected: false });
+        const subscriptionPlans = listSubscriptionPlans(db);
 
         sendJson(res, 200, {
           ok: true,
@@ -891,6 +938,9 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             locations,
             articles,
             settings,
+            vendorCategories,
+            vendors,
+            subscriptionPlans,
           },
         });
         return;
@@ -1174,28 +1224,51 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
       }
 
       if (method === 'GET' && route.startsWith('/locations/')) {
-        const slug = decodeURIComponent(route.slice('/locations/'.length));
-        const locRow = db.prepare('SELECT * FROM locations WHERE slug = ?').get(slug) as
-          | Record<string, unknown>
-          | undefined;
-        if (!locRow) {
-          sendError(res, 404, 'NOT_FOUND', 'Location not found');
+        const rest = route.slice('/locations/'.length);
+        const segments = rest.split('/').filter(Boolean).map((s) => decodeURIComponent(s));
+        if (segments.length === 1) {
+          const guide = buildLocalCategoryGuide(
+            db,
+            segments[0],
+            null,
+            mapLocationRow,
+            mapWeddingServiceRow,
+          );
+          if (!guide) {
+            sendError(res, 404, 'NOT_FOUND', 'Location not found');
+            return;
+          }
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              ...guide,
+              services: guide.matchedWeddingServices,
+            },
+          });
           return;
         }
-        const location = mapLocationRow(locRow);
-        const children = (
-          db.prepare('SELECT * FROM locations WHERE parent_id = ? ORDER BY sort_order ASC').all(location.id) as Record<
-            string,
-            unknown
-          >[]
-        ).map(mapLocationRow);
-        const services = (
-          db
-            .prepare('SELECT * FROM wedding_services WHERE governorate_slug = ? OR location_ar LIKE ? OR location_en LIKE ?')
-            .all(location.slug, `%${location.nameAr}%`, `%${location.nameEn}%`) as Record<string, unknown>[]
-        ).map(mapWeddingServiceRow);
-
-        sendJson(res, 200, { ok: true, data: { location, children, services } });
+        if (segments.length === 2) {
+          const guide = buildLocalCategoryGuide(
+            db,
+            segments[0],
+            segments[1],
+            mapLocationRow,
+            mapWeddingServiceRow,
+          );
+          if (!guide) {
+            sendError(res, 404, 'NOT_FOUND', 'Location or service category not found');
+            return;
+          }
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              ...guide,
+              services: guide.matchedWeddingServices,
+            },
+          });
+          return;
+        }
+        sendError(res, 404, 'NOT_FOUND', 'Location route not found');
         return;
       }
 
@@ -3922,6 +3995,513 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         }
       }
 
+      // ================= STAGE 7: VENDOR MARKETPLACE, SUBSCRIPTIONS & VENDOR PORTAL =================
+      if (method === 'GET' && route === '/vendor-categories') {
+        sendJson(res, 200, { ok: true, data: listVendorCategories(db) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/subscription-plans') {
+        sendJson(res, 200, { ok: true, data: listSubscriptionPlans(db) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/vendors') {
+        const list = listVendors(db, {
+          category: url.searchParams.get('category'),
+          domain: url.searchParams.get('domain'),
+          governorate: url.searchParams.get('governorate'),
+          verification: url.searchParams.get('verification'),
+          priceTier: url.searchParams.get('priceTier'),
+          planCode: url.searchParams.get('planCode'),
+          q: url.searchParams.get('q'),
+          sort: url.searchParams.get('sort') || url.searchParams.get('sortBy'),
+          includeRejected: false,
+        });
+        sendJson(res, 200, { ok: true, data: list });
+        return;
+      }
+
+      if (method === 'POST' && route === '/vendors/register') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in before registering a business profile');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = registerVendorSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor registration details', parsed.error.flatten());
+          return;
+        }
+        const catExists = db
+          .prepare('SELECT slug FROM vendor_categories WHERE slug = ?')
+          .get(parsed.data.primaryCategorySlug) as { slug: string } | undefined;
+        if (!catExists) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Unknown primary vendor category');
+          return;
+        }
+        const now = new Date().toISOString();
+        const vendorId = `vnd-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const slug = slugifyVendorName(parsed.data.businessNameEn || parsed.data.businessNameAr);
+        const defaultCover =
+          parsed.data.coverImage ||
+          'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=80';
+
+        // STRICT INVARIANT: Self-registered businesses ALWAYS start as 'registered' on Free plan!
+        db.prepare(
+          `INSERT INTO vendors
+            (id, owner_user_id, slug, business_name_ar, business_name_en, primary_category_slug, extra_category_slugs_json,
+             governorate_slug, city_slug, service_areas_json, address_ar, address_en, phone, whatsapp, email, website_url,
+             bio_ar, bio_en, cover_image, logo_image, portfolio_images_json, price_tier, starting_price_egp, years_experience,
+             verification_status, verification_docs_json, verification_notes, subscription_plan_id, commercial_status,
+             subscription_started_at, rating_avg, reviews_count, profile_views, is_featured_commercial, is_demo_data, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 'registered', ?, 'قيد المراجعة الأولية للأوراق الرسمية', 'plan_free', 'active', ?, 0, 0, 0, 0, 0, ?, ?)`,
+        ).run(
+          vendorId,
+          authUser.id,
+          slug,
+          parsed.data.businessNameAr,
+          parsed.data.businessNameEn,
+          parsed.data.primaryCategorySlug,
+          JSON.stringify(parsed.data.extraCategorySlugs ?? []),
+          parsed.data.governorateSlug,
+          parsed.data.citySlug ?? null,
+          JSON.stringify(parsed.data.serviceAreas ?? [parsed.data.governorateSlug]),
+          parsed.data.addressAr,
+          parsed.data.addressEn,
+          parsed.data.phone,
+          parsed.data.whatsapp || null,
+          parsed.data.email || null,
+          parsed.data.websiteUrl || null,
+          parsed.data.bioAr,
+          parsed.data.bioEn,
+          defaultCover,
+          JSON.stringify((parsed.data.portfolioImages ?? []).slice(0, 4)),
+          parsed.data.priceTier,
+          parsed.data.startingPriceEgp,
+          parsed.data.yearsExperience,
+          JSON.stringify(parsed.data.verificationDocs ?? []),
+          now,
+          now,
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'vendor.registered',
+          targetType: 'vendor',
+          targetId: vendorId,
+          metadata: { slug, category: parsed.data.primaryCategorySlug },
+          ipAddress: ip,
+        });
+
+        const created = getVendorDetailBySlugOrId(db, vendorId, false);
+        sendJson(res, 201, { ok: true, data: created });
+        return;
+      }
+
+      const vendorReviewMatch = route.match(/^\/vendors\/([^/]+)\/reviews$/);
+      if (method === 'POST' && vendorReviewMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to submit an authentic vendor review');
+          return;
+        }
+        const slugOrId = decodeURIComponent(vendorReviewMatch[1]);
+        const vendor = getVendorDetailBySlugOrId(db, slugOrId, false);
+        if (!vendor || vendor.verificationStatus === 'rejected') {
+          sendError(res, 404, 'NOT_FOUND', 'Vendor not found');
+          return;
+        }
+        if (vendor.ownerUserId === authUser.id) {
+          sendError(res, 403, 'SELF_REVIEW_FORBIDDEN', 'Business owners cannot review their own listing');
+          return;
+        }
+        const existingRev = db
+          .prepare('SELECT id FROM vendor_reviews WHERE vendor_id = ? AND author_user_id = ?')
+          .get(vendor.id, authUser.id);
+        if (existingRev) {
+          sendError(res, 409, 'DUPLICATE_REVIEW', 'You have already published a review for this vendor');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = vendorReviewCreateSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid review fields', parsed.error.flatten());
+          return;
+        }
+        const hasBooking = Boolean(
+          db
+            .prepare(
+              `SELECT id FROM finishing_inquiries WHERE user_id = ? AND status IN ('quotation_ready', 'in_progress', 'completed')
+               UNION ALL
+               SELECT id FROM wedding_bookings WHERE user_id = ? AND status IN ('date_confirmed', 'deposit_paid', 'completed')
+               UNION ALL
+               SELECT id FROM orders WHERE user_id = ? AND status IN ('processing', 'shipped', 'delivered')
+               LIMIT 1`,
+            )
+            .get(authUser.id, authUser.id, authUser.id),
+        );
+        const reviewId = `vrev-${crypto.randomUUID().slice(0, 10)}`;
+        const now = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO vendor_reviews (id, vendor_id, author_user_id, author_name, rating, title, comment, is_verified_project, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          reviewId,
+          vendor.id,
+          authUser.id,
+          authUser.name,
+          parsed.data.rating,
+          parsed.data.title,
+          parsed.data.comment,
+          hasBooking ? 1 : 0,
+          now,
+        );
+        recalculateVendorReviewStats(db, vendor.id);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'vendor.review_created',
+          targetType: 'vendor',
+          targetId: vendor.id,
+          metadata: { rating: parsed.data.rating, reviewId },
+          ipAddress: ip,
+        });
+        const reviewRow = db.prepare('SELECT * FROM vendor_reviews WHERE id = ?').get(reviewId) as Record<
+          string,
+          unknown
+        >;
+        const updatedVendor = getVendorDetailBySlugOrId(db, vendor.id, false);
+        sendJson(res, 201, {
+          ok: true,
+          data: { review: mapVendorReviewRow(reviewRow), vendor: updatedVendor },
+        });
+        return;
+      }
+
+      if (method === 'GET' && route.startsWith('/vendors/')) {
+        const slugOrId = decodeURIComponent(route.slice('/vendors/'.length));
+        const vendor = getVendorDetailBySlugOrId(db, slugOrId, true);
+        if (
+          !vendor ||
+          (vendor.verificationStatus === 'rejected' &&
+            authUser?.id !== vendor.ownerUserId &&
+            !hasAnyRole(authUser?.role, FULL_ADMIN_ROLES))
+        ) {
+          sendError(res, 404, 'NOT_FOUND', 'Vendor not found');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: vendor });
+        return;
+      }
+
+      if (route.startsWith('/vendor-portal')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to access Vendor Portal');
+          return;
+        }
+        const requestedVendorId = url.searchParams.get('vendorId');
+        if (requestedVendorId) {
+          const requestedTarget = getVendorDetailBySlugOrId(db, requestedVendorId, false);
+          if (!requestedTarget) {
+            sendError(res, 404, 'NOT_FOUND', 'Requested vendor listing not found');
+            return;
+          }
+          if (
+            requestedTarget.ownerUserId !== authUser.id &&
+            !hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ) {
+            sendError(res, 403, 'FORBIDDEN', 'Only the business owner can access this vendor listing');
+            return;
+          }
+        }
+
+        if (method === 'GET' && route === '/vendor-portal/overview') {
+          const overview = getVendorPortalOverview(db, authUser, requestedVendorId);
+          sendJson(res, 200, { ok: true, data: overview });
+          return;
+        }
+
+        const portalOverview = getVendorPortalOverview(db, authUser, requestedVendorId);
+        if (!portalOverview.vendor) {
+          sendError(res, 403, 'VENDOR_PROFILE_REQUIRED', 'No vendor business listing belongs to your account');
+          return;
+        }
+        const vendor = portalOverview.vendor;
+        if (vendor.ownerUserId !== authUser.id && !hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+          sendError(res, 403, 'FORBIDDEN', 'Only the business owner can modify this vendor listing');
+          return;
+        }
+        const plan = portalOverview.plan;
+
+        if (method === 'PATCH' && route === '/vendor-portal/profile') {
+          const body = await readJsonBody(req);
+          const parsed = updateVendorProfileSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor profile update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          if (d.portfolioImages && plan && d.portfolioImages.length > plan.maxPortfolioItems) {
+            sendError(
+              res,
+              403,
+              'PLAN_QUOTA_EXCEEDED',
+              `Your current commercial plan allows up to ${plan.maxPortfolioItems} portfolio images.`,
+            );
+            return;
+          }
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE vendors SET
+              business_name_ar = COALESCE(?, business_name_ar),
+              business_name_en = COALESCE(?, business_name_en),
+              governorate_slug = COALESCE(?, governorate_slug),
+              city_slug = COALESCE(?, city_slug),
+              service_areas_json = COALESCE(?, service_areas_json),
+              address_ar = COALESCE(?, address_ar),
+              address_en = COALESCE(?, address_en),
+              phone = COALESCE(?, phone),
+              whatsapp = COALESCE(?, whatsapp),
+              email = COALESCE(?, email),
+              website_url = COALESCE(?, website_url),
+              bio_ar = COALESCE(?, bio_ar),
+              bio_en = COALESCE(?, bio_en),
+              cover_image = COALESCE(?, cover_image),
+              portfolio_images_json = COALESCE(?, portfolio_images_json),
+              price_tier = COALESCE(?, price_tier),
+              starting_price_egp = COALESCE(?, starting_price_egp),
+              years_experience = COALESCE(?, years_experience),
+              verification_docs_json = COALESCE(?, verification_docs_json),
+              updated_at = ?
+             WHERE id = ?`,
+          ).run(
+            d.businessNameAr ?? null,
+            d.businessNameEn ?? null,
+            d.governorateSlug ?? null,
+            d.citySlug !== undefined ? d.citySlug : null,
+            d.serviceAreas ? JSON.stringify(d.serviceAreas) : null,
+            d.addressAr ?? null,
+            d.addressEn ?? null,
+            d.phone ?? null,
+            d.whatsapp ?? null,
+            d.email ?? null,
+            d.websiteUrl ?? null,
+            d.bioAr ?? null,
+            d.bioEn ?? null,
+            d.coverImage ?? null,
+            d.portfolioImages ? JSON.stringify(d.portfolioImages) : null,
+            d.priceTier ?? null,
+            d.startingPriceEgp ?? null,
+            d.yearsExperience ?? null,
+            d.verificationDocs ? JSON.stringify(d.verificationDocs) : null,
+            now,
+            vendor.id,
+          );
+          sendJson(res, 200, { ok: true, data: getVendorPortalOverview(db, authUser, vendor.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/vendor-portal/services') {
+          if (plan && portalOverview.services.length >= plan.maxServices) {
+            sendError(
+              res,
+              403,
+              'PLAN_QUOTA_EXCEEDED',
+              `Current commercial plan permits up to ${plan.maxServices} listed services.`,
+            );
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = vendorServiceUpsertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor service details', parsed.error.flatten());
+            return;
+          }
+          const srvId = `vsrv-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO vendor_services
+              (id, vendor_id, title_ar, title_en, description_ar, description_en, unit_label_ar, unit_label_en,
+               starting_price_egp, turnaround_days, warranty_months, is_active, sort_order, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            srvId,
+            vendor.id,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.descriptionAr,
+            parsed.data.descriptionEn,
+            parsed.data.unitLabelAr,
+            parsed.data.unitLabelEn,
+            parsed.data.startingPriceEgp,
+            parsed.data.turnaroundDays ?? null,
+            parsed.data.warrantyMonths,
+            parsed.data.isActive ? 1 : 0,
+            portalOverview.services.length + 1,
+            now,
+          );
+          const srvRow = db.prepare('SELECT * FROM vendor_services WHERE id = ?').get(srvId) as Record<string, unknown>;
+          sendJson(res, 201, {
+            ok: true,
+            data: { service: mapVendorServiceRow(srvRow), overview: getVendorPortalOverview(db, authUser, vendor.id) },
+          });
+          return;
+        }
+
+        const portalSrvMatch = route.match(/^\/vendor-portal\/services\/([^/]+)$/);
+        if (portalSrvMatch && (method === 'PATCH' || method === 'DELETE')) {
+          const srvId = decodeURIComponent(portalSrvMatch[1]);
+          const srvRow = db
+            .prepare('SELECT id, vendor_id FROM vendor_services WHERE id = ?')
+            .get(srvId) as { id: string; vendor_id: string } | undefined;
+          if (!srvRow || srvRow.vendor_id !== vendor.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Vendor service not found');
+            return;
+          }
+          if (method === 'DELETE') {
+            db.prepare('DELETE FROM vendor_services WHERE id = ?').run(srvId);
+            sendJson(res, 200, { ok: true, data: getVendorPortalOverview(db, authUser, vendor.id) });
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = vendorServiceUpsertSchema.partial().safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid service update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE vendor_services SET
+              title_ar = COALESCE(?, title_ar),
+              title_en = COALESCE(?, title_en),
+              description_ar = COALESCE(?, description_ar),
+              description_en = COALESCE(?, description_en),
+              starting_price_egp = COALESCE(?, starting_price_egp),
+              turnaround_days = COALESCE(?, turnaround_days),
+              warranty_months = COALESCE(?, warranty_months),
+              is_active = COALESCE(?, is_active)
+             WHERE id = ?`,
+          ).run(
+            d.titleAr ?? null,
+            d.titleEn ?? null,
+            d.descriptionAr ?? null,
+            d.descriptionEn ?? null,
+            d.startingPriceEgp ?? null,
+            d.turnaroundDays !== undefined ? d.turnaroundDays : null,
+            d.warrantyMonths ?? null,
+            d.isActive !== undefined ? (d.isActive ? 1 : 0) : null,
+            srvId,
+          );
+          sendJson(res, 200, { ok: true, data: getVendorPortalOverview(db, authUser, vendor.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/vendor-portal/promotions') {
+          const activePromos = portalOverview.promotions.filter((p) => p.isActive).length;
+          if (plan && activePromos >= plan.maxPromotions) {
+            sendError(
+              res,
+              403,
+              'PLAN_QUOTA_EXCEEDED',
+              plan.maxPromotions === 0
+                ? 'Promotions require Basic, Professional, or Premium commercial plan. Verification status stays separate.'
+                : `Your commercial plan permits up to ${plan.maxPromotions} active promotions.`,
+            );
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = vendorPromotionCreateSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid promotion fields', parsed.error.flatten());
+            return;
+          }
+          const promoId = `vprm-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO vendor_promotions
+              (id, vendor_id, title_ar, title_en, description_ar, description_en, discount_percent, promo_code, valid_until, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+          ).run(
+            promoId,
+            vendor.id,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.descriptionAr,
+            parsed.data.descriptionEn,
+            parsed.data.discountPercent,
+            parsed.data.promoCode ?? null,
+            parsed.data.validUntil,
+            now,
+          );
+          const prmRow = db.prepare('SELECT * FROM vendor_promotions WHERE id = ?').get(promoId) as Record<
+            string,
+            unknown
+          >;
+          sendJson(res, 201, {
+            ok: true,
+            data: {
+              promotion: mapVendorPromotionRow(prmRow),
+              overview: getVendorPortalOverview(db, authUser, vendor.id),
+            },
+          });
+          return;
+        }
+
+        const portalPrmMatch = route.match(/^\/vendor-portal\/promotions\/([^/]+)$/);
+        if (method === 'DELETE' && portalPrmMatch) {
+          const promoId = decodeURIComponent(portalPrmMatch[1]);
+          const prmRow = db
+            .prepare('SELECT id, vendor_id FROM vendor_promotions WHERE id = ?')
+            .get(promoId) as { id: string; vendor_id: string } | undefined;
+          if (!prmRow || prmRow.vendor_id !== vendor.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Promotion not found');
+            return;
+          }
+          db.prepare('DELETE FROM vendor_promotions WHERE id = ?').run(promoId);
+          sendJson(res, 200, { ok: true, data: getVendorPortalOverview(db, authUser, vendor.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/vendor-portal/subscription') {
+          const body = await readJsonBody(req);
+          const parsed = switchVendorSubscriptionSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid subscription plan selection', parsed.error.flatten());
+            return;
+          }
+          const switched = switchVendorSubscriptionPlan(
+            db,
+            vendor.id,
+            parsed.data.planCode,
+            parsed.data.billingCycle,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor.subscription_switched',
+            targetType: 'vendor',
+            targetId: vendor.id,
+            metadata: {
+              planCode: parsed.data.planCode,
+              billingCycle: parsed.data.billingCycle,
+              amountEgp: switched.billingRecord.amountEgp,
+              verificationUnchanged: switched.vendor.verificationStatus,
+            },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              billingRecord: switched.billingRecord,
+              overview: getVendorPortalOverview(db, authUser, vendor.id),
+            },
+          });
+          return;
+        }
+      }
+
       // ================= CUSTOMER ORDERS & INQUIRIES (OWNER-SCOPED) =================
       if (method === 'GET' && route === '/orders') {
         if (!authUser) {
@@ -4312,6 +4892,33 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         }
         if (!hasAnyRole(authUser.role, ADMIN_PANEL_ROLES)) {
           sendError(res, 403, 'FORBIDDEN', 'Insufficient privileges to access Admin OS');
+          return;
+        }
+
+        if (method === 'GET' && route === '/admin/audit-logs') {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const auditLogs = (
+            db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100').all() as Record<
+              string,
+              unknown
+            >[]
+          ).map(
+            (r): AuditLogEntry => ({
+              id: String(r.id),
+              actorUserId: r.actor_user_id ? String(r.actor_user_id) : null,
+              actorRole: String(r.actor_role),
+              action: String(r.action),
+              targetType: String(r.target_type),
+              targetId: r.target_id ? String(r.target_id) : null,
+              metadata: JSON.parse(String(r.metadata_json || '{}')) as Record<string, unknown>,
+              ipAddress: r.ip_address ? String(r.ip_address) : null,
+              createdAt: String(r.created_at),
+            }),
+          );
+          sendJson(res, 200, { ok: true, data: auditLogs });
           return;
         }
 
@@ -4804,6 +5411,113 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             ipAddress: ip,
           });
           sendJson(res, 200, { ok: true, data: body });
+          return;
+        }
+
+        // Stage 7 Admin Marketplace Governance: Vendor Verification & Subscription Plans
+        if (method === 'GET' && route === '/admin/vendors') {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: listVendors(db, { includeRejected: true }) });
+          return;
+        }
+
+        const adminVerifyMatch = route.match(/^\/admin\/vendors\/([^/]+)\/verify$/);
+        if (method === 'PATCH' && adminVerifyMatch) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role to alter vendor verification');
+            return;
+          }
+          const vendorId = decodeURIComponent(adminVerifyMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = adminVerifyVendorSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor verification payload', parsed.error.flatten());
+            return;
+          }
+          const updated = adminUpdateVendorVerification(db, vendorId, authUser.id, parsed.data);
+          if (!updated) {
+            sendError(res, 404, 'NOT_FOUND', 'Vendor not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.vendor_verified',
+            targetType: 'vendor',
+            targetId: vendorId,
+            metadata: {
+              verificationStatus: updated.verificationStatus,
+              docsCount: updated.verificationDocs.length,
+            },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: updated });
+          return;
+        }
+
+        if (method === 'GET' && route === '/admin/subscription-plans') {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: listSubscriptionPlans(db) });
+          return;
+        }
+
+        const adminPlanMatch = route.match(/^\/admin\/subscription-plans\/([^/]+)$/);
+        if (method === 'PATCH' && adminPlanMatch) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const planId = decodeURIComponent(adminPlanMatch[1]);
+          const existing = db.prepare('SELECT * FROM subscription_plans WHERE id = ?').get(planId) as
+            | Record<string, unknown>
+            | undefined;
+          if (!existing) {
+            sendError(res, 404, 'NOT_FOUND', 'Subscription plan not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = adminUpdateSubscriptionPlanSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid subscription plan update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE subscription_plans SET
+              monthly_price_egp = COALESCE(?, monthly_price_egp),
+              annual_price_egp = COALESCE(?, annual_price_egp),
+              max_services = COALESCE(?, max_services),
+              max_promotions = COALESCE(?, max_promotions),
+              max_portfolio_items = COALESCE(?, max_portfolio_items),
+              lead_priority_boost = COALESCE(?, lead_priority_boost),
+              is_active = COALESCE(?, is_active)
+             WHERE id = ?`,
+          ).run(
+            d.monthlyPriceEgp ?? null,
+            d.annualPriceEgp ?? null,
+            d.maxServices ?? null,
+            d.maxPromotions ?? null,
+            d.maxPortfolioItems ?? null,
+            d.leadPriorityBoost ?? null,
+            d.isActive !== undefined ? (d.isActive ? 1 : 0) : null,
+            planId,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.subscription_plan_updated',
+            targetType: 'subscription_plan',
+            targetId: planId,
+            metadata: d,
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: listSubscriptionPlans(db) });
           return;
         }
       }

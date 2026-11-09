@@ -1541,4 +1541,182 @@ export interface PriceAlert {
   createdAt: string;
 }
 
+// ==================== STAGE 7: VENDOR MARKETPLACE, SUBSCRIPTIONS & LOCAL DISCOVERY SEO ====================
+
+export type VendorDomain = 'finishing' | 'groom' | 'bride' | 'wedding' | 'post_marriage';
+export type VendorVerificationStatus = 'registered' | 'verified' | 'trusted' | 'rejected';
+export type VendorCommercialStatus = 'active' | 'past_due' | 'paused';
+export type VendorPriceTier = 'economy' | 'mid' | 'luxury';
+export type SubscriptionPlanCode = 'free' | 'basic' | 'professional' | 'premium';
+
+export interface VendorCategory {
+  id: string;
+  slug: string;
+  domain: VendorDomain;
+  nameAr: string;
+  nameEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  iconName: string;
+  buyerChecklistAr: string[];
+  buyerChecklistEn: string[];
+  sortOrder: number;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  code: SubscriptionPlanCode;
+  nameAr: string;
+  nameEn: string;
+  monthlyPriceEgp: number;
+  annualPriceEgp: number;
+  maxServices: number;
+  maxPromotions: number;
+  maxPortfolioItems: number;
+  leadPriorityBoost: number;
+  analyticsTier: 'basic' | 'standard' | 'advanced' | 'enterprise';
+  featuresAr: string[];
+  featuresEn: string[];
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface VendorServiceOffering {
+  id: string;
+  vendorId: string;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  unitLabelAr: string;
+  unitLabelEn: string;
+  startingPriceEgp: number;
+  turnaroundDays?: string | null;
+  warrantyMonths: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface VendorPromotion {
+  id: string;
+  vendorId: string;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  discountPercent: number;
+  promoCode?: string | null;
+  validUntil: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface VendorReview {
+  id: string;
+  vendorId: string;
+  authorUserId: string;
+  authorName: string;
+  rating: number;
+  title: string;
+  comment: string;
+  isVerifiedProject: boolean;
+  createdAt: string;
+}
+
+export interface VendorListing {
+  id: string;
+  ownerUserId: string;
+  slug: string;
+  businessNameAr: string;
+  businessNameEn: string;
+  primaryCategorySlug: string;
+  categoryNameAr?: string;
+  categoryNameEn?: string;
+  extraCategorySlugs: string[];
+  governorateSlug: string;
+  citySlug?: string | null;
+  serviceAreas: string[];
+  addressAr: string;
+  addressEn: string;
+  phone: string;
+  whatsapp?: string | null;
+  email?: string | null;
+  websiteUrl?: string | null;
+  bioAr: string;
+  bioEn: string;
+  coverImage: string;
+  logoImage?: string | null;
+  portfolioImages: string[];
+  priceTier: VendorPriceTier;
+  startingPriceEgp: number;
+  yearsExperience: number;
+  verificationStatus: VendorVerificationStatus;
+  verificationDocs: string[];
+  verificationNotes?: string | null;
+  verifiedAt?: string | null;
+  verifiedByUserId?: string | null;
+  subscriptionPlanId: string;
+  subscriptionPlanCode: SubscriptionPlanCode;
+  subscriptionPlanNameAr?: string;
+  subscriptionPlanNameEn?: string;
+  commercialStatus: VendorCommercialStatus;
+  subscriptionStartedAt?: string | null;
+  subscriptionRenewsAt?: string | null;
+  ratingAvg: number;
+  reviewsCount: number;
+  profileViews: number;
+  isFeaturedCommercial: boolean;
+  isDemoData: boolean;
+  createdAt: string;
+  updatedAt: string;
+  services?: VendorServiceOffering[];
+  promotions?: VendorPromotion[];
+  reviews?: VendorReview[];
+}
+
+export interface VendorBillingRecord {
+  id: string;
+  vendorId: string;
+  planId: string;
+  planCode?: SubscriptionPlanCode;
+  planNameAr?: string;
+  planNameEn?: string;
+  billingCycle: 'monthly' | 'annual';
+  amountEgp: number;
+  status: 'recorded' | 'paid' | 'cancelled';
+  createdAt: string;
+}
+
+export interface VendorPortalOverviewPayload {
+  vendor: VendorListing | null;
+  plan: SubscriptionPlan | null;
+  allPlans: SubscriptionPlan[];
+  services: VendorServiceOffering[];
+  promotions: VendorPromotion[];
+  reviews: VendorReview[];
+  billingRecords: VendorBillingRecord[];
+  quotas: {
+    servicesUsed: number;
+    maxServices: number;
+    promotionsUsed: number;
+    maxPromotions: number;
+    portfolioUsed: number;
+    maxPortfolioItems: number;
+  };
+}
+
+export interface LocalCategoryGuidePayload {
+  location: LocationNode;
+  parentLocation: LocationNode | null;
+  children: LocationNode[];
+  category: VendorCategory | null;
+  allCategories: VendorCategory[];
+  matchedVendors: VendorListing[];
+  matchedWeddingServices: WeddingServiceItem[];
+  regionalBaselineMin: number;
+  regionalBaselineMax: number;
+}
+
+
 
