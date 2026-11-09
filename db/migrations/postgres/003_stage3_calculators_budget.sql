@@ -69,3 +69,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_expense_source_dedup
 
 CREATE INDEX IF NOT EXISTS idx_budget_expense_user_status ON budget_expenses(user_id, status, due_date);
 CREATE INDEX IF NOT EXISTS idx_budget_expense_cat ON budget_expenses(budget_category_id);
+

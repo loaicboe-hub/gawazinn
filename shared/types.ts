@@ -855,6 +855,159 @@ export interface BudgetOverviewPayload {
   };
 }
 
+// =========================================================================
+// STAGE 4: EARLY START & MY FUTURE FUND (MODULE A)
+// =========================================================================
+
+export type EarlyStartTimeframePreset =
+  | '10y'
+  | '7y'
+  | '5y'
+  | '3y'
+  | '2y'
+  | '1y'
+  | '6m'
+  | 'custom';
+
+export type EarlyStartReminderFrequency = 'weekly' | 'biweekly' | 'monthly' | 'off';
+
+export type SavingsGoalType =
+  | 'marriage'
+  | 'apartment_purchase'
+  | 'finishing'
+  | 'furniture'
+  | 'appliances'
+  | 'wedding'
+  | 'emergency';
+
+export type EarlyStartMilestoneTrack = 'financial' | 'personal' | 'education' | 'housing';
+
+export interface EarlyStartProfile {
+  userId: string;
+  timeframePreset: EarlyStartTimeframePreset;
+  timeframeMonths: number;
+  expectedMarriageDate?: string | null;
+  targetMarriageBudget: number;
+  initialCapital: number;
+  monthlySavingsTarget: number;
+  emergencyReserveTarget: number;
+  reminderFrequency: EarlyStartReminderFrequency;
+  personalNotes?: string | null;
+  isPrivate: boolean;
+  updatedAt: string;
+}
+
+export interface SavingsGoal {
+  id: string;
+  userId: string;
+  goalType: SavingsGoalType;
+  titleAr: string;
+  titleEn: string;
+  targetAmount: number;
+  currentAmount: number;
+  monthlyContribution: number;
+  completionPercent: number;
+  remainingAmount: number;
+  targetDate?: string | null;
+  priority: number;
+  isPrivate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavingsContribution {
+  id: string;
+  savingsGoalId: string;
+  userId: string;
+  amount: number;
+  contributionType: 'deposit' | 'adjustment';
+  contributionDate: string;
+  streakMonth: string;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface SavingsBadge {
+  id: string;
+  userId: string;
+  badgeKey: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  descEn: string;
+  earnedAt: string;
+}
+
+export interface EarlyStartMilestone {
+  id: string;
+  userId: string;
+  track: EarlyStartMilestoneTrack;
+  titleAr: string;
+  titleEn: string;
+  targetMonthsOut: number;
+  completed: boolean;
+  completedAt?: string | null;
+  sortOrder: number;
+}
+
+export interface EarlyStartAcademyLesson {
+  slug: string;
+  order: number;
+  track: EarlyStartMilestoneTrack;
+  titleAr: string;
+  titleEn: string;
+  readingMinutes: number;
+  summaryAr: string;
+  summaryEn: string;
+  keyPointsAr: string[];
+  keyPointsEn: string[];
+  practicalActionAr: string;
+  practicalActionEn: string;
+}
+
+export interface MonthlySavingsReportPoint {
+  month: string;
+  depositedEgp: number;
+  cumulativeEgp: number;
+}
+
+export interface WhatIfScenarioResult {
+  key: string;
+  labelAr: string;
+  labelEn: string;
+  monthlyStartEgp: number;
+  annualStepUpPercent: number;
+  horizonMonths: number;
+  projectedCashEgp: number;
+  projectedGoalCostEgp: number;
+  coveragePercent: number;
+  gapOrSurplusEgp: number;
+  requiredMonthlyAtConstantRateEgp: number;
+}
+
+export interface EarlyStartOverviewPayload {
+  profile: EarlyStartProfile;
+  goals: SavingsGoal[];
+  contributions: SavingsContribution[];
+  badges: SavingsBadge[];
+  milestones: EarlyStartMilestone[];
+  completedLessonSlugs: string[];
+  monthlyHistory: MonthlySavingsReportPoint[];
+  summary: {
+    totalGoalsTarget: number;
+    totalCurrentSaved: number;
+    overallCompletionPercent: number;
+    emergencySaved: number;
+    emergencyTarget: number;
+    monthlyCommittedSum: number;
+    recommendedMonthlyNeeded: number;
+    annualSavingsTarget: number;
+    streakMonths: number;
+    milestonesCompletedCount: number;
+    milestonesTotalCount: number;
+  };
+}
+
 export interface PaginatedMeta {
   page: number;
   limit: number;

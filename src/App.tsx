@@ -99,6 +99,11 @@ const BudgetManagerView = lazy(() =>
     default: m.BudgetManagerView,
   })),
 );
+const EarlyStartDashboardView = lazy(() =>
+  import('./components/earlyStart/EarlyStartDashboardView').then((m) => ({
+    default: m.EarlyStartDashboardView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -158,6 +163,15 @@ const MainContent: React.FC = () => {
             <Route path="/calculators" element={<CalculatorsHubView />} />
             <Route path="/calculators/:slug" element={<CalculatorDetailView />} />
             <Route path="/my/budget" element={<BudgetManagerView />} />
+            <Route path="/early-start" element={<EarlyStartDashboardView />} />
+            <Route
+              path="/early-start/academy"
+              element={<EarlyStartDashboardView initialTab="academy" />}
+            />
+            <Route
+              path="/my/future-fund"
+              element={<EarlyStartDashboardView initialTab="fund" />}
+            />
             <Route
               path="/portal"
               element={<CustomerPortalView onOpenCart={() => setIsCartOpen(true)} />}

@@ -228,8 +228,8 @@ export const FinishingView: React.FC = () => {
                                 ? 'غرفة'
                                 : 'غرف نوم'
                               : n === 1
-                              ? 'Room'
-                              : 'Bedrooms'}
+                                ? 'Room'
+                                : 'Bedrooms'}
                           </option>
                         ))}
                       </select>
@@ -253,8 +253,8 @@ export const FinishingView: React.FC = () => {
                                 ? 'حمام'
                                 : 'حمامات'
                               : n === 1
-                              ? 'Bathroom'
-                              : 'Bathrooms'}
+                                ? 'Bathroom'
+                                : 'Bathrooms'}
                           </option>
                         ))}
                       </select>
@@ -273,11 +273,10 @@ export const FinishingView: React.FC = () => {
                           type="button"
                           onClick={() => setSelectedTier(pkg.tier)}
                           aria-pressed={selectedTier === pkg.tier}
-                          className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between text-start ${
-                            selectedTier === pkg.tier
+                          className={`p-3.5 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between text-start ${selectedTier === pkg.tier
                               ? 'border-[#D91B3E] bg-rose-50/50 shadow-md ring-1 ring-[#D91B3E]'
                               : 'border-gray-200 hover:border-rose-200 bg-white'
-                          }`}
+                            }`}
                         >
                           <div>
                             <div className="flex justify-between items-start gap-1">
@@ -570,11 +569,10 @@ export const FinishingView: React.FC = () => {
                     setProjectGovFilter(g.slug);
                     setActiveProjectIdx(0);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
-                    projectGovFilter === g.slug
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${projectGovFilter === g.slug
                       ? 'bg-white text-[#9E122C] border-white'
                       : 'bg-white/5 text-rose-100 border-white/15 hover:bg-white/15'
-                  }`}
+                    }`}
                 >
                   {language === 'ar' ? g.ar : g.en}
                 </button>
@@ -588,11 +586,10 @@ export const FinishingView: React.FC = () => {
                 key={p.id}
                 type="button"
                 onClick={() => setActiveProjectIdx(idx)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  currentProject?.id === p.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${currentProject?.id === p.id
                     ? 'bg-[#D91B3E] text-white shadow-md'
                     : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                }`}
+                  }`}
               >
                 {language === 'ar'
                   ? p.titleAr.split('—')[1] || p.titleAr
@@ -623,8 +620,8 @@ export const FinishingView: React.FC = () => {
                           ? 'بعد التشطيب والتسليم الفعلي'
                           : 'After Key Handover'
                         : language === 'ar'
-                        ? 'قبل التشطيب (طوب أحمر)'
-                        : 'Before Finishing (Raw Brick)'}
+                          ? 'قبل التشطيب (طوب أحمر)'
+                          : 'Before Finishing (Raw Brick)'}
                     </span>
                   </div>
 
@@ -639,22 +636,20 @@ export const FinishingView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowAfterView(false)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          !showAfterView
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${!showAfterView
                             ? 'bg-[#D91B3E] text-white shadow'
                             : 'text-gray-300 hover:text-white'
-                        }`}
+                          }`}
                       >
                         {language === 'ar' ? 'قبل التشطيب' : 'Before'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowAfterView(true)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          showAfterView
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${showAfterView
                             ? 'bg-[#D91B3E] text-white shadow'
                             : 'text-gray-300 hover:text-white'
-                        }`}
+                          }`}
                       >
                         {language === 'ar' ? 'بعد التسليم' : 'After'}
                       </button>

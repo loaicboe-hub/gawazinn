@@ -28,7 +28,7 @@ function domainRoute(domain: ContentDomain): string {
     case 'wedding':
       return '/wedding';
     case 'early_start':
-      return '/installments';
+      return '/early-start';
     default:
       return '/encyclopedia';
   }

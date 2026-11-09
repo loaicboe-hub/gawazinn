@@ -16,6 +16,7 @@ import {
   Mail,
   Wallet,
   Calculator,
+  Compass,
 } from 'lucide-react';
 import { getRoleLabel } from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
@@ -146,6 +147,15 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/my/future-fund"
+                data-testid="portal-open-future-fund-link"
+                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
+              >
+                <Compass className="w-4 h-4" />
+                <span>{language === 'ar' ? 'صندوق مستقبلي' : 'My Future Fund'}</span>
+              </Link>
+
               <Link
                 to="/my/budget"
                 data-testid="portal-open-budget-link"

@@ -175,3 +175,4 @@ export const DEFAULT_BUDGET_CATEGORIES = [
     sortOrder: 8,
   },
 ];
+

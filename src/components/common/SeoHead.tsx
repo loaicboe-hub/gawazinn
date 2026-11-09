@@ -115,6 +115,19 @@ export const SeoHead: React.FC = () => {
     } else if (pathname.startsWith('/my/budget')) {
       titleAr = 'مدير ميزانية الزواج والمصروفات | جواز إن';
       titleEn = 'Personal Wedding & Home Budget Manager | GAWAZ INN';
+    } else if (pathname === '/early-start') {
+      titleAr = 'جواز إن البداية المبكرة — خطط واستعد قبل الزواج حتى 10 سنوات';
+      titleEn = 'GAWAZ INN Early Start — Prepare for Marriage 6m to 10y Ahead';
+      descAr =
+        'ابدأ التخطيط المالي الشخصي وصندوق مستقبلك قبل الخطوبة بمرونة من 6 أشهر إلى 10 سنوات مع محاكي ماذا لو وأكاديمية الوعي المالي.';
+      descEn =
+        'Start financial & marriage preparation 6 months to 10 years ahead with What-If scenarios, 7 savings buckets, and Early Start Academy.';
+    } else if (pathname === '/early-start/academy') {
+      titleAr = 'أكاديمية البداية المبكرة للوعي المالي والاستعداد للبيت | جواز إن';
+      titleEn = 'Early Start Academy — Financial Literacy & Housing Readiness | GAWAZ INN';
+    } else if (pathname.startsWith('/my/future-fund')) {
+      titleAr = 'صندوق مستقبلي الشخصي | جواز إن';
+      titleEn = 'My Future Fund — Private Savings Goals | GAWAZ INN';
     } else if (pathname.startsWith('/portal')) {
       titleAr = 'بوابة طلباتي ومتابعاتي | جواز إن';
       titleEn = 'My Unified Requests Portal | GAWAZ INN';

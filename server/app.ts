@@ -11,12 +11,19 @@ import {
 import { estimateFinishingRange, maskNationalId } from '../shared/catalogMeta';
 import { getCalculatorSummary, listCalculatorSummaries, runCalculator } from '../shared/calculators';
 import {
+  EARLY_START_ACADEMY_LESSONS,
+  EARLY_START_TIMEFRAME_PRESETS,
+} from '../shared/earlyStartData';
+import {
   articleUpsertSchema,
   calculateRequestSchema,
   createBudgetExpenseSchema,
+  createEarlyStartMilestoneSchema,
   createFinancingSchema,
   createFinishingInquirySchema,
   createOrderSchema,
+  createSavingsContributionSchema,
+  createSavingsGoalSchema,
   createSponsorshipSchema,
   createSupportCaseSchema,
   createWeddingBookingSchema,
@@ -25,9 +32,12 @@ import {
   normalizeEgyptianPhone,
   patchBudgetCategorySchema,
   patchBudgetExpenseSchema,
+  patchEarlyStartMilestoneSchema,
+  patchSavingsGoalSchema,
   productUpsertSchema,
   registerSchema,
   updateBudgetPlanSchema,
+  updateEarlyStartProfileSchema,
   updateProfileSchema,
   upsertBudgetCategorySchema,
   userBridePlanSchema,
@@ -72,6 +82,13 @@ import {
   syncUserTransactionsToBudget,
   upsertBudgetExpenseFromSource,
 } from './budgetService';
+import {
+  buildEarlyStartOverview,
+  computeExpectedDateFromMonths,
+  ensureUserEarlyStartProfile,
+  evaluateAndAwardPrivateBadges,
+  recordGoalContribution,
+} from './earlyStartService';
 import {
   SlidingWindowRateLimiter,
   buildClearSessionCookieHeader,
@@ -746,6 +763,8 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/faqs',
           '/discover',
           '/calculators',
+          '/early-start',
+          '/early-start/academy',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -2020,6 +2039,405 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         });
         sendJson(res, 200, { ok: true, data: result });
         return;
+      }
+
+      // ================= STAGE 4: EARLY START & MY FUTURE FUND (MODULE A) =================
+      if (method === 'GET' && route === '/early-start/academy') {
+        const completedSlugs = authUser
+          ? (
+              db
+                .prepare('SELECT lesson_slug FROM early_start_lesson_progress WHERE user_id = ? ORDER BY completed_at ASC')
+                .all(authUser.id) as { lesson_slug: string }[]
+            ).map((r) => r.lesson_slug)
+          : [];
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            lessons: EARLY_START_ACADEMY_LESSONS,
+            completedSlugs,
+          },
+        });
+        return;
+      }
+
+      if (route.startsWith('/early-start/')) {
+        if (!authUser) {
+          sendError(
+            res,
+            401,
+            'UNAUTHORIZED',
+            'Sign in to access your private Early Start & Future Fund workspace',
+          );
+          return;
+        }
+
+        if (method === 'GET' && route === '/early-start/overview') {
+          sendJson(res, 200, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'PUT' && route === '/early-start/profile') {
+          const body = await readJsonBody(req);
+          const parsed = updateEarlyStartProfileSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid Early Start profile settings', parsed.error.flatten());
+            return;
+          }
+          const currentProfile = ensureUserEarlyStartProfile(db, authUser.id);
+          const nextPreset = parsed.data.timeframePreset ?? currentProfile.timeframePreset;
+          const presetMeta = EARLY_START_TIMEFRAME_PRESETS.find((p) => p.key === nextPreset);
+
+          let nextMonths = parsed.data.timeframeMonths;
+          if (nextMonths === undefined) {
+            if (parsed.data.timeframePreset && parsed.data.timeframePreset !== 'custom' && presetMeta) {
+              nextMonths = presetMeta.months;
+            } else {
+              nextMonths = currentProfile.timeframeMonths;
+            }
+          }
+
+          let nextExpectedDate = parsed.data.expectedMarriageDate;
+          if (nextExpectedDate === undefined) {
+            if (nextMonths !== currentProfile.timeframeMonths || !currentProfile.expectedMarriageDate) {
+              nextExpectedDate = computeExpectedDateFromMonths(nextMonths);
+            } else {
+              nextExpectedDate = currentProfile.expectedMarriageDate;
+            }
+          }
+
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE early_start_profiles SET
+              timeframe_preset = ?,
+              timeframe_months = ?,
+              expected_marriage_date = ?,
+              target_marriage_budget = COALESCE(?, target_marriage_budget),
+              initial_capital = COALESCE(?, initial_capital),
+              monthly_savings_target = COALESCE(?, monthly_savings_target),
+              emergency_reserve_target = COALESCE(?, emergency_reserve_target),
+              reminder_frequency = COALESCE(?, reminder_frequency),
+              personal_notes = CASE WHEN ? IS NOT NULL THEN ? ELSE personal_notes END,
+              updated_at = ?
+             WHERE user_id = ?`,
+          ).run(
+            nextPreset,
+            nextMonths,
+            nextExpectedDate ?? null,
+            parsed.data.targetMarriageBudget ?? null,
+            parsed.data.initialCapital ?? null,
+            parsed.data.monthlySavingsTarget ?? null,
+            parsed.data.emergencyReserveTarget ?? null,
+            parsed.data.reminderFrequency ?? null,
+            parsed.data.personalNotes === undefined ? null : 'set',
+            parsed.data.personalNotes ?? null,
+            now,
+            authUser.id,
+          );
+
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'early_start.profile_updated',
+            targetType: 'early_start_profile',
+            targetId: authUser.id,
+            metadata: { preset: nextPreset, months: nextMonths },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/early-start/goals') {
+          const body = await readJsonBody(req);
+          const parsed = createSavingsGoalSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid savings goal details', parsed.error.flatten());
+            return;
+          }
+          ensureUserEarlyStartProfile(db, authUser.id);
+          const goalId = `sg-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const dateStr = now.slice(0, 10);
+          const streakMonth = dateStr.slice(0, 7);
+
+          db.exec('BEGIN;');
+          let newlyEarnedBadges = [];
+          try {
+            db.prepare(
+              `INSERT INTO savings_goals
+                 (id, user_id, goal_type, title_ar, title_en, target_amount, current_amount, monthly_contribution, target_date, priority, is_private, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+            ).run(
+              goalId,
+              authUser.id,
+              parsed.data.goalType,
+              parsed.data.titleAr,
+              parsed.data.titleEn,
+              parsed.data.targetAmount,
+              parsed.data.currentAmount,
+              parsed.data.monthlyContribution,
+              parsed.data.targetDate ?? null,
+              parsed.data.priority,
+              now,
+              now,
+            );
+
+            if (parsed.data.currentAmount > 0) {
+              db.prepare(
+                `INSERT INTO savings_contributions
+                   (id, savings_goal_id, user_id, amount, contribution_type, contribution_date, streak_month, note, created_at)
+                 VALUES (?, ?, ?, ?, 'deposit', ?, ?, ?, ?)`,
+              ).run(
+                `sc-${crypto.randomUUID().slice(0, 10)}`,
+                goalId,
+                authUser.id,
+                parsed.data.currentAmount,
+                dateStr,
+                streakMonth,
+                'رصيد افتتاحي للهدف',
+                now,
+              );
+            }
+
+            newlyEarnedBadges = evaluateAndAwardPrivateBadges(db, authUser.id);
+            db.exec('COMMIT;');
+          } catch (err) {
+            db.exec('ROLLBACK;');
+            throw err;
+          }
+
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'early_start.goal_created',
+            targetType: 'savings_goal',
+            targetId: goalId,
+            metadata: { goalType: parsed.data.goalType, targetAmount: parsed.data.targetAmount },
+            ipAddress: ip,
+          });
+
+          sendJson(res, 201, {
+            ok: true,
+            data: {
+              goalId,
+              newlyEarnedBadges,
+              overview: buildEarlyStartOverview(db, authUser.id),
+            },
+          });
+          return;
+        }
+
+        const goalContribMatch = route.match(/^\/early-start\/goals\/([^/]+)\/contributions$/);
+        if (method === 'POST' && goalContribMatch) {
+          const goalId = decodeURIComponent(goalContribMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = createSavingsContributionSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid contribution entry', parsed.error.flatten());
+            return;
+          }
+
+          try {
+            const result = recordGoalContribution(db, {
+              userId: authUser.id,
+              goalId,
+              amount: parsed.data.amount,
+              contributionType: parsed.data.contributionType,
+              contributionDate: parsed.data.contributionDate,
+              note: parsed.data.note,
+            });
+            writeAuditLog(db, {
+              actorUserId: authUser.id,
+              actorRole: authUser.role,
+              action: 'early_start.contribution_logged',
+              targetType: 'savings_contribution',
+              targetId: result.contributionId,
+              metadata: { goalId, amount: parsed.data.amount },
+              ipAddress: ip,
+            });
+            sendJson(res, 201, { ok: true, data: result });
+          } catch (err) {
+            if (err instanceof Error && err.message === 'GOAL_NOT_FOUND') {
+              sendError(res, 404, 'NOT_FOUND', 'Savings goal not found');
+              return;
+            }
+            throw err;
+          }
+          return;
+        }
+
+        const goalItemMatch = route.match(/^\/early-start\/goals\/([^/]+)$/);
+        if (method === 'PATCH' && goalItemMatch) {
+          const goalId = decodeURIComponent(goalItemMatch[1]);
+          const existing = db
+            .prepare('SELECT id, user_id FROM savings_goals WHERE id = ?')
+            .get(goalId) as { id: string; user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Savings goal not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchSavingsGoalSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid savings goal updates', parsed.error.flatten());
+            return;
+          }
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE savings_goals SET
+              title_ar = COALESCE(?, title_ar),
+              title_en = COALESCE(?, title_en),
+              target_amount = COALESCE(?, target_amount),
+              monthly_contribution = COALESCE(?, monthly_contribution),
+              target_date = CASE WHEN ? IS NOT NULL THEN ? ELSE target_date END,
+              priority = COALESCE(?, priority),
+              updated_at = ?
+             WHERE id = ? AND user_id = ?`,
+          ).run(
+            parsed.data.titleAr ?? null,
+            parsed.data.titleEn ?? null,
+            parsed.data.targetAmount ?? null,
+            parsed.data.monthlyContribution ?? null,
+            parsed.data.targetDate === undefined ? null : 'set',
+            parsed.data.targetDate ?? null,
+            parsed.data.priority ?? null,
+            now,
+            goalId,
+            authUser.id,
+          );
+
+          const newlyEarnedBadges = evaluateAndAwardPrivateBadges(db, authUser.id);
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              newlyEarnedBadges,
+              overview: buildEarlyStartOverview(db, authUser.id),
+            },
+          });
+          return;
+        }
+
+        if (method === 'DELETE' && goalItemMatch) {
+          const goalId = decodeURIComponent(goalItemMatch[1]);
+          const existing = db
+            .prepare('SELECT id, user_id FROM savings_goals WHERE id = ?')
+            .get(goalId) as { id: string; user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Savings goal not found');
+            return;
+          }
+          db.prepare('DELETE FROM savings_goals WHERE id = ? AND user_id = ?').run(goalId, authUser.id);
+          sendJson(res, 200, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/early-start/milestones') {
+          const body = await readJsonBody(req);
+          const parsed = createEarlyStartMilestoneSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid milestone fields', parsed.error.flatten());
+            return;
+          }
+          ensureUserEarlyStartProfile(db, authUser.id);
+          const msId = `esm-${crypto.randomUUID().slice(0, 10)}`;
+          const maxOrder =
+            (
+              db
+                .prepare('SELECT MAX(sort_order) as max_ord FROM early_start_milestones WHERE user_id = ?')
+                .get(authUser.id) as { max_ord: number | null }
+            ).max_ord ?? 0;
+
+          db.prepare(
+            `INSERT INTO early_start_milestones
+               (id, user_id, track, title_ar, title_en, target_months_out, completed, completed_at, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?)`,
+          ).run(
+            msId,
+            authUser.id,
+            parsed.data.track,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.targetMonthsOut,
+            maxOrder + 1,
+          );
+          sendJson(res, 201, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        const milestoneMatch = route.match(/^\/early-start\/milestones\/([^/]+)$/);
+        if (method === 'PATCH' && milestoneMatch) {
+          const msId = decodeURIComponent(milestoneMatch[1]);
+          const existing = db
+            .prepare('SELECT id, user_id FROM early_start_milestones WHERE id = ?')
+            .get(msId) as { id: string; user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Milestone not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchEarlyStartMilestoneSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid milestone toggle', parsed.error.flatten());
+            return;
+          }
+          const now = new Date().toISOString();
+          db.prepare(
+            'UPDATE early_start_milestones SET completed = ?, completed_at = ? WHERE id = ? AND user_id = ?',
+          ).run(parsed.data.completed ? 1 : 0, parsed.data.completed ? now : null, msId, authUser.id);
+          sendJson(res, 200, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && milestoneMatch) {
+          const msId = decodeURIComponent(milestoneMatch[1]);
+          const existing = db
+            .prepare('SELECT id, user_id FROM early_start_milestones WHERE id = ?')
+            .get(msId) as { id: string; user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Milestone not found');
+            return;
+          }
+          db.prepare('DELETE FROM early_start_milestones WHERE id = ? AND user_id = ?').run(msId, authUser.id);
+          sendJson(res, 200, { ok: true, data: buildEarlyStartOverview(db, authUser.id) });
+          return;
+        }
+
+        const academyMatch = route.match(/^\/early-start\/academy\/([^/]+)\/complete$/);
+        if (method === 'POST' && academyMatch) {
+          const slug = decodeURIComponent(academyMatch[1]);
+          const lesson = EARLY_START_ACADEMY_LESSONS.find((l) => l.slug === slug);
+          if (!lesson) {
+            sendError(res, 404, 'NOT_FOUND', 'Academy lesson not found');
+            return;
+          }
+          const body = (await readJsonBody(req)) as { completed?: boolean };
+          const markCompleted = body.completed !== false;
+          const now = new Date().toISOString();
+
+          ensureUserEarlyStartProfile(db, authUser.id);
+          if (markCompleted) {
+            db.prepare(
+              `INSERT OR IGNORE INTO early_start_lesson_progress (user_id, lesson_slug, completed_at)
+               VALUES (?, ?, ?)`,
+            ).run(authUser.id, slug, now);
+          } else {
+            db.prepare(
+              'DELETE FROM early_start_lesson_progress WHERE user_id = ? AND lesson_slug = ?',
+            ).run(authUser.id, slug);
+          }
+
+          const newlyEarnedBadges = evaluateAndAwardPrivateBadges(db, authUser.id);
+          const overview = buildEarlyStartOverview(db, authUser.id);
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              newlyEarnedBadges,
+              completedSlugs: overview.completedLessonSlugs,
+              overview,
+            },
+          });
+          return;
+        }
       }
 
       // ================= CUSTOMER ORDERS & INQUIRIES (OWNER-SCOPED) =================

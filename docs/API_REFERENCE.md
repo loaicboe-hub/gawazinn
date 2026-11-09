@@ -32,7 +32,10 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `POST/PATCH/DELETE /api/v1/budget/expenses` & `/:id` *(Stage 3 Auth-Required)* — Full planned/upcoming/paid expense tracking, payment confirmation (`mark paid`), and side attribution (`groom|bride|shared|family`).
 - `POST /api/v1/budget/import-from-calculator` *(Stage 3 Auth-Required)* — Atomic run of `shared/calculators/` linked straight into `budget_categories`/`budget_expenses` (`add_planned_expense`, `set_planned`, or `add_deposit` modes).
 - `POST /api/v1/budget/sync-transactions` *(Stage 3 Auth-Required)* — Idempotent sync importing paid/pending orders and wedding hall bookings into `budget_expenses` without duplicating (`idx_budget_expense_source_dedup`).
-- *(Planned Stage 4)* `GET/PUT /api/v1/early-start/profile`, `GET /api/v1/early-start/overview`, `POST/PATCH/DELETE /api/v1/early-start/goals`, `POST /api/v1/early-start/goals/:id/contributions` — Owner-only Future Fund, savings streaks & private badges.
+- `GET /api/v1/early-start/academy` *(Stage 4 Public + Optional Auth)* — Returns the 10-module Early Start Academy curriculum plus `completedSlugs` when signed in (`[]` for guests).
+- `GET /api/v1/early-start/overview`, `PUT /api/v1/early-start/profile` *(Stage 4 Auth-Required)* — Private owner-scoped Early Start dashboard metrics, 6m–10y horizon selector, streak length, cumulative trajectory, private badges, milestones, and goal progress.
+- `POST/PATCH/DELETE /api/v1/early-start/goals` & `/:id`, `POST /api/v1/early-start/goals/:id/contributions` *(Stage 4 Auth-Required)* — CRUD over the 7 Future Fund savings buckets, atomic deposit logging, balance recalculation, and private milestone badge awards.
+- `POST/PATCH/DELETE /api/v1/early-start/milestones` & `/:id`, `POST /api/v1/early-start/academy/:slug/complete` *(Stage 4 Auth-Required)* — Preparation milestone management and Academy lesson completion toggle (`audit_logs` recorded, zero public savings exposure).
 
 ## Personal Journey & Shared Workspace
 - `GET/POST/PATCH/DELETE /api/v1/journey/tasks` — Tasks, dependencies, checklists, timeline phases.

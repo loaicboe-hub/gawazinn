@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Calculator,
   Wallet,
+  Compass,
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
@@ -116,6 +117,13 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            <Link
+              to="/early-start"
+              className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
+            >
+              <Compass className="w-3 h-3" />
+              <span>{language === 'ar' ? 'البداية المبكرة' : 'Early Start'}</span>
+            </Link>
             <Link
               to="/my/budget"
               className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
@@ -262,6 +270,17 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
+                      to="/my/future-fund"
+                      onClick={closeMenus}
+                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
+                    >
+                      <Compass className="w-3.5 h-3.5 text-[#D91B3E]" />
+                      <span>
+                        {language === 'ar' ? 'البداية المبكرة وصندوق مستقبلي' : 'Early Start & Future Fund'}
+                      </span>
+                    </Link>
+
+                    <Link
                       to="/my/budget"
                       onClick={closeMenus}
                       className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
@@ -353,6 +372,14 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
               </div>
             </Link>
           ))}
+          <Link
+            to="/early-start"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-[#D91B3E] bg-[#FFF8F9] hover:bg-[#FDE8ED]"
+          >
+            <Compass className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'البداية المبكرة وصندوق المستقبل' : 'Early Start & Future Fund'}</span>
+          </Link>
           <Link
             to="/my/budget"
             onClick={closeMenus}

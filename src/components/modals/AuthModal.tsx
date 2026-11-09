@@ -168,6 +168,7 @@ export const AuthModal: React.FC = () => {
               <input
                 type="text"
                 required
+                data-testid="auth-identifier-input"
                 placeholder={language === 'ar' ? 'karim@gawazinn.demo أو 01012345678' : 'email@domain.com or 010XXXXXXXX'}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -184,6 +185,7 @@ export const AuthModal: React.FC = () => {
               type="password"
               required
               minLength={mode === 'register' ? 8 : 4}
+              data-testid="auth-password-input"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -194,6 +196,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="submit"
             disabled={submitting}
+            data-testid="auth-submit-btn"
             className="w-full bg-red-gradient text-white font-bold text-xs py-3.5 rounded-xl shadow-md hover:opacity-95 transition disabled:opacity-60 cursor-pointer"
           >
             {submitting

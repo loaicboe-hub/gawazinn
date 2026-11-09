@@ -13,6 +13,7 @@ import {
   CreditCard,
   Calculator,
   Wallet,
+  Compass,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
 
@@ -168,8 +169,20 @@ export const SplashHome: React.FC = () => {
           ))}
         </div>
 
-        {/* Clean Ecosystem Discovery Links (Encyclopedia, Governorates, Installments) */}
+        {/* Clean Ecosystem Discovery Links (Early Start, Encyclopedia, Governorates, Calculators, Budget, Installments) */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 pt-2">
+          <Link
+            to="/early-start"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-early-start"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>
+              {language === 'ar' ? 'البداية المبكرة وصندوق المستقبل' : 'Early Start & Future Fund'}
+            </span>
+          </Link>
+
           <Link
             to="/encyclopedia"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

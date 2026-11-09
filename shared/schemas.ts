@@ -340,3 +340,62 @@ export const importCalculatorToBudgetSchema = z.object({
   paidBySide: z.enum(['groom', 'bride', 'shared']).default('shared'),
 });
 
+// Stage 4: Early Start & My Future Fund Validation Schemas
+export const updateEarlyStartProfileSchema = z.object({
+  timeframePreset: z.enum(['10y', '7y', '5y', '3y', '2y', '1y', '6m', 'custom']).optional(),
+  timeframeMonths: z.number().int().min(3).max(120).optional(),
+  expectedMarriageDate: z.string().trim().max(32).nullable().optional(),
+  targetMarriageBudget: z.number().min(20000).max(50000000).optional(),
+  initialCapital: z.number().min(0).max(20000000).optional(),
+  monthlySavingsTarget: z.number().min(0).max(1000000).optional(),
+  emergencyReserveTarget: z.number().min(0).max(10000000).optional(),
+  reminderFrequency: z.enum(['weekly', 'biweekly', 'monthly', 'off']).optional(),
+  personalNotes: z.string().trim().max(2000).nullable().optional(),
+});
+
+export const createSavingsGoalSchema = z.object({
+  goalType: z.enum([
+    'marriage',
+    'apartment_purchase',
+    'finishing',
+    'furniture',
+    'appliances',
+    'wedding',
+    'emergency',
+  ]),
+  titleAr: z.string().trim().min(2).max(160),
+  titleEn: z.string().trim().min(2).max(160),
+  targetAmount: z.number().min(1000).max(50000000),
+  currentAmount: z.number().min(0).max(50000000).default(0),
+  monthlyContribution: z.number().min(0).max(1000000).default(0),
+  targetDate: z.string().trim().max(32).nullable().optional(),
+  priority: z.number().int().min(1).max(20).default(1),
+});
+
+export const patchSavingsGoalSchema = z.object({
+  titleAr: z.string().trim().min(2).max(160).optional(),
+  titleEn: z.string().trim().min(2).max(160).optional(),
+  targetAmount: z.number().min(1000).max(50000000).optional(),
+  monthlyContribution: z.number().min(0).max(1000000).optional(),
+  targetDate: z.string().trim().max(32).nullable().optional(),
+  priority: z.number().int().min(1).max(20).optional(),
+});
+
+export const createSavingsContributionSchema = z.object({
+  amount: z.number().min(-5000000).max(20000000).refine((v) => v !== 0, 'Amount cannot be zero'),
+  contributionType: z.enum(['deposit', 'adjustment']).default('deposit'),
+  contributionDate: z.string().trim().max(32).optional(),
+  note: z.string().trim().max(400).optional(),
+});
+
+export const createEarlyStartMilestoneSchema = z.object({
+  track: z.enum(['financial', 'personal', 'education', 'housing']),
+  titleAr: z.string().trim().min(3).max(200),
+  titleEn: z.string().trim().min(3).max(200),
+  targetMonthsOut: z.number().int().min(1).max(120).default(12),
+});
+
+export const patchEarlyStartMilestoneSchema = z.object({
+  completed: z.boolean(),
+});
+

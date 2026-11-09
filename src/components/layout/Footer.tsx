@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Calculator,
   Wallet,
+  Compass,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -160,6 +161,17 @@ export const Footer: React.FC = () => {
             >
               <Wallet className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'ميزانية الزواج' : 'Wedding Budget'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/early-start"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Compass className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'البداية المبكرة' : 'Early Start'}</span>
             </Link>
 
             <span>•</span>

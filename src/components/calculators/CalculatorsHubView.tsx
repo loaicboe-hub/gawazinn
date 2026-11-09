@@ -173,6 +173,14 @@ export const CalculatorsHubView: React.FC = () => {
                 <span>{language === 'ar' ? 'فتح مدير ميزانية الزواج' : 'Open Wedding Budget Manager'}</span>
                 <ArrowIcon className="w-4 h-4" />
               </Link>
+
+              <Link
+                to="/early-start"
+                className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-rose-100 text-xs font-bold flex items-center justify-center gap-2 transition"
+              >
+                <Compass className="w-4 h-4 text-[#FF8FA3]" />
+                <span>{language === 'ar' ? 'لوحة البداية المبكرة وماذا لو؟' : 'Early Start & What-If Simulator'}</span>
+              </Link>
             </div>
           </div>
         </div>

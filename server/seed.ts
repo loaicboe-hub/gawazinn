@@ -29,21 +29,28 @@ import { STAGE2_FAQ_ITEMS, STAGE2_GLOSSARY_TERMS } from '../shared/knowledgeGlos
 import { maskNationalId } from '../shared/catalogMeta';
 import { runCalculator } from '../shared/calculators';
 import { ensureUserBudgetPlan, upsertBudgetExpenseFromSource } from './budgetService';
+import {
+  computeExpectedDateFromMonths,
+  ensureUserEarlyStartProfile,
+  evaluateAndAwardPrivateBadges,
+} from './earlyStartService';
 import { hashPassword, hashSensitiveField } from './security';
 
 export function seedDatabase(
   db: DatabaseSync,
   secret = 'gawazinn-dev-local-secret-change-in-production',
-): { seeded: boolean; stage2Seeded: boolean; stage3Seeded: boolean } {
+): { seeded: boolean; stage2Seeded: boolean; stage3Seeded: boolean; stage4Seeded: boolean } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
   const stage3PlanCountRow = db.prepare('SELECT COUNT(*) as cnt FROM budget_plans').get() as { cnt: number };
+  const stage4EarlyCountRow = db.prepare('SELECT COUNT(*) as cnt FROM early_start_profiles').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
+  const needsStage4 = stage4EarlyCountRow.cnt === 0;
 
-  if (!needsStage1 && !needsStage2 && !needsStage3) {
-    return { seeded: false, stage2Seeded: false, stage3Seeded: false };
+  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4) {
+    return { seeded: false, stage2Seeded: false, stage3Seeded: false, stage4Seeded: false };
   }
 
   const now = new Date().toISOString();
@@ -865,11 +872,100 @@ export function seedDatabase(
       }
     }
 
+    if (needsStage4) {
+      const karimExists = db.prepare("SELECT id FROM users WHERE id = 'usr-1'").get();
+      if (karimExists) {
+        // Initialize Karim's 5-year Early Start roadmap + Future Fund starter goals
+        const targetDate5y = computeExpectedDateFromMonths(60);
+        ensureUserEarlyStartProfile(db, 'usr-1');
+        db.prepare(
+          `UPDATE early_start_profiles SET
+            timeframe_preset = '5y',
+            timeframe_months = 60,
+            expected_marriage_date = ?,
+            target_marriage_budget = 650000,
+            initial_capital = 120000,
+            monthly_savings_target = 6500,
+            emergency_reserve_target = 65000,
+            personal_notes = 'خطة البداية المبكرة خلال 5 سنوات: التركيز على مقدم الشقة والتشطيب واحتياطي الطوارئ أولاً.',
+            updated_at = ?
+           WHERE user_id = 'usr-1'`,
+        ).run(targetDate5y, now);
+
+        const existingGoals = db
+          .prepare("SELECT id, goal_type FROM savings_goals WHERE user_id = 'usr-1'")
+          .all() as { id: string; goal_type: string }[];
+        const goalByType = new Map(existingGoals.map((g) => [g.goal_type, g.id]));
+
+        // Add explicit marriage & appliances starter goals so seeded user covers richer buckets
+        const marriageGoalId = 'sg-karim-marriage';
+        db.prepare(
+          `INSERT OR IGNORE INTO savings_goals
+             (id, user_id, goal_type, title_ar, title_en, target_amount, current_amount, monthly_contribution, target_date, priority, is_private, created_at, updated_at)
+           VALUES (?, 'usr-1', 'marriage', 'صندوق الزواج والأثاث الكلي', 'Marriage & Furniture Target Fund', 150000, 35000, 1500, ?, 4, 1, ?, ?)`,
+        ).run(marriageGoalId, targetDate5y, now, now);
+
+        const aptGoalId = goalByType.get('apartment_purchase')!;
+        const finGoalId = goalByType.get('finishing')!;
+        const emgGoalId = goalByType.get('emergency')!;
+
+        db.prepare("UPDATE savings_goals SET current_amount = 95000 WHERE id = ?").run(aptGoalId);
+        db.prepare("UPDATE savings_goals SET current_amount = 55000 WHERE id = ?").run(finGoalId);
+        db.prepare("UPDATE savings_goals SET current_amount = 40000 WHERE id = ?").run(emgGoalId);
+
+        // Seed 4 consecutive monthly contributions up to current month for realistic streak + SVG chart
+        const baseDt = new Date();
+        const insertContrib = db.prepare(
+          `INSERT OR IGNORE INTO savings_contributions
+             (id, savings_goal_id, user_id, amount, contribution_type, contribution_date, streak_month, note, created_at)
+           VALUES (?, ?, 'usr-1', ?, 'deposit', ?, ?, ?, ?)`,
+        );
+
+        const seedSeries: { offset: number; goalId: string; amount: number; note: string }[] = [
+          { offset: -3, goalId: aptGoalId, amount: 45000, note: 'تحويل افتتاحي لصندوق مقدم الشقة' },
+          { offset: -2, goalId: finGoalId, amount: 55000, note: 'ادخار مخصص لتأسيس السباكة والكهرباء' },
+          { offset: -1, goalId: emgGoalId, amount: 40000, note: 'تدعيم احتياطي الطوارئ الأُسري' },
+          { offset: 0, goalId: aptGoalId, amount: 50000, note: 'إيداع شهري منتظم' },
+        ];
+
+        seedSeries.forEach((entry, idx) => {
+          const d = new Date(Date.UTC(baseDt.getUTCFullYear(), baseDt.getUTCMonth() + entry.offset, 10));
+          const isoDate = d.toISOString().slice(0, 10);
+          const streakMonth = isoDate.slice(0, 7);
+          insertContrib.run(
+            `sc-seed-karim-${idx + 1}`,
+            entry.goalId,
+            entry.amount,
+            isoDate,
+            streakMonth,
+            entry.note,
+            now,
+          );
+        });
+
+        // Mark first 3 Academy lessons completed & evaluate badges
+        const insertLesson = db.prepare(
+          `INSERT OR IGNORE INTO early_start_lesson_progress (user_id, lesson_slug, completed_at)
+           VALUES ('usr-1', ?, ?)`,
+        );
+        insertLesson.run('financial-literacy-before-engagement', now);
+        insertLesson.run('smart-personal-budgeting-egypt', now);
+        insertLesson.run('habit-streaks-and-consistency', now);
+
+        db.prepare(
+          `UPDATE early_start_milestones SET completed = 1, completed_at = ? WHERE user_id = 'usr-1' AND sort_order <= 2`,
+        ).run(now);
+
+        evaluateAndAwardPrivateBadges(db, 'usr-1');
+      }
+    }
+
     db.exec('COMMIT;');
     return {
-      seeded: needsStage1 || needsStage2 || needsStage3,
+      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
+      stage4Seeded: needsStage4,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

@@ -39,6 +39,13 @@ import type {
   BudgetOwnerSide,
   BudgetPaymentType,
   BudgetExpenseStatus,
+  EarlyStartAcademyLesson,
+  EarlyStartMilestoneTrack,
+  EarlyStartOverviewPayload,
+  EarlyStartReminderFrequency,
+  EarlyStartTimeframePreset,
+  SavingsBadge,
+  SavingsGoalType,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -69,12 +76,14 @@ import {
 } from '../../shared/trousseauEncyclopediaData';
 import { STAGE2_GLOSSARY_TERMS, STAGE2_FAQ_ITEMS } from '../../shared/knowledgeGlossaryData';
 import { listCalculatorSummaries, runCalculator } from '../../shared/calculators';
+import { EARLY_START_ACADEMY_LESSONS } from '../../shared/earlyStartData';
 import { ADMIN_PANEL_ROLES, hasAnyRole } from '../../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../../shared/catalogMeta';
 import { apiRequest, ApiClientError } from '../services/api';
 
 export type SectionKey =
   | 'home'
+  | 'earlyStart'
   | 'finishing'
   | 'groom'
   | 'bride'
@@ -90,6 +99,7 @@ export type SectionKey =
 
 export const SECTION_ROUTES: Record<SectionKey, string> = {
   home: '/',
+  earlyStart: '/early-start',
   finishing: '/finishing',
   groom: '/groom',
   bride: '/bride',
@@ -368,6 +378,62 @@ interface AppContextType {
   }) => Promise<{ runId: string; output: CalculatorOutput }>;
   syncBudgetTransactions: () => Promise<number>;
 
+  // Stage 4: Early Start & My Future Fund
+  academyLessons: EarlyStartAcademyLesson[];
+  earlyStartOverview: EarlyStartOverviewPayload | null;
+  refreshEarlyStartOverview: () => Promise<void>;
+  updateEarlyStartProfile: (patch: {
+    timeframePreset?: EarlyStartTimeframePreset;
+    timeframeMonths?: number;
+    expectedMarriageDate?: string | null;
+    targetMarriageBudget?: number;
+    initialCapital?: number;
+    monthlySavingsTarget?: number;
+    emergencyReserveTarget?: number;
+    reminderFrequency?: EarlyStartReminderFrequency;
+    personalNotes?: string | null;
+  }) => Promise<void>;
+  createSavingsGoal: (input: {
+    goalType: SavingsGoalType;
+    titleAr: string;
+    titleEn: string;
+    targetAmount: number;
+    currentAmount?: number;
+    monthlyContribution?: number;
+    targetDate?: string | null;
+    priority?: number;
+  }) => Promise<SavingsBadge[]>;
+  patchSavingsGoal: (
+    goalId: string,
+    patch: {
+      titleAr?: string;
+      titleEn?: string;
+      targetAmount?: number;
+      monthlyContribution?: number;
+      targetDate?: string | null;
+      priority?: number;
+    },
+  ) => Promise<SavingsBadge[]>;
+  deleteSavingsGoal: (goalId: string) => Promise<void>;
+  recordSavingsContribution: (
+    goalId: string,
+    input: {
+      amount: number;
+      contributionType?: 'deposit' | 'adjustment';
+      contributionDate?: string;
+      note?: string;
+    },
+  ) => Promise<SavingsBadge[]>;
+  addEarlyStartMilestone: (input: {
+    track: EarlyStartMilestoneTrack;
+    titleAr: string;
+    titleEn: string;
+    targetMonthsOut?: number;
+  }) => Promise<void>;
+  toggleEarlyStartMilestone: (milestoneId: string, completed: boolean) => Promise<void>;
+  deleteEarlyStartMilestone: (milestoneId: string) => Promise<void>;
+  toggleAcademyLessonComplete: (slug: string, completed?: boolean) => Promise<SavingsBadge[]>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -419,6 +485,9 @@ function setStoredItem<T>(key: string, value: T): void {
 }
 
 function resolveSectionFromPath(pathname: string): SectionKey {
+  if (pathname.startsWith('/early-start') || pathname.startsWith('/my/future-fund')) {
+    return 'earlyStart';
+  }
   if (pathname.startsWith('/finishing')) return 'finishing';
   if (pathname.startsWith('/groom')) return 'groom';
   if (pathname.startsWith('/bride')) return 'bride';
@@ -558,6 +627,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [calculatorRuns, setCalculatorRuns] = useState<CalculatorRunRecord[]>([]);
   const [budgetOverview, setBudgetOverview] = useState<BudgetOverviewPayload | null>(null);
 
+  // Stage 4 Early Start & My Future Fund State
+  const [academyLessons, setAcademyLessons] = useState<EarlyStartAcademyLesson[]>(
+    EARLY_START_ACADEMY_LESSONS,
+  );
+  const [earlyStartOverview, setEarlyStartOverview] = useState<EarlyStartOverviewPayload | null>(
+    null,
+  );
+
   // Scoped Transaction State
   const [finishingInquiries, setFinishingInquiries] = useState<FinishingInquiry[]>([]);
   const [weddingBookings, setWeddingBookings] = useState<WeddingBookingRequest[]>([]);
@@ -596,6 +673,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setSupportCases([]);
       setCalculatorRuns([]);
       setBudgetOverview(null);
+      setEarlyStartOverview(null);
       setAdminStats(null);
       setAdminUsers([]);
       setAuditLogs([]);
@@ -633,7 +711,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget] =
+      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget, uEarlyStart] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
           apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
@@ -644,6 +722,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<UserBridePlanState>('/my/bride-plan').catch(() => createDefaultGuestBridePlan()),
           apiRequest<CalculatorRunRecord[]>('/my/calculator-runs').catch(() => []),
           apiRequest<BudgetOverviewPayload>('/budget/overview').catch(() => null),
+          apiRequest<EarlyStartOverviewPayload>('/early-start/overview').catch(() => null),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -656,6 +735,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUserBridePlan(uBridePlan);
       setCalculatorRuns(uCalcRuns);
       setBudgetOverview(uBudget);
+      setEarlyStartOverview(uEarlyStart);
     } catch {
       // Non-fatal fallback
     }
@@ -687,14 +767,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let active = true;
     (async () => {
       try {
-        const [payload, encBundle, calcMeta] = await Promise.all([
+        const [payload, encBundle, calcMeta, academyRes] = await Promise.all([
           apiRequest<BootstrapPayload>('/bootstrap'),
           apiRequest<EncyclopediaBundlePayload>('/encyclopedia/bundle').catch(() => null),
           apiRequest<CalculatorSummary[]>('/calculators').catch(() => null),
+          apiRequest<{ lessons: EarlyStartAcademyLesson[]; completedSlugs: string[] }>(
+            '/early-start/academy',
+          ).catch(() => null),
         ]);
         if (!active) return;
         setApiConnected(true);
         if (calcMeta && calcMeta.length > 0) setCalculatorSummaries(calcMeta);
+        if (academyRes?.lessons && academyRes.lessons.length > 0) {
+          setAcademyLessons(academyRes.lessons);
+        }
         if (payload.products.length > 0) setProducts(payload.products);
         if (payload.finishingPackages.length > 0) setFinishingPackages(payload.finishingPackages);
         if (payload.finishingServices.length > 0) setFinishingServices(payload.finishingServices);
@@ -1625,6 +1711,238 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return res.syncedCount;
   }, [language, showToast]);
 
+  // Stage 4: Early Start & My Future Fund Actions
+  const refreshEarlyStartOverview = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const overview = await apiRequest<EarlyStartOverviewPayload>('/early-start/overview');
+    setEarlyStartOverview(overview);
+  }, [apiConnected, currentUser]);
+
+  const updateEarlyStartProfile = useCallback(
+    async (patch: {
+      timeframePreset?: EarlyStartTimeframePreset;
+      timeframeMonths?: number;
+      expectedMarriageDate?: string | null;
+      targetMarriageBudget?: number;
+      initialCapital?: number;
+      monthlySavingsTarget?: number;
+      emergencyReserveTarget?: number;
+      reminderFrequency?: EarlyStartReminderFrequency;
+      personalNotes?: string | null;
+    }) => {
+      const overview = await apiRequest<EarlyStartOverviewPayload>('/early-start/profile', {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      setEarlyStartOverview(overview);
+      showToast(
+        language === 'ar' ? 'تم تحديث خطة البداية المبكرة بنجاح.' : 'Early Start timeline & goals saved.',
+      );
+    },
+    [language, showToast],
+  );
+
+  const createSavingsGoal = useCallback(
+    async (input: {
+      goalType: SavingsGoalType;
+      titleAr: string;
+      titleEn: string;
+      targetAmount: number;
+      currentAmount?: number;
+      monthlyContribution?: number;
+      targetDate?: string | null;
+      priority?: number;
+    }): Promise<SavingsBadge[]> => {
+      const res = await apiRequest<{
+        goalId: string;
+        newlyEarnedBadges: SavingsBadge[];
+        overview: EarlyStartOverviewPayload;
+      }>('/early-start/goals', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setEarlyStartOverview(res.overview);
+      if (res.newlyEarnedBadges.length > 0) {
+        const b = res.newlyEarnedBadges[0];
+        showToast(
+          language === 'ar'
+            ? `مبروك! حصلت على شارة خاصة: ${b.titleAr}`
+            : `Private badge unlocked: ${b.titleEn}`,
+        );
+      } else {
+        showToast(
+          language === 'ar'
+            ? 'تمت إضافة هدف الادخار في صندوق مستقبلك.'
+            : 'Savings goal added to My Future Fund.',
+        );
+      }
+      return res.newlyEarnedBadges;
+    },
+    [language, showToast],
+  );
+
+  const patchSavingsGoal = useCallback(
+    async (
+      goalId: string,
+      patch: {
+        titleAr?: string;
+        titleEn?: string;
+        targetAmount?: number;
+        monthlyContribution?: number;
+        targetDate?: string | null;
+        priority?: number;
+      },
+    ): Promise<SavingsBadge[]> => {
+      const res = await apiRequest<{
+        newlyEarnedBadges: SavingsBadge[];
+        overview: EarlyStartOverviewPayload;
+      }>(`/early-start/goals/${encodeURIComponent(goalId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      setEarlyStartOverview(res.overview);
+      showToast(language === 'ar' ? 'تم تعديل هدف الادخار.' : 'Savings goal updated.');
+      return res.newlyEarnedBadges;
+    },
+    [language, showToast],
+  );
+
+  const deleteSavingsGoal = useCallback(
+    async (goalId: string) => {
+      const overview = await apiRequest<EarlyStartOverviewPayload>(
+        `/early-start/goals/${encodeURIComponent(goalId)}`,
+        { method: 'DELETE' },
+      );
+      setEarlyStartOverview(overview);
+      showToast(language === 'ar' ? 'تم حذف هدف الادخار.' : 'Savings goal deleted.');
+    },
+    [language, showToast],
+  );
+
+  const recordSavingsContribution = useCallback(
+    async (
+      goalId: string,
+      input: {
+        amount: number;
+        contributionType?: 'deposit' | 'adjustment';
+        contributionDate?: string;
+        note?: string;
+      },
+    ): Promise<SavingsBadge[]> => {
+      const res = await apiRequest<{
+        overview: EarlyStartOverviewPayload;
+        newlyEarnedBadges: SavingsBadge[];
+        contributionId: string;
+      }>(`/early-start/goals/${encodeURIComponent(goalId)}/contributions`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setEarlyStartOverview(res.overview);
+      if (res.newlyEarnedBadges.length > 0) {
+        const b = res.newlyEarnedBadges[0];
+        showToast(
+          language === 'ar'
+            ? `إيداع ناجح + شارة خاصة جديدة: ${b.titleAr}`
+            : `Deposit logged + Private Badge Unlocked: ${b.titleEn}`,
+        );
+      } else {
+        showToast(
+          language === 'ar'
+            ? 'تم تسجيل الإيداع وتحديث سلسلة الالتزام.'
+            : 'Contribution recorded and streak updated.',
+        );
+      }
+      return res.newlyEarnedBadges;
+    },
+    [language, showToast],
+  );
+
+  const addEarlyStartMilestone = useCallback(
+    async (input: {
+      track: EarlyStartMilestoneTrack;
+      titleAr: string;
+      titleEn: string;
+      targetMonthsOut?: number;
+    }) => {
+      const overview = await apiRequest<EarlyStartOverviewPayload>('/early-start/milestones', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setEarlyStartOverview(overview);
+      showToast(language === 'ar' ? 'تمت إضافة خطوة تحضير جديدة.' : 'Preparation milestone added.');
+    },
+    [language, showToast],
+  );
+
+  const toggleEarlyStartMilestone = useCallback(
+    async (milestoneId: string, completed: boolean) => {
+      const overview = await apiRequest<EarlyStartOverviewPayload>(
+        `/early-start/milestones/${encodeURIComponent(milestoneId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ completed }),
+        },
+      );
+      setEarlyStartOverview(overview);
+      showToast(
+        language === 'ar'
+          ? completed
+            ? 'أحسنت! تم إنجاز المرحلة.'
+            : 'تمت إعادة فتح المرحلة.'
+          : completed
+            ? 'Milestone marked complete.'
+            : 'Milestone reopened.',
+      );
+    },
+    [language, showToast],
+  );
+
+  const deleteEarlyStartMilestone = useCallback(
+    async (milestoneId: string) => {
+      const overview = await apiRequest<EarlyStartOverviewPayload>(
+        `/early-start/milestones/${encodeURIComponent(milestoneId)}`,
+        { method: 'DELETE' },
+      );
+      setEarlyStartOverview(overview);
+      showToast(language === 'ar' ? 'تم حذف المرحلة.' : 'Milestone deleted.');
+    },
+    [language, showToast],
+  );
+
+  const toggleAcademyLessonComplete = useCallback(
+    async (slug: string, completed = true): Promise<SavingsBadge[]> => {
+      const res = await apiRequest<{
+        newlyEarnedBadges: SavingsBadge[];
+        completedSlugs: string[];
+        overview: EarlyStartOverviewPayload;
+      }>(`/early-start/academy/${encodeURIComponent(slug)}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ completed }),
+      });
+      setEarlyStartOverview(res.overview);
+      if (res.newlyEarnedBadges.length > 0) {
+        const b = res.newlyEarnedBadges[0];
+        showToast(
+          language === 'ar'
+            ? `تهانينا! شارة جديدة من الأكاديمية: ${b.titleAr}`
+            : `Academy Badge Unlocked: ${b.titleEn}`,
+        );
+      } else {
+        showToast(
+          language === 'ar'
+            ? completed
+              ? 'تم تسجيل إتمام الدرس في ملفك الشخصي.'
+              : 'تم إلغاء علامة إتمام الدرس.'
+            : completed
+              ? 'Lesson marked completed.'
+              : 'Lesson completion cleared.',
+        );
+      }
+      return res.newlyEarnedBadges;
+    },
+    [language, showToast],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -1742,6 +2060,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteBudgetExpense,
         importCalculatorToBudget,
         syncBudgetTransactions,
+        academyLessons,
+        earlyStartOverview,
+        refreshEarlyStartOverview,
+        updateEarlyStartProfile,
+        createSavingsGoal,
+        patchSavingsGoal,
+        deleteSavingsGoal,
+        recordSavingsContribution,
+        addEarlyStartMilestone,
+        toggleEarlyStartMilestone,
+        deleteEarlyStartMilestone,
+        toggleAcademyLessonComplete,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,
