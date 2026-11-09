@@ -10,11 +10,31 @@ Allow: /encyclopedia
 Allow: /guides/
 Allow: /discover
 Allow: /locations/
+Allow: /calculators
+Allow: /early-start
+Allow: /onboarding
+Allow: /engagement
+Allow: /journey
+Allow: /products
+Allow: /vendors
+Allow: /real-weddings
+Allow: /community
+Allow: /experts
+Allow: /assistant
+Allow: /room-designer
+Allow: /newlyweds-guide
+Allow: /home-care
+Allow: /glossary
+Allow: /faqs
 
 Disallow: /portal
 Disallow: /my/
+Disallow: /rfq
 Disallow: /admin
 Disallow: /api/
+Disallow: /vendor$
+Disallow: /vendor/
+Disallow: /wedding-day
+Disallow: /rsvp/
 
 Sitemap: https://gawazinn.vercel.app/sitemap.xml
-

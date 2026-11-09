@@ -27,6 +27,8 @@ import {
   Users,
 } from 'lucide-react';
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export const Footer: React.FC = () => {
   const { language, settings } = useApp();
 
@@ -418,7 +420,7 @@ export const Footer: React.FC = () => {
         {/* Copyright & Intro Replay */}
         <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-500 gap-3 pt-2">
           <p>
-            © {new Date().getFullYear()}{' '}
+            © {CURRENT_YEAR}{' '}
             {language === 'ar'
               ? 'منصة جواز إن (GAWAZ INN). جميع الحقوق محفوظة.'
               : 'GAWAZ INN Platform. All rights reserved.'}

@@ -26,9 +26,7 @@ export const NewlywedsGuideView: React.FC = () => {
   const ArrowIcon = dir === 'rtl' ? ChevronLeft : ChevronRight;
 
   const [tracks, setTracks] = useState<NewlywedGuideTrack[]>(NEWLYWED_TRACKS_META);
-  const [marriedArticles, setMarriedArticles] = useState<Article[]>(() =>
-    articles.filter((a) => a.domain === 'married_life'),
-  );
+  const [remoteMarriedArticles, setRemoteMarriedArticles] = useState<Article[] | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(NEWLYWED_STEPS_STORAGE_KEY);
@@ -44,7 +42,7 @@ export const NewlywedsGuideView: React.FC = () => {
       .then((payload) => {
         if (!active) return;
         if (payload.tracks && payload.tracks.length > 0) setTracks(payload.tracks);
-        if (payload.articles && payload.articles.length > 0) setMarriedArticles(payload.articles);
+        if (payload.articles && payload.articles.length > 0) setRemoteMarriedArticles(payload.articles);
       })
       .catch(() => {
         // Fallback smoothly to offline context seed data
@@ -54,11 +52,10 @@ export const NewlywedsGuideView: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    setMarriedArticles((prev) =>
-      prev.length > 0 ? prev : articles.filter((a) => a.domain === 'married_life'),
-    );
-  }, [articles]);
+  const marriedArticles =
+    remoteMarriedArticles && remoteMarriedArticles.length > 0
+      ? remoteMarriedArticles
+      : articles.filter((a) => a.domain === 'married_life');
 
   const toggleStep = (stepKey: string) => {
     setCheckedKeys((prev) => {

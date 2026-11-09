@@ -1,4 +1,4 @@
-# GAWAZ INN — Feature Inventory & Implementation Tracker (Updated After Stage 11)
+# GAWAZ INN — Feature Inventory & Implementation Tracker (Stages 0–12 Complete)
 
 Status legend:
 - **Working Full-Stack (SQLite + API + UI)**: Persisted in SQLite via authenticated/validated `/api/v1/*` routes, tested in Vitest & Chrome E2E.
@@ -32,6 +32,7 @@ Status legend:
 | Grounded AI Advisor, 2D Smart Room Studio & Wedding Day Ops / RSVP (Modules Q, R, S — Stage 10) | `AiAssistantView.tsx`, `RoomDesignerView.tsx`, `WeddingDayOpsView.tsx`, `PublicRsvpView.tsx`, `server/aiAssistantService.ts`, `server/roomWeddingOpsService.ts` | **Working Full-Stack** | `/assistant` DB-RAG advisor with live calculator snippets, DB product/vendor/material citations & strict user privacy; `/room-designer` 2D scaled room planner with DB price pinning & palettes; `/wedding-day` (`noindex`) seating capacity guards (`409`), timeline & registry; `/rsvp/:code` (`noindex`) public guest confirmation & atomic gift reservation. |
 | Married Life, Home Care Directory & Digital Home File (Module T — Stage 11) | `NewlywedsGuideView.tsx`, `HomeCareDirectoryView.tsx`, `DigitalHomeFileView.tsx`, `server/homeCareService.ts`, `shared/stage11Data.ts` | **Working Full-Stack** | `/newlyweds-guide` interactive 6-track guide + `married_life` articles + emergency-reserve links; `/home-care` moving & home-care vendor directory with buyer checklists & 1-click RFQ links; `/my/home-file` (`noindex`, owner-isolated) apartment paint/breaker/plumbing specs, cyclical maintenance reminders with notifications, household valuation ledger (`home_inventory_items`), & expiring warranties integration. |
 
-## 2. Upcoming GAWAZ INN 2.0 Modules (Stage 12)
-- **Stage 12:** Final Bundle Optimization, Full Security/Privacy/SEO Audit, Cross-Stage Stabilization & Release Readiness
+## 2. Production Hardening & Release Readiness (Stage 12 — Complete)
+- **Chunk Optimization & Clean Lint:** `vite.config.ts` manual chunking (`vendor-react`, `vendor-icons`, `vendor-zod`, `data-marketplace`, `data-encyclopedias`, `data-calculators`, `data-ecosystem`) guarantees zero Vite chunk-size warnings (`max chunk 249.27 kB`); React Compiler hook warnings eliminated across `DigitalHomeFileView`, `NewlywedsGuideView`, and `Footer`.
+- **Security, Privacy & SEO Release Verification:** Audited by `tests/integration/stage12SecuritySeoAudit.test.ts`, `public/robots.txt`, `vercel.json` (`/sitemap.xml` rewrite), and full 11-stage Playwright-Core regression (`npm run test:e2e`). See `docs/FINAL_RELEASE_READINESS.md`.
 

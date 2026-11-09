@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
@@ -46,33 +46,19 @@ export const DigitalHomeFileView: React.FC = () => {
   } = useApp();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<HomeFileTab>(() => {
-    if (
-      initialTabParam === 'assets' ||
-      initialTabParam === 'maintenance' ||
-      initialTabParam === 'inventory' ||
-      initialTabParam === 'warranties'
-    ) {
-      return initialTabParam;
-    }
-    return 'assets';
-  });
-
-  useEffect(() => {
-    const param = searchParams.get('tab');
-    if (
-      param === 'assets' ||
-      param === 'maintenance' ||
-      param === 'inventory' ||
-      param === 'warranties'
-    ) {
-      setActiveTab(param);
-    }
-  }, [searchParams]);
+  const [todayIso] = useState(() => new Date().toISOString().slice(0, 10));
+  const [localTab, setLocalTab] = useState<HomeFileTab>('assets');
+  const queryTab = searchParams.get('tab');
+  const activeTab: HomeFileTab =
+    queryTab === 'assets' ||
+    queryTab === 'maintenance' ||
+    queryTab === 'inventory' ||
+    queryTab === 'warranties'
+      ? queryTab
+      : localTab;
 
   const switchTab = (tab: HomeFileTab) => {
-    setActiveTab(tab);
+    setLocalTab(tab);
     setSearchParams({ tab });
   };
 
@@ -142,7 +128,6 @@ export const DigitalHomeFileView: React.FC = () => {
   const warranties = homeFileOverview?.warranties || [];
   const documents = homeFileOverview?.documents || [];
   const summary = homeFileOverview?.summary;
-  const todayIso = new Date().toISOString().slice(0, 10);
 
   const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault();

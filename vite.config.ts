@@ -47,14 +47,46 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
+          const normalized = id.replace(/\\/g, '/');
+          if (
+            normalized.includes('node_modules/react') ||
+            normalized.includes('node_modules/react-dom') ||
+            normalized.includes('node_modules/react-router-dom')
+          ) {
             return 'vendor-react';
           }
-          if (id.includes('node_modules/lucide-react')) {
+          if (normalized.includes('node_modules/lucide-react')) {
             return 'vendor-icons';
           }
-          if (id.includes('node_modules/zod')) {
+          if (normalized.includes('node_modules/zod')) {
             return 'vendor-zod';
+          }
+          if (normalized.includes('/shared/calculators/')) {
+            return 'data-calculators';
+          }
+          if (
+            normalized.includes('/shared/trousseauEncyclopediaData') ||
+            normalized.includes('/shared/finishingEncyclopediaData') ||
+            normalized.includes('/shared/knowledgeGlossaryData')
+          ) {
+            return 'data-encyclopedias';
+          }
+          if (
+            normalized.includes('/shared/vendorMarketplaceData') ||
+            normalized.includes('/shared/productEncyclopediaData') ||
+            normalized.includes('/shared/catalogSeedData') ||
+            normalized.includes('/shared/cmsSeedData')
+          ) {
+            return 'data-marketplace';
+          }
+          if (
+            normalized.includes('/shared/journeyWorkspaceData') ||
+            normalized.includes('/shared/earlyStartData') ||
+            normalized.includes('/shared/stage11Data') ||
+            normalized.includes('/shared/stage10Data') ||
+            normalized.includes('/shared/communityData')
+          ) {
+            return 'data-ecosystem';
           }
         },
       },
