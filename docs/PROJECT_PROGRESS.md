@@ -2,7 +2,7 @@
 
 **Project Repository:** `d:\PROJECTS\gawazinn` (`origin`: `https://github.com/loaicboe-hub/gawazinn.git`, branch `main`)  
 **Live Baseline:** `https://gawazinn.vercel.app/`  
-**Current Active Phase:** Stage 9 Completed → Starting **Stage 10** (Grounded AI Assistant, Smart Room Designer & Wedding-Day Ops)
+**Current Active Phase:** Stage 11 Completed → Starting **Stage 12** (Final Stabilization, Security/SEO Audit, Chunk Optimization & Release Readiness)
 
 ---
 
@@ -20,8 +20,8 @@
 | **Stage 7** | Vendor Marketplace, Verification Tiers, Vendor Portal & Local SEO | **Completed** | `oxlint` (0 err / 0 new warn), `tsc -b` (0 err), `vitest run` (**56/56 pass** across 15 suites including `stage7VendorsLocal.test.tsx` & `stage7Api.test.ts`), `vite build` (`2.90s`), `test:e2e` (`stage1..stage7` Desktop AR/EN + Mobile 375px RTL pass with 0 console/page/HTTP>=400 errors) | `f661533` |
 | **Stage 8** | RFQ Engine, Appointments, Bookings & Vendor CRM | **Completed** | `oxlint` (0 err / 0 new warn), `tsc -b` (0 err), `vitest run` (**60/60 pass** across 17 suites including `stage8RfqCrm.test.tsx` & `stage8Api.test.ts`), `vite build` (`1.67s`, lazy `RfqCenterView` `33.81 kB`), `test:e2e` (`stage1..stage8` Desktop AR/EN + Mobile 375px RTL pass with 0 errors & 0 overflow) | `436a2bd` |
 | **Stage 9** | Community, Stories, Expert Directory & Admin OS Completion | **Completed** | `oxlint` (0 err / 0 new warn), `tsc -b` (0 err), `vitest run` (**64/64 pass** across 19 suites including `stage9CommunityAdmin.test.tsx` & `stage9Api.test.ts`), `vite build` (`2.15s`), `test:e2e` (`stage1..stage9` Desktop AR/EN + Mobile 375px RTL pass with 0 errors & 0 overflow) | Stage 9 commit |
-| **Stage 10** | Grounded AI Assistant, Smart Home Tools & Wedding-Day Ops | Pending | — | — |
-| **Stage 11** | Beyond Wedding: Married Life & Home Care Directory/Digital File | Pending | — | — |
+| **Stage 10** | Grounded AI Assistant, Smart Home Tools & Wedding-Day Ops | **Completed** | `oxlint` (0 err / 0 new warn), `tsc -b` (0 err), `vitest run` (**68/68** pass across 21 suites including `stage10AiRoomWedding.test.tsx` & `stage10Api.test.ts`), `vite build` (`1.41s`), `test:e2e` (`stage1..stage10.e2e.ts` Desktop AR/EN + Mobile 375px RTL pass with 0 errors & 0 overflow) | `f5abc23` |
+| **Stage 11** | Beyond Wedding: Married Life & Home Care Directory/Digital File | **Completed** | `oxlint` (0 err / 0 new warn), `tsc -b` (0 err), `vitest run` (**72/72** pass across 23 suites including `stage11HomeCare.test.tsx` & `stage11Api.test.ts`), `vite build` (`2.23s`), `stage11.e2e.ts` Desktop AR/EN + Mobile 375px RTL pass with 0 errors & 0 overflow | Stage 11 commit |
 | **Stage 12** | Full-System Stabilization, Penetration & SEO Audit, Release Readiness | Pending | — | — |
 
 ---
@@ -113,3 +113,12 @@
 - **2D Room Moodboard Studio & Priced Placements (`server/roomWeddingOpsService.ts`, `RoomDesignerView.tsx`):** Delivered `/room-designer` interactive 2D scaled canvas, occupancy metrics (`computeMoodboardMetrics`), 5 curated color palettes, live catalog price pinning from `products` on server `addMoodboardItem`, coordinate dragging (`X% / Y%`), and strict owner access control.
 - **Wedding Day Operations & Public RSVP / Gift Registry (`WeddingDayOpsView.tsx`, `PublicRsvpView.tsx`, `SeoHead.tsx`):** Delivered `/wedding-day` (`noindex`) managing guests, unique `GI-XXXX-XXXX` invite links, seating assignments enforcing `409 TABLE_CAPACITY_EXCEEDED`, wedding timeline status tracking, and gift registry + `/rsvp/:code` (`noindex`) public attendance/meal confirmation and atomic gift reservation (`409 GIFT_ALREADY_RESERVED` + host notifications).
 - **Automated Verification:** Verified `npm run db:migrate`, `npm run db:seed`, `npm run lint` (`0` errors, `10` baseline warnings), `npm run typecheck` (`0` errors), `npm run test` (**68/68** pass across 21 suites including `stage10AiRoomWedding.test.tsx` & `stage10Api.test.ts`), `npm run build` (`1.41s`), and `npm run test:e2e` (`stage1..stage10.e2e.ts` Desktop AR/EN + Mobile 375px RTL passing with `0` console/page/HTTP>=400 errors and `0` horizontal overflow).
+
+
+---
+
+## Verified Stage 11 Evidence (`2026-11-09`)
+- **Database & Parity Schema (`011_stage11_married_life_home_care.sql`):** Added SQLite + PostgreSQL parity DDL creating 3 normalized owner-isolated tables (`home_file_assets`, `maintenance_reminders`, `home_inventory_items`) and seeded realistic Egyptian home specs for Karim (`usr-1`): 4 home specs (`Jotun 10678`, `ABB-PNL-16L-2026`, `BR-PPR-2026-10BAR`, Quartz countertop), 4 maintenance reminders (1 overdue `-12d` `mrem-karim-1`, 1 due soon `+5d`, 2 upcoming), and 4 household inventory items (`113,200` EGP replacement valuation) integrated cleanly with Stage 5 `user_warranties` and `user_documents`.
+- **Owner-Isolated Digital Home File & Cyclical Maintenance (`server/homeCareService.ts`, `server/app.ts`):** Enforced strict `401` / `403` isolation across all `/api/v1/home-care/overview`, `/assets*`, `/reminders*`, and `/inventory*` mutations; completion of a cyclical maintenance reminder transactionally sets `last_completed_at`, advances `next_due_date` by `cycleMonths`, and writes an in-app notification linking `/my/home-file?tab=maintenance`.
+- **Public Plazas, Buyer Checklists, SEO & UI Integration (`NewlywedsGuideView.tsx`, `HomeCareDirectoryView.tsx`, `DigitalHomeFileView.tsx`):** Delivered `/newlyweds-guide` (6 interactive localStorage-persisted married-life tracks, `married_life` CMS articles, and `emergency-reserve` calculator routing), `/home-care` (moving & maintenance buyer checklists, category filtering, honest vendor ratings & 1-click RFQ deep links), `/my/home-file` (`noindex`, 4 KPI cards & query-synced tabs integrated with `/my/workspace` documents & warranties), and `/sitemap.xml` discovery for public routes while excluding `/my/home-file`.
+- **Automated Verification:** Verified `npm run db:migrate`, `npm run db:seed`, `npm run lint` (`0` errors, `13` baseline warnings / `0` Stage 11 warnings), `npm run typecheck` (`0` errors), `npm run test` (**72/72** pass across 23 suites including `stage11HomeCare.test.tsx` & `stage11Api.test.ts`), `npm run build` (`2.23s`), and `npx tsx tests/e2e/stage11.e2e.ts` (Desktop `1440x900` AR/EN + Mobile `375x812` RTL passing with `0` console/page/HTTP>=400 errors and `0` horizontal overflow).

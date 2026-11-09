@@ -95,8 +95,13 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET /api/v1/wedding-day/overview`, `POST/DELETE /api/v1/wedding-day/tables/*`, `POST/PATCH/DELETE /api/v1/wedding-day/guests/*`, `POST/PATCH/DELETE /api/v1/wedding-day/timeline/*`, `POST/DELETE /api/v1/wedding-day/registry/*` *(Auth-Required, Owner-Isolated)* — Wedding Day Command Center enforcing `409 TABLE_CAPACITY_EXCEEDED` on seating overfill, timeline tracking, and registry management.
 - `GET/POST /api/v1/rsvp/:code` & `POST /api/v1/rsvp/:code/reserve-gift` *(Public Invite Code)* — Unauthenticated guest RSVP submission (attendance headcount & meal choice) and atomic gift reservation (`409 GIFT_ALREADY_RESERVED` on duplicate attempt) triggering real-time host notifications.
 
-## Upcoming Stage 11 Endpoints
-- `GET/POST/PATCH/DELETE /api/v1/home-care/*` *(Stage 11)* — Inventory, Digital Home File assets, warranty tracking integration, maintenance reminders.
+## Beyond Wedding: Married Life, Home Care & Digital Home File *(Stage 11 Implemented)*
+- `GET /api/v1/home-care/directory` *(Public)* — Returns bilingual Moving Logistics & Home Maintenance checklists (`post_marriage` / `moving_logistics` / `home_maintenance`), active Stage 11 vendor providers, and `married_life` editorial articles (zero personal home-file leakage).
+- `GET /api/v1/home-care/overview` *(Auth-Required, Owner-Isolated)* — Hydrates the owner's Digital Home File summary KPIs (`assetsCount`, `overdueRemindersCount`, `dueSoonRemindersCount`, `expiringWarrantiesCount`, `totalInventoryEgp`), `assets`, computed `reminders` (`status`: `overdue|due_soon|upcoming`), `inventory` items, Stage 5 `warranties` (`isExpiringSoon`), and home `documents`.
+- `POST/DELETE /api/v1/home-care/assets` & `/:id` *(Auth-Required, Owner-Isolated)* — Create or delete permanent apartment home-file specs (`paint|electrical|plumbing|dimensions|warranty_note|flooring|kitchen`).
+- `POST/DELETE /api/v1/home-care/reminders` & `/:id` & `POST /api/v1/home-care/reminders/:id/complete` *(Auth-Required, Owner-Isolated)* — Create, complete, or remove seasonal maintenance cycles (`cycleMonths`); completion atomically logs `last_completed_at`, advances `next_due_date`, and inserts an in-app notification linking `/my/home-file?tab=maintenance`.
+- `POST/PATCH/DELETE /api/v1/home-care/inventory` & `/:id` *(Auth-Required, Owner-Isolated)* — Full room-by-room household asset & replacement valuation CRUD (`estimatedValueEgp`, `condition`: `excellent|good|needs_service|replace_soon`).
+- `GET /sitemap.xml` includes `/newlyweds-guide` and `/home-care` while strictly excluding private `/my/home-file`.
 
 ## Administration (`Admin OS`, RBAC-guarded — Stage 9 Completed)
 - `GET /api/v1/admin/analytics` *(MODERATION_ROLES | editor)* — Real SQLite aggregates (users by lifecycle stage, public content vs. private non-exposed counts, RFQ funnel & quote response rate, community Q&A & expert totals, top viewed CMS guides — privacy notice excludes personal savings/PII).

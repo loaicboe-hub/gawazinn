@@ -240,6 +240,23 @@ export const SeoHead: React.FC = () => {
     } else if (pathname.startsWith('/rsvp/')) {
       titleAr = 'تأكيد حضور الفرح وقائمة الهدايا | جواز إن';
       titleEn = 'Wedding Invitation RSVP & Gift Registry | GAWAZ INN';
+    } else if (pathname === '/newlyweds-guide') {
+      titleAr = 'دليل المتزوجين الجدد وإدارة السنة الأولى | جواز إن';
+      titleEn = 'Newlyweds Year-One Guide & Home Stewardship Roadmap | GAWAZ INN';
+      descAr =
+        'دليل عملي لمتابعة خطوات الانتقال الآمن، توثيق ملف البيت، إدارة مصروف الأسرة في السنة الأولى، والصيانة الوقائية للأجهزة.';
+      descEn =
+        'Interactive 6-track Egyptian newlyweds guide covering safe moving logistics, paint/panel archiving, first-year budgeting & preventive home care.';
+    } else if (pathname === '/home-care') {
+      titleAr = 'دليل خدمات ما بعد الزواج: نقل العفش والصيانة المنزلية | جواز إن';
+      titleEn = 'Post-Marriage Moving, Hoist & Preventive Home Care Directory | GAWAZ INN';
+      descAr =
+        'شركات نقل عفش وونش هيدروليك وفنيو صيانة تكييف وسباكة موثقون في مصر مع قوائم فحص واضحة قبل التعاقد.';
+      descEn =
+        'Trusted Egyptian moving & hoist companies and preventive home maintenance partners with transparent pre-contract checklists.';
+    } else if (pathname.startsWith('/my/home-file')) {
+      titleAr = 'ملف البيت الرقمي وجدول الصيانة وجرد المنزل | جواز إن';
+      titleEn = 'Digital Home File, Maintenance Reminders & Inventory | GAWAZ INN';
     } else if (vendorMatch) {
       const slugOrId = decodeURIComponent(vendorMatch[1]);
       const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);

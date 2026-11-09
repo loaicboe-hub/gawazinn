@@ -23,6 +23,9 @@ import {
   Bot,
   LayoutGrid,
   Users,
+  HeartHandshake,
+  Wrench,
+  FolderHeart,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
 
@@ -381,6 +384,36 @@ export const SplashHome: React.FC = () => {
           >
             <Users className="w-3.5 h-3.5 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'يوم الفرح والطاولات والهدايا' : 'Wedding Day Ops & RSVP'}</span>
+          </Link>
+
+          <Link
+            to="/newlyweds-guide"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-newlyweds"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
+          >
+            <HeartHandshake className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'دليل المتزوجين الجدد (السنة الأولى)' : 'Newlyweds Year-One Guide'}</span>
+          </Link>
+
+          <Link
+            to="/home-care"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-home-care"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <Wrench className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'شركات النقل والصيانة بعد الزواج' : 'Moving & Home Care'}</span>
+          </Link>
+
+          <Link
+            to="/my/home-file"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-home-file"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <FolderHeart className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'ملف البيت الرقمي' : 'Digital Home File'}</span>
           </Link>
         </div>
       </div>

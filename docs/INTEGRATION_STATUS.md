@@ -4,11 +4,12 @@
 
 ---
 
-## Integration Matrix (Updated After Stage 10 — `2026-11-09`)
+## Integration Matrix (Updated After Stage 11 — `2026-11-09`)
 
-| Capability | Category | Current Stage 10 State | Next Step / Env Requirements |
+| Capability | Category | Current Stage 11 State | Next Step / Env Requirements |
 |---|---|---|---|
-| **Relational Database** | Core Infra + Adapter | **(A) Working Internal (`node:sqlite` + PG parity DDL):** Real `.data/gawazinn.db` tables across `001`–`010` migrations (adding `ai_conversations`, `room_moodboards`, `moodboard_items`, `seating_tables`, `wedding_guests`, `wedding_timeline_events`, `gift_registry_items`), atomic transactions & PostgreSQL mirror scripts ready. | Attach managed PostgreSQL (`DATABASE_URL`) adapter for stateless Vercel serverless production. |
+| **Relational Database** | Core Infra + Adapter | **(A) Working Internal (`node:sqlite` + PG parity DDL):** Real `.data/gawazinn.db` tables across `001`–`011` migrations (adding `home_file_assets`, `maintenance_reminders`, `home_inventory_items`), atomic transactions & PostgreSQL mirror scripts ready. | Attach managed PostgreSQL (`DATABASE_URL`) adapter for stateless Vercel serverless production. |
+| **Married Life, Home Care & Digital Home File** | Module T | **(A) Working Full-Stack:** `/newlyweds-guide` interactive 6-track guide + articles, `/home-care` moving & home-maintenance directory with 1-click vendor RFQ routing, and owner-isolated `/my/home-file` (`noindex`) managing apartment finishing specs, cyclical maintenance reminders with notifications, household asset inventory & expiring warranties. | Stage 12 completes bundle chunk optimization, security/SEO release audit & production readiness report. |
 | **2D Room Designer, Wedding Day Ops & Public RSVP** | Modules R & S | **(A) Working Full-Stack:** `/room-designer` interactive 2D scaled boards pinning live catalog prices, `/wedding-day` (`noindex`) guest/seating/timeline/registry center enforcing table capacities, and public `/rsvp/:code` (`noindex`) with atomic gift reservation (`409` duplicate protection). | Stage 11 links Wedding/Home completion into Married Life Digital Home File & Home Care. |
 | **Community Q&A, Real Wedding Stories, Verified Experts & Admin OS** | Modules O, P & Admin OS | **(A) Working Full-Stack:** `/real-weddings` moderated budget stories, `/community` threaded Q&A with anti-spoof server-derived Expert badges, idempotent upvotes & abuse reporting, `/experts` strictly Admin-verified advisors, and RBAC-guarded `/admin` analytics, moderation queue, CMS status manager & user status governance. | Stage 10 connects Community & Catalog data with Grounded AI Assistant (`/assistant`). |
 | **Multi-Vendor RFQ, Slot Appointments & Vendor CRM** | Modules M, N, CRM | **(A) Working Full-Stack:** Matched multi-vendor RFQs (`/rfq`, `/rfq/new`), sealed competitor-isolated quote submissions, atomic Accept -> Wedding Budget expense creation, slot appointment requests with vendor confirmation workflow, and 8-stage CRM lead pipeline (`/vendor` tabs). | Stage 9 adds Community Q&A, Real Wedding Stories, Expert Directory & live Admin OS Analytics. |

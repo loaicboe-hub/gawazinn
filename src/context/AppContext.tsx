@@ -104,6 +104,10 @@ import type {
   TableZone,
   TimelineEventStatus,
   WeddingDayOverviewPayload,
+  HomeAssetCategory,
+  HomeFileOverviewPayload,
+  HomeItemCondition,
+  MaintenanceSystemCategory,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -175,6 +179,9 @@ export type SectionKey =
   | 'assistant'
   | 'roomDesigner'
   | 'weddingDay'
+  | 'newlywedsGuide'
+  | 'homeCare'
+  | 'digitalHomeFile'
   | 'rfq'
   | 'vendorPortal'
   | 'myHub'
@@ -207,6 +214,9 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   assistant: '/assistant',
   roomDesigner: '/room-designer',
   weddingDay: '/wedding-day',
+  newlywedsGuide: '/newlyweds-guide',
+  homeCare: '/home-care',
+  digitalHomeFile: '/my/home-file',
   rfq: '/rfq',
   vendorPortal: '/vendor',
   myHub: '/my/workspace',
@@ -999,6 +1009,59 @@ interface AppContextType {
   }) => Promise<WeddingDayOverviewPayload>;
   deleteGiftRegistryItem: (itemId: string) => Promise<WeddingDayOverviewPayload>;
 
+  // Stage 11: Married Life, Home Care & Digital Home File
+  homeFileOverview: HomeFileOverviewPayload | null;
+  refreshHomeFileOverview: () => Promise<void>;
+  createHomeAsset: (input: {
+    roomLabel: string;
+    assetCategory: HomeAssetCategory;
+    titleAr: string;
+    titleEn?: string;
+    codeOrSerial?: string | null;
+    vendorOrBrand?: string | null;
+    notes?: string | null;
+  }) => Promise<HomeFileOverviewPayload>;
+  deleteHomeAsset: (assetId: string) => Promise<HomeFileOverviewPayload>;
+  createMaintenanceReminder: (input: {
+    systemCategory: MaintenanceSystemCategory;
+    titleAr: string;
+    titleEn?: string;
+    intervalMonths: number;
+    nextDueDate?: string;
+    estimatedCostEgp: number;
+    vendorCategorySlug?: string;
+    notes?: string | null;
+  }) => Promise<HomeFileOverviewPayload>;
+  completeMaintenanceReminder: (
+    reminderId: string,
+    input?: { completedDate?: string; notes?: string | null },
+  ) => Promise<HomeFileOverviewPayload>;
+  deleteMaintenanceReminder: (reminderId: string) => Promise<HomeFileOverviewPayload>;
+  createHomeInventoryItem: (input: {
+    roomLabel: string;
+    itemName: string;
+    brandModel: string;
+    purchaseDate?: string | null;
+    purchasePriceEgp: number;
+    warrantyExpiryDate?: string | null;
+    condition: HomeItemCondition;
+    notes?: string | null;
+  }) => Promise<HomeFileOverviewPayload>;
+  updateHomeInventoryItem: (
+    itemId: string,
+    patch: {
+      roomLabel?: string;
+      itemName?: string;
+      brandModel?: string;
+      purchaseDate?: string | null;
+      purchasePriceEgp?: number;
+      warrantyExpiryDate?: string | null;
+      condition?: HomeItemCondition;
+      notes?: string | null;
+    },
+  ) => Promise<HomeFileOverviewPayload>;
+  deleteHomeInventoryItem: (itemId: string) => Promise<HomeFileOverviewPayload>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -1087,6 +1150,9 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/room-designer')) return 'roomDesigner';
   if (pathname.startsWith('/wedding-day') || pathname.startsWith('/rsvp/')) return 'weddingDay';
+  if (pathname.startsWith('/newlyweds-guide')) return 'newlywedsGuide';
+  if (pathname.startsWith('/home-care')) return 'homeCare';
+  if (pathname.startsWith('/my/home-file')) return 'digitalHomeFile';
   if (pathname === '/rfq' || pathname.startsWith('/rfq/')) return 'rfq';
   if (pathname.startsWith('/vendors')) return 'vendors';
   if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
@@ -1292,6 +1358,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [roomMoodboards, setRoomMoodboards] = useState<RoomMoodboard[]>([]);
   const [weddingDayOverview, setWeddingDayOverview] = useState<WeddingDayOverviewPayload | null>(null);
 
+  // Stage 11 Married Life & Digital Home File State
+  const [homeFileOverview, setHomeFileOverview] = useState<HomeFileOverviewPayload | null>(null);
+
   const loadUserScopedData = useCallback(async (user: User | null, connected: boolean) => {
     if (!user) {
       setOrders([]);
@@ -1317,6 +1386,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAiConversations([]);
       setRoomMoodboards([]);
       setWeddingDayOverview(null);
+      setHomeFileOverview(null);
       setCommunityQuestions((prev) =>
         prev.map((q) => ({
           ...q,
@@ -1379,6 +1449,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         uAiConvs,
         uMoodboards,
         uWeddingDay,
+        uHomeFile,
       ] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
@@ -1401,6 +1472,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<AiConversationSummary[]>('/assistant/history').catch(() => []),
           apiRequest<RoomMoodboard[]>('/room-studio/moodboards').catch(() => []),
           apiRequest<WeddingDayOverviewPayload>('/wedding-day/overview').catch(() => null),
+          apiRequest<HomeFileOverviewPayload>('/home-care/overview').catch(() => null),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -1424,6 +1496,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAiConversations(uAiConvs);
       setRoomMoodboards(uMoodboards);
       setWeddingDayOverview(uWeddingDay);
+      setHomeFileOverview(uHomeFile);
     } catch {
       // Non-fatal fallback
     }
@@ -4218,6 +4291,163 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return ov;
   }, []);
 
+  // Stage 11: Married Life & Digital Home File Callbacks
+  const refreshHomeFileOverview = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const ov = await apiRequest<HomeFileOverviewPayload>('/home-care/overview');
+    setHomeFileOverview(ov);
+  }, [apiConnected, currentUser]);
+
+  const createHomeAsset = useCallback(
+    async (input: {
+      roomLabel: string;
+      assetCategory: HomeAssetCategory;
+      titleAr: string;
+      titleEn?: string;
+      codeOrSerial?: string | null;
+      vendorOrBrand?: string | null;
+      notes?: string | null;
+    }) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>('/home-care/assets', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setHomeFileOverview(ov);
+      showToast(language === 'ar' ? 'تم حفظ الأصل في ملف البيت الرقمي.' : 'Asset saved to Digital Home File.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteHomeAsset = useCallback(
+    async (assetId: string) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>(
+        `/home-care/assets/${encodeURIComponent(assetId)}`,
+        { method: 'DELETE' },
+      );
+      setHomeFileOverview(ov);
+      showToast(language === 'ar' ? 'تم حذف الأصل من الملف.' : 'Asset deleted.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const createMaintenanceReminder = useCallback(
+    async (input: {
+      systemCategory: MaintenanceSystemCategory;
+      titleAr: string;
+      titleEn?: string;
+      intervalMonths: number;
+      nextDueDate?: string;
+      estimatedCostEgp: number;
+      vendorCategorySlug?: string;
+      notes?: string | null;
+    }) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>('/home-care/reminders', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setHomeFileOverview(ov);
+      showToast(language === 'ar' ? 'تمت جدولة تذكير الصيانة الدورية.' : 'Maintenance reminder scheduled.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const completeMaintenanceReminder = useCallback(
+    async (reminderId: string, input?: { completedDate?: string; notes?: string | null }) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>(
+        `/home-care/reminders/${encodeURIComponent(reminderId)}/complete`,
+        {
+          method: 'POST',
+          body: JSON.stringify(input || {}),
+        },
+      );
+      setHomeFileOverview(ov);
+      showToast(
+        language === 'ar'
+          ? 'تم تسجيل إتمام الصيانة وتحديث الموعد القادم تلقائياً!'
+          : 'Maintenance completed and next cycle advanced!',
+      );
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteMaintenanceReminder = useCallback(
+    async (reminderId: string) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>(
+        `/home-care/reminders/${encodeURIComponent(reminderId)}`,
+        { method: 'DELETE' },
+      );
+      setHomeFileOverview(ov);
+      return ov;
+    },
+    [],
+  );
+
+  const createHomeInventoryItem = useCallback(
+    async (input: {
+      roomLabel: string;
+      itemName: string;
+      brandModel: string;
+      purchaseDate?: string | null;
+      purchasePriceEgp: number;
+      warrantyExpiryDate?: string | null;
+      condition: HomeItemCondition;
+      notes?: string | null;
+    }) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>('/home-care/inventory', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setHomeFileOverview(ov);
+      showToast(language === 'ar' ? 'تمت إضافة القطعة لسجل جرد المنزل.' : 'Item added to home inventory.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const updateHomeInventoryItem = useCallback(
+    async (
+      itemId: string,
+      patch: {
+        roomLabel?: string;
+        itemName?: string;
+        brandModel?: string;
+        purchaseDate?: string | null;
+        purchasePriceEgp?: number;
+        warrantyExpiryDate?: string | null;
+        condition?: HomeItemCondition;
+        notes?: string | null;
+      },
+    ) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>(
+        `/home-care/inventory/${encodeURIComponent(itemId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setHomeFileOverview(ov);
+      showToast(language === 'ar' ? 'تم تحديث حالة القطعة في الجرد.' : 'Inventory condition updated.');
+      return ov;
+    },
+    [language, showToast],
+  );
+
+  const deleteHomeInventoryItem = useCallback(
+    async (itemId: string) => {
+      const ov = await apiRequest<HomeFileOverviewPayload>(
+        `/home-care/inventory/${encodeURIComponent(itemId)}`,
+        { method: 'DELETE' },
+      );
+      setHomeFileOverview(ov);
+      return ov;
+    },
+    [],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -4447,6 +4677,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteTimelineEvent,
         createGiftRegistryItem,
         deleteGiftRegistryItem,
+        homeFileOverview,
+        refreshHomeFileOverview,
+        createHomeAsset,
+        deleteHomeAsset,
+        createMaintenanceReminder,
+        completeMaintenanceReminder,
+        deleteMaintenanceReminder,
+        createHomeInventoryItem,
+        updateHomeInventoryItem,
+        deleteHomeInventoryItem,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

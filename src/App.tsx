@@ -199,6 +199,21 @@ const PublicRsvpView = lazy(() =>
     default: m.PublicRsvpView,
   })),
 );
+const NewlywedsGuideView = lazy(() =>
+  import('./components/postMarriage/NewlywedsGuideView').then((m) => ({
+    default: m.NewlywedsGuideView,
+  })),
+);
+const HomeCareDirectoryView = lazy(() =>
+  import('./components/postMarriage/HomeCareDirectoryView').then((m) => ({
+    default: m.HomeCareDirectoryView,
+  })),
+);
+const DigitalHomeFileView = lazy(() =>
+  import('./components/postMarriage/DigitalHomeFileView').then((m) => ({
+    default: m.DigitalHomeFileView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -269,6 +284,9 @@ const MainContent: React.FC = () => {
             <Route path="/room-designer" element={<RoomDesignerView />} />
             <Route path="/wedding-day" element={<WeddingDayOpsView />} />
             <Route path="/rsvp/:code" element={<PublicRsvpView />} />
+            <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />
+            <Route path="/home-care" element={<HomeCareDirectoryView />} />
+            <Route path="/my/home-file" element={<DigitalHomeFileView />} />
             <Route path="/vendor" element={<VendorPortalView />} />
             <Route path="/rfq" element={<RfqCenterView />} />
             <Route path="/rfq/new" element={<RfqCenterView initialTab="new" />} />

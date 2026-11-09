@@ -357,6 +357,28 @@ export const Footer: React.FC = () => {
               <Users className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'يوم الفرح والطاولات' : 'Wedding Day Ops'}</span>
             </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/newlyweds-guide"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <HeartHandshake className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'دليل المتزوجين الجدد' : 'Newlyweds Guide'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/home-care"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Wrench className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'النقل والصيانة بعد الزواج' : 'Post-Marriage Care'}</span>
+            </Link>
           </div>
 
           {/* Contact Hotlines */}

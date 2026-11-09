@@ -2347,3 +2347,120 @@ export interface PublicRsvpPayload {
     reservationStatus: GiftReservationStatus;
   }[];
 }
+
+// =========================================================================
+// STAGE 11: MARRIED LIFE, HOME CARE & DIGITAL HOME FILE TYPES
+// =========================================================================
+
+export type HomeAssetCategory =
+  | 'paint_code'
+  | 'electrical_panel'
+  | 'plumbing_diagram'
+  | 'appliance_manual'
+  | 'measurement'
+  | 'meter_serial'
+  | 'supplier_contact';
+
+export type MaintenanceSystemCategory =
+  | 'ac_service'
+  | 'water_heater'
+  | 'plumbing_check'
+  | 'electrical_safety'
+  | 'pest_control'
+  | 'painting_touchup'
+  | 'appliance_filter'
+  | 'moving_prep';
+
+export type MaintenanceReminderStatus = 'upcoming' | 'due_soon' | 'overdue' | 'completed';
+
+export type HomeItemCondition = 'new' | 'good' | 'needs_service' | 'replace_soon';
+
+export interface HomeFileAsset {
+  id: string;
+  userId: string;
+  roomLabel: string;
+  assetCategory: HomeAssetCategory;
+  titleAr: string;
+  titleEn: string;
+  codeOrSerial?: string | null;
+  vendorOrBrand?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MaintenanceReminder {
+  id: string;
+  userId: string;
+  systemCategory: MaintenanceSystemCategory;
+  titleAr: string;
+  titleEn: string;
+  intervalMonths: number;
+  nextDueDate: string;
+  lastCompletedAt?: string | null;
+  status: MaintenanceReminderStatus;
+  estimatedCostEgp: number;
+  vendorCategorySlug: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomeInventoryItem {
+  id: string;
+  userId: string;
+  roomLabel: string;
+  itemName: string;
+  brandModel: string;
+  purchaseDate?: string | null;
+  purchasePriceEgp: number;
+  warrantyExpiryDate?: string | null;
+  condition: HomeItemCondition;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomeFileSummary {
+  totalAssets: number;
+  totalReminders: number;
+  overdueReminders: number;
+  dueSoonReminders: number;
+  totalInventoryItems: number;
+  activeWarrantiesCount: number;
+  expiringWarrantiesCount: number;
+  totalInventoryValueEgp: number;
+  projectedAnnualMaintenanceEgp: number;
+}
+
+export interface HomeFileOverviewPayload {
+  assets: HomeFileAsset[];
+  reminders: MaintenanceReminder[];
+  inventory: HomeInventoryItem[];
+  warranties: UserWarrantyItem[];
+  documents: UserDocumentItem[];
+  summary: HomeFileSummary;
+}
+
+export interface NewlywedGuideTrack {
+  id: string;
+  slug: string;
+  titleAr: string;
+  titleEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  timeframeAr: string;
+  timeframeEn: string;
+  ctaPath: string;
+  ctaLabelAr: string;
+  ctaLabelEn: string;
+  stepsAr: { key: string; text: string }[];
+  stepsEn: { key: string; text: string }[];
+}
+
+export interface HomeCareDirectoryPayload {
+  tracks: NewlywedGuideTrack[];
+  categories: VendorCategory[];
+  vendors: VendorListing[];
+  articles: Article[];
+}

@@ -1063,3 +1063,87 @@ export const createGiftRegistryItemSchema = z.object({
   priority: z.enum(['essential', 'nice_to_have', 'dream']).default('essential'),
   notes: z.string().trim().max(300).nullable().optional(),
 });
+
+// =========================================================================
+// STAGE 11: MARRIED LIFE, HOME CARE & DIGITAL HOME FILE SCHEMAS
+// =========================================================================
+
+export const homeAssetCategoryEnum = z.enum([
+  'paint_code',
+  'electrical_panel',
+  'plumbing_diagram',
+  'appliance_manual',
+  'measurement',
+  'meter_serial',
+  'supplier_contact',
+]);
+
+export const maintenanceSystemCategoryEnum = z.enum([
+  'ac_service',
+  'water_heater',
+  'plumbing_check',
+  'electrical_safety',
+  'pest_control',
+  'painting_touchup',
+  'appliance_filter',
+  'moving_prep',
+]);
+
+export const homeItemConditionEnum = z.enum(['new', 'good', 'needs_service', 'replace_soon']);
+
+export const createHomeAssetSchema = z.object({
+  roomLabel: z.string().trim().min(2).max(120),
+  assetCategory: homeAssetCategoryEnum,
+  titleAr: z.string().trim().min(2).max(180),
+  titleEn: z.string().trim().max(180).optional(),
+  codeOrSerial: z.string().trim().max(160).nullable().optional(),
+  vendorOrBrand: z.string().trim().max(160).nullable().optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const createMaintenanceReminderSchema = z.object({
+  systemCategory: maintenanceSystemCategoryEnum,
+  titleAr: z.string().trim().min(2).max(180),
+  titleEn: z.string().trim().max(180).optional(),
+  intervalMonths: z.number().int().min(1).max(60).default(6),
+  nextDueDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  estimatedCostEgp: z.number().int().min(0).max(5000000).default(0),
+  vendorCategorySlug: z.string().trim().min(2).max(80).default('home_maintenance'),
+  notes: z.string().trim().max(800).nullable().optional(),
+});
+
+export const completeMaintenanceReminderSchema = z.object({
+  completedDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  notes: z.string().trim().max(800).nullable().optional(),
+});
+
+export const createHomeInventorySchema = z.object({
+  roomLabel: z.string().trim().min(2).max(120),
+  itemName: z.string().trim().min(2).max(180),
+  brandModel: z.string().trim().min(2).max(160),
+  purchaseDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  purchasePriceEgp: z.number().int().min(0).max(50000000).default(0),
+  warrantyExpiryDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  condition: homeItemConditionEnum.default('good'),
+  notes: z.string().trim().max(800).nullable().optional(),
+});
+
+export const updateHomeInventorySchema = createHomeInventorySchema.partial();

@@ -55,7 +55,13 @@ import {
   SUBSCRIPTION_PLANS_SEED,
   VENDOR_CATEGORIES_SEED,
 } from '../shared/vendorMarketplaceData';
+import { computeMaintenanceDueStatus } from '../shared/stage11Data';
 import { hashPassword, hashSensitiveField } from './security';
+
+function offsetIsoDate(daysOffset: number): string {
+  const dt = new Date(Date.now() + daysOffset * 86400000);
+  return dt.toISOString().slice(0, 10);
+}
 
 export function seedDatabase(
   db: DatabaseSync,
@@ -71,6 +77,7 @@ export function seedDatabase(
   stage8Seeded: boolean;
   stage9Seeded: boolean;
   stage10Seeded: boolean;
+  stage11Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
@@ -88,6 +95,7 @@ export function seedDatabase(
   const stage8RfqCountRow = db.prepare('SELECT COUNT(*) as cnt FROM rfq_requests').get() as { cnt: number };
   const stage9StoryCountRow = db.prepare('SELECT COUNT(*) as cnt FROM real_weddings').get() as { cnt: number };
   const stage10BoardCountRow = db.prepare('SELECT COUNT(*) as cnt FROM room_moodboards').get() as { cnt: number };
+  const stage11AssetCountRow = db.prepare('SELECT COUNT(*) as cnt FROM home_file_assets').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
@@ -100,6 +108,7 @@ export function seedDatabase(
   const needsStage8 = stage8RfqCountRow.cnt === 0;
   const needsStage9 = stage9StoryCountRow.cnt === 0;
   const needsStage10 = stage10BoardCountRow.cnt === 0;
+  const needsStage11 = stage11AssetCountRow.cnt === 0;
 
   if (
     !needsStage1 &&
@@ -113,7 +122,8 @@ export function seedDatabase(
     !needsExtraLocs &&
     !needsStage8 &&
     !needsStage9 &&
-    !needsStage10
+    !needsStage10 &&
+    !needsStage11
   ) {
     return {
       seeded: false,
@@ -126,6 +136,7 @@ export function seedDatabase(
       stage8Seeded: false,
       stage9Seeded: false,
       stage10Seeded: false,
+      stage11Seeded: false,
     };
   }
 
@@ -2367,6 +2378,194 @@ export function seedDatabase(
       );
     }
 
+    if (needsStage11) {
+      // Seed Stage 11: Married Life & Digital Home File for Karim (usr-1)
+      const insAsset = db.prepare(
+        `INSERT OR IGNORE INTO home_file_assets (
+          id, user_id, room_label, asset_category, title_ar, title_en, code_or_serial, vendor_or_brand, notes, created_at, updated_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insAsset.run(
+        'hfa-karim-1',
+        'الريسبشن والمعيشة | Living Reception',
+        'paint_code',
+        'دهان الحوائط الرئيسي - أبيض كريمي نصف لامع',
+        'Primary Wall Paint — Creamy White Semi-Matte',
+        'Jotun 10678 Fenomastic My Home',
+        'Jotun Egypt',
+        'طبقتان معجون + بطانة + وشين لون للمطابخ والصالة',
+        now,
+        now,
+      );
+      insAsset.run(
+        'hfa-karim-2',
+        'لوحة المدخل | Main Corridor',
+        'electrical_panel',
+        'خريطة لوحة القواطع الكهربائية (16 خطاً + RCD)',
+        'Main Breaker Panel Map (16 Lines + 30mA RCD)',
+        'ABB-PNL-16L-2026',
+        'El Sewedy Electric + ABB',
+        'القاطع رقم 1 و 2 لتكييفات الريسبشن (25A) وقاطع المطبخ 32A',
+        now,
+        now,
+      );
+      insAsset.run(
+        'hfa-karim-3',
+        'الحمام الرئيسي | Master Bathroom',
+        'plumbing_diagram',
+        'شهادة كبس خطوط التغذية PP-R ومواقع المحابس',
+        'PP-R Plumbing Pressure Test & Main Valve Diagram',
+        'BR-PPR-2026-10BAR',
+        'Banninger / BR Egypt',
+        'المحبس العمومي خلف باب الخدمة ومحبس السخان أسفل الوحدة',
+        now,
+        now,
+      );
+      insAsset.run(
+        'hfa-karim-4',
+        'المطبخ | Kitchen',
+        'measurement',
+        'مقاس قرصة رخام الكوارتز وفتحة البوتاجاز البلت إن',
+        'Kitchen Quartz Counter & Built-In Hob Cutout',
+        '245cm × 60cm × 2cm',
+        'El Khaleej Marble',
+        'مقاس البوتاجاز البلت إن الصافي 56×49 سم',
+        now,
+        now,
+      );
+
+      // Maintenance Reminders (1 overdue, 1 due_soon, 2 upcoming relative to today)
+      const insRem = db.prepare(
+        `INSERT OR IGNORE INTO maintenance_reminders (
+          id, user_id, system_category, title_ar, title_en, interval_months, next_due_date, last_completed_at, status, estimated_cost_egp, vendor_category_slug, notes, created_at, updated_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      const dueOverdue = offsetIsoDate(-12);
+      const dueSoon = offsetIsoDate(5);
+      const dueUpcoming1 = offsetIsoDate(45);
+      const dueUpcoming2 = offsetIsoDate(150);
+
+      insRem.run(
+        'mrem-karim-1',
+        'ac_service',
+        'صيانة وغسيل فلاتر التكييف وفحص الفريون',
+        'Seasonal AC Coil Cleaning & Freon Check',
+        6,
+        dueOverdue,
+        offsetIsoDate(-195),
+        computeMaintenanceDueStatus(dueOverdue),
+        650,
+        'home_maintenance',
+        'قبل موسم الحر في الريسبشن وغرفة النوم الرئيسية',
+        now,
+        now,
+      );
+      insRem.run(
+        'mrem-karim-2',
+        'appliance_filter',
+        'تغيير شمعات فلتر المياه الـ 3 الأولية',
+        'Replace Stages 1-3 RO Water Filter Cartridges',
+        3,
+        dueSoon,
+        offsetIsoDate(-85),
+        computeMaintenanceDueStatus(dueSoon),
+        480,
+        'home_maintenance',
+        'شمعات 5 ميكرون + كربون نشط + بلوك كربوني',
+        now,
+        now,
+      );
+      insRem.run(
+        'mrem-karim-3',
+        'water_heater',
+        'فحص صمام الأمان وعمود المغنيسيوم للسخان',
+        'Water Heater Anode Rod & Safety Valve Inspection',
+        12,
+        dueUpcoming1,
+        offsetIsoDate(-320),
+        computeMaintenanceDueStatus(dueUpcoming1),
+        450,
+        'home_maintenance',
+        'مراجعة توصيل الغاز / الكهرباء قبل الشتاء',
+        now,
+        now,
+      );
+      insRem.run(
+        'mrem-karim-4',
+        'plumbing_check',
+        'فحص محابس الدفن وسيلكون أحواض المطبخ والحمام',
+        'Concealed Valve & Sink Silicone Re-Seal Audit',
+        6,
+        dueUpcoming2,
+        offsetIsoDate(-30),
+        computeMaintenanceDueStatus(dueUpcoming2),
+        350,
+        'home_maintenance',
+        'متابعة سنوية للوقاية من تسرب المياه للأخشاب',
+        now,
+        now,
+      );
+
+      // Home Inventory Ledger
+      const insInv = db.prepare(
+        `INSERT OR IGNORE INTO home_inventory_items (
+          id, user_id, room_label, item_name, brand_model, purchase_date, purchase_price_egp, warranty_expiry_date, condition, notes, created_at, updated_at
+        ) VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insInv.run(
+        'hinv-karim-1',
+        'المطبخ | Kitchen',
+        'ثلاجة شارب إنفرتر 536 لتر ديجيتال',
+        'Sharp SJ-PC58A-ST Inverter',
+        offsetIsoDate(-90),
+        36900,
+        offsetIsoDate(3560),
+        'new',
+        'تفعيل ضمان العربي 10 سنوات عند التركيب الرسمي',
+        now,
+        now,
+      );
+      insInv.run(
+        'hinv-karim-2',
+        'الحمام / التجهيز | Utility',
+        'غسالة إل جي 9 كيلو Direct Drive',
+        'LG F4V3TYP6W 9KG Steam',
+        offsetIsoDate(-80),
+        24500,
+        offsetIsoDate(1745),
+        'new',
+        'ضمان الموتور المباشر 10 سنوات + الفاتورة الضريبية محفوظة',
+        now,
+        now,
+      );
+      insInv.run(
+        'hinv-karim-3',
+        'الريسبشن | Living Room',
+        'تكييف تورنيدو 2.25 حصان إنفرتر بارد/ساخن',
+        'Tornado TH-C18YEE Inverter',
+        offsetIsoDate(-75),
+        29800,
+        offsetIsoDate(1750),
+        'good',
+        'تم تركيب الحوامل مع عزل مواسير النحاس بالبلاك ارمفليكس',
+        now,
+        now,
+      );
+      insInv.run(
+        'hinv-karim-4',
+        'غرفة المعيشة | Living Room',
+        'ركنة مودرن زان أحمر وقماش ووتر بروف',
+        'Custom Beech Wood 260×185cm',
+        offsetIsoDate(-45),
+        22000,
+        offsetIsoDate(320),
+        'good',
+        'قماش مقلوب معالج ضد البقع + شلتت فايبر سوفت',
+        now,
+        now,
+      );
+    }
+
     db.exec('COMMIT;');
     return {
       seeded:
@@ -2381,7 +2580,8 @@ export function seedDatabase(
         needsExtraLocs ||
         needsStage8 ||
         needsStage9 ||
-        needsStage10,
+        needsStage10 ||
+        needsStage11,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
@@ -2391,6 +2591,7 @@ export function seedDatabase(
       stage8Seeded: needsStage8,
       stage9Seeded: needsStage9,
       stage10Seeded: needsStage10,
+      stage11Seeded: needsStage11,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

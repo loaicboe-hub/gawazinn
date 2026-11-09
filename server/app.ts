@@ -257,6 +257,25 @@ import {
   updateTimelineEvent,
   updateWeddingGuest,
 } from './roomWeddingOpsService';
+import {
+  completeMaintenanceReminderSchema,
+  createHomeAssetSchema,
+  createHomeInventorySchema,
+  createMaintenanceReminderSchema,
+  updateHomeInventorySchema,
+} from '../shared/schemas';
+import {
+  buildUserHomeFileOverview,
+  completeMaintenanceReminder,
+  createHomeAsset,
+  createHomeInventoryItem,
+  createMaintenanceReminder,
+  deleteHomeAsset,
+  deleteHomeInventoryItem,
+  deleteMaintenanceReminder,
+  getHomeCareDirectorySummary,
+  updateHomeInventoryItem,
+} from './homeCareService';
 import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
 import {
   SlidingWindowRateLimiter,
@@ -920,6 +939,8 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/experts',
           '/assistant',
           '/room-designer',
+          '/newlyweds-guide',
+          '/home-care',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -6793,6 +6814,170 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             return;
           }
           sendJson(res, 200, { ok: true, data: submitPublicRsvp(db, code, parsed.data) });
+          return;
+        }
+      }
+
+      // ================= STAGE 11: MARRIED LIFE, HOME CARE & DIGITAL HOME FILE =================
+      if (method === 'GET' && route === '/home-care/directory') {
+        sendJson(res, 200, { ok: true, data: getHomeCareDirectorySummary(db) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/home-care/overview') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: buildUserHomeFileOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/home-care/assets') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const parsed = createHomeAssetSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid home file asset');
+          return;
+        }
+        sendJson(res, 201, { ok: true, data: createHomeAsset(db, authUser.id, parsed.data) });
+        return;
+      }
+
+      const homeAssetDeleteMatch = route.match(/^\/home-care\/assets\/([^/]+)$/);
+      if (method === 'DELETE' && homeAssetDeleteMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        sendJson(res, 200, {
+          ok: true,
+          data: deleteHomeAsset(db, authUser.id, decodeURIComponent(homeAssetDeleteMatch[1])),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/home-care/reminders') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const parsed = createMaintenanceReminderSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(
+            res,
+            400,
+            'VALIDATION_ERROR',
+            parsed.error.issues[0]?.message || 'Invalid maintenance reminder',
+          );
+          return;
+        }
+        sendJson(res, 201, {
+          ok: true,
+          data: createMaintenanceReminder(db, authUser.id, parsed.data),
+        });
+        return;
+      }
+
+      const reminderCompleteMatch = route.match(/^\/home-care\/reminders\/([^/]+)\/complete$/);
+      if (method === 'POST' && reminderCompleteMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const parsed = completeMaintenanceReminderSchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(
+            res,
+            400,
+            'VALIDATION_ERROR',
+            parsed.error.issues[0]?.message || 'Invalid maintenance completion payload',
+          );
+          return;
+        }
+        sendJson(res, 200, {
+          ok: true,
+          data: completeMaintenanceReminder(
+            db,
+            authUser.id,
+            decodeURIComponent(reminderCompleteMatch[1]),
+            parsed.data,
+          ),
+        });
+        return;
+      }
+
+      const reminderDeleteMatch = route.match(/^\/home-care\/reminders\/([^/]+)$/);
+      if (method === 'DELETE' && reminderDeleteMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        sendJson(res, 200, {
+          ok: true,
+          data: deleteMaintenanceReminder(db, authUser.id, decodeURIComponent(reminderDeleteMatch[1])),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/home-care/inventory') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const parsed = createHomeInventorySchema.safeParse(await readJsonBody(req));
+        if (!parsed.success) {
+          sendError(
+            res,
+            400,
+            'VALIDATION_ERROR',
+            parsed.error.issues[0]?.message || 'Invalid home inventory item',
+          );
+          return;
+        }
+        sendJson(res, 201, {
+          ok: true,
+          data: createHomeInventoryItem(db, authUser.id, parsed.data),
+        });
+        return;
+      }
+
+      const inventoryItemMatch = route.match(/^\/home-care\/inventory\/([^/]+)$/);
+      if (inventoryItemMatch) {
+        const itemId = decodeURIComponent(inventoryItemMatch[1]);
+        if (method === 'PATCH') {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return;
+          }
+          const parsed = updateHomeInventorySchema.safeParse(await readJsonBody(req));
+          if (!parsed.success) {
+            sendError(
+              res,
+              400,
+              'VALIDATION_ERROR',
+              parsed.error.issues[0]?.message || 'Invalid home inventory update',
+            );
+            return;
+          }
+          sendJson(res, 200, {
+            ok: true,
+            data: updateHomeInventoryItem(db, authUser.id, itemId, parsed.data),
+          });
+          return;
+        }
+        if (method === 'DELETE') {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+            return;
+          }
+          sendJson(res, 200, {
+            ok: true,
+            data: deleteHomeInventoryItem(db, authUser.id, itemId),
+          });
           return;
         }
       }
