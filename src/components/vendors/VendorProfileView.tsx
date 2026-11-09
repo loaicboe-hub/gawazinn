@@ -12,6 +12,7 @@ import {
   AlertCircle,
   BadgeCheck,
   Briefcase,
+  Calendar,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -27,7 +28,11 @@ import {
   Store,
   Tag,
 } from 'lucide-react';
-import type { VendorListing } from '../../types';
+import type {
+  MarketplaceAppointment,
+  MarketplaceAppointmentType,
+  VendorListing,
+} from '../../types';
 
 export const VendorProfileView: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -41,6 +46,7 @@ export const VendorProfileView: React.FC = () => {
     apiConnected,
     setAuthModalOpen,
     submitVendorReview,
+    createMarketplaceAppointment,
   } = useApp();
 
   const decodedSlug = slug ? decodeURIComponent(slug) : '';
@@ -60,6 +66,17 @@ export const VendorProfileView: React.FC = () => {
   const [revSubmitting, setRevSubmitting] = useState(false);
   const [revError, setRevError] = useState<string | null>(null);
   const [revSuccess, setRevSuccess] = useState(false);
+
+  // Stage 8: Inline Slot Appointment Form State
+  const [aptType, setAptType] = useState<MarketplaceAppointmentType>('showroom');
+  const [aptServiceId, setAptServiceId] = useState('');
+  const [aptDate, setAptDate] = useState('2026-12-10');
+  const [aptTime, setAptTime] = useState('14:00');
+  const [aptPhone, setAptPhone] = useState('');
+  const [aptNotes, setAptNotes] = useState('');
+  const [aptSubmitting, setAptSubmitting] = useState(false);
+  const [aptError, setAptError] = useState<string | null>(null);
+  const [bookedApt, setBookedApt] = useState<MarketplaceAppointment | null>(null);
 
   const BreadcrumbSep = dir === 'rtl' ? ChevronLeft : ChevronRight;
 
@@ -191,6 +208,40 @@ export const VendorProfileView: React.FC = () => {
   const promotions = vendor.promotions || [];
   const reviews = vendor.reviews || [];
 
+  const handleBookSlotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setAptSubmitting(true);
+    setAptError(null);
+    try {
+      const created = await createMarketplaceAppointment({
+        vendorId: vendor.id,
+        serviceId: aptServiceId || null,
+        appointmentType: aptType,
+        slotDate: aptDate,
+        slotTime: aptTime,
+        durationMinutes: 45,
+        customerPhone: (aptPhone || currentUser.phone || '01012345678').trim(),
+        customerNotes: aptNotes.trim() || null,
+      });
+      setBookedApt(created);
+      setAptNotes('');
+    } catch (err) {
+      setAptError(
+        err instanceof Error
+          ? err.message
+          : language === 'ar'
+            ? 'تعذر حجز الموعد.'
+            : 'Failed to request slot appointment.',
+      );
+    } finally {
+      setAptSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-10 pb-24">
       {/* Banner Header */}
@@ -290,6 +341,22 @@ export const VendorProfileView: React.FC = () => {
                     <span>{language === 'ar' ? 'الموقع' : 'Website'}</span>
                   </a>
                 )}
+                <Link
+                  to={`/rfq/new?vendorId=${encodeURIComponent(vendor.id)}&category=${encodeURIComponent(vendor.primaryCategorySlug)}`}
+                  data-testid="vendor-request-rfq-btn"
+                  className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#2A1D20] text-xs font-black shadow transition flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{language === 'ar' ? 'اطلب عرض سعر (RFQ)' : 'Request Quote (RFQ)'}</span>
+                </Link>
+                <a
+                  href="#book-slot-section"
+                  data-testid="vendor-open-booking-btn"
+                  className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{language === 'ar' ? 'احجز موعد معاينة/معرض' : 'Book Visit Slot'}</span>
+                </a>
                 {isOwner && (
                   <Link
                     to={`/vendor?vendorId=${vendor.id}`}
@@ -557,6 +624,212 @@ export const VendorProfileView: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Stage 8: Interactive Slot Appointment Booking */}
+        <section
+          id="book-slot-section"
+          data-testid="vendor-slot-booking-card"
+          className="bg-[#FAF7F2] rounded-3xl p-6 sm:p-8 border border-[#D91B3E]/20 space-y-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-[#2A1D20] flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#D91B3E]" />
+                <span>
+                  {language === 'ar'
+                    ? 'حجز موعد معاينة أو زيارة معرض مع الشريك'
+                    : 'Book a Slot Appointment with This Vendor'}
+                </span>
+              </h2>
+              <p className="text-xs text-gray-600 mt-0.5">
+                {language === 'ar'
+                  ? 'اختر الموعد والوقت المناسبين — يبدأ الطلب بحالة «في انتظار تأكيد الشريك» ويدرج تلقائياً في سجل الشريك.'
+                  : 'Select an available date & slot time — requests stay Pending until formally confirmed by the Vendor Partner.'}
+              </p>
+            </div>
+            <Link
+              to={`/rfq/new?vendorId=${encodeURIComponent(vendor.id)}&category=${encodeURIComponent(vendor.primaryCategorySlug)}`}
+              className="px-4 py-2 rounded-xl bg-white border border-[#D91B3E]/30 text-[#B31331] hover:bg-[#FDE8ED] text-xs font-bold flex items-center gap-1.5"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>{language === 'ar' ? 'أو أرسل طلب تسعير RFQ' : 'Or Send RFQ Quote Request'}</span>
+            </Link>
+          </div>
+
+          {!currentUser ? (
+            <div className="p-4 rounded-2xl bg-white border border-rose-100 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs font-bold text-[#2A1D20]">
+                {language === 'ar'
+                  ? 'سجل دخولك لحجز موعد ومزامنته مع مركز التسعير والمواعيد.'
+                  : 'Sign in to reserve an appointment slot and track confirmations.'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer"
+              >
+                {language === 'ar' ? 'تسجيل الدخول للحجز' : 'Sign In to Book'}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleBookSlotSubmit} className="space-y-4">
+              {aptError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-[#B31331]">
+                  {aptError}
+                </div>
+              )}
+              {bookedApt && (
+                <div
+                  data-testid="vendor-booking-success"
+                  className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex flex-wrap items-center justify-between gap-2"
+                >
+                  <span>
+                    {language === 'ar'
+                      ? `تم إرسال طلب الموعد (${bookedApt.slotDate} الساعة ${bookedApt.slotTime}) بحالة "${bookedApt.status}".`
+                      : `Slot request submitted (${bookedApt.slotDate} at ${bookedApt.slotTime}) with status "${bookedApt.status}".`}
+                  </span>
+                  <Link to="/rfq?tab=appointments" className="underline font-black text-emerald-800">
+                    {language === 'ar' ? 'متابعة مواعيدي ->' : 'Track My Appointments ->'}
+                  </Link>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'نوع الموعد:' : 'Appointment Type:'}
+                  </label>
+                  <select
+                    value={aptType}
+                    onChange={(e) => setAptType(e.target.value as MarketplaceAppointmentType)}
+                    data-testid="vendor-apt-type"
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold"
+                  >
+                    <option value="showroom">
+                      {language === 'ar' ? 'زيارة المعرض / المقر' : 'Showroom Visit'}
+                    </option>
+                    <option value="site_visit">
+                      {language === 'ar' ? 'معاينة موقع / شقة' : 'Site / Apartment Visit'}
+                    </option>
+                    <option value="measuring">
+                      {language === 'ar' ? 'رفع مقاسات' : 'Engineering Measuring'}
+                    </option>
+                    <option value="video_consultation">
+                      {language === 'ar' ? 'استشارة فيديو' : 'Video Consultation'}
+                    </option>
+                    <option value="hall_tour">
+                      {language === 'ar' ? 'جولة قاعة فرح' : 'Wedding Venue Tour'}
+                    </option>
+                    <option value="contract_signing">
+                      {language === 'ar' ? 'توقيع عقد' : 'Contract Signing'}
+                    </option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'الخدمة (اختياري):' : 'Related Service:'}
+                  </label>
+                  <select
+                    value={aptServiceId}
+                    onChange={(e) => setAptServiceId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold"
+                  >
+                    <option value="">{language === 'ar' ? 'استشارة عامة' : 'General Inquiry'}</option>
+                    {services.map((srv) => (
+                      <option key={srv.id} value={srv.id}>
+                        {language === 'ar' ? srv.titleAr : srv.titleEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'التاريخ:' : 'Preferred Date:'}
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={aptDate}
+                    onChange={(e) => setAptDate(e.target.value)}
+                    data-testid="vendor-apt-date"
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'الوقت المتاح:' : 'Time Slot:'}
+                  </label>
+                  <select
+                    value={aptTime}
+                    onChange={(e) => setAptTime(e.target.value)}
+                    data-testid="vendor-apt-time"
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold"
+                  >
+                    <option value="10:00">10:00 AM</option>
+                    <option value="12:00">12:00 PM</option>
+                    <option value="14:00">02:00 PM</option>
+                    <option value="16:00">04:00 PM</option>
+                    <option value="18:00">06:00 PM</option>
+                    <option value="20:00">08:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'رقم الهاتف للتواصل:' : 'Your Contact Phone:'}
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    minLength={8}
+                    value={aptPhone || currentUser.phone || ''}
+                    onChange={(e) => setAptPhone(e.target.value)}
+                    data-testid="vendor-apt-phone"
+                    placeholder="01012345678"
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-gray-700">
+                    {language === 'ar' ? 'ملاحظات المعاينة أو العنوان:' : 'Notes / Apartment Location:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={aptNotes}
+                    onChange={(e) => setAptNotes(e.target.value)}
+                    data-testid="vendor-apt-notes"
+                    placeholder={
+                      language === 'ar'
+                        ? 'مثال: شقة 135م بالتجمع الخامس — مراجعة خامات السيراميك'
+                        : 'e.g. 135sqm New Cairo apartment — review materials & specs'
+                    }
+                    className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={aptSubmitting}
+                data-testid="vendor-apt-submit-btn"
+                className="px-6 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow hover:opacity-95 cursor-pointer"
+              >
+                {aptSubmitting
+                  ? language === 'ar'
+                    ? 'جاري إرسال الحجز...'
+                    : 'Submitting Slot...'
+                  : language === 'ar'
+                    ? 'تأكيد طلب حجز الموعد'
+                    : 'Request Appointment Slot'}
+              </button>
+            </form>
+          )}
+        </section>
 
         {/* Authentic Customer Reviews Section */}
         <section

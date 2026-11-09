@@ -141,13 +141,39 @@ import {
 import {
   adminVerifyVendorSchema,
   adminUpdateSubscriptionPlanSchema,
+  createMarketplaceAppointmentSchema,
+  createRfqMessageSchema,
+  createRfqRequestSchema,
+  createVendorLeadActivitySchema,
+  createVendorLeadSchema,
+  decideRfqQuoteSchema,
+  patchMarketplaceAppointmentSchema,
+  patchVendorLeadSchema,
   registerVendorSchema,
+  submitRfqQuoteSchema,
   switchVendorSubscriptionSchema,
   updateVendorProfileSchema,
   vendorPromotionCreateSchema,
   vendorReviewCreateSchema,
   vendorServiceUpsertSchema,
 } from '../shared/schemas';
+import {
+  addVendorLeadActivity,
+  buildVendorCrmOverview,
+  createManualVendorLead,
+  createMarketplaceAppointment,
+  createRfqRequest,
+  decideRfqQuote,
+  getAuthorizedRfqForUser,
+  listCustomerMarketplaceAppointments,
+  listRfqsForCustomer,
+  listRfqsForVendor,
+  listVendorMarketplaceAppointments,
+  patchMarketplaceAppointment,
+  patchVendorLead,
+  postRfqMessage,
+  submitVendorRfqQuote,
+} from './rfqCrmService';
 import {
   adminUpdateVendorVerification,
   buildLocalCategoryGuide,
@@ -4499,6 +4525,426 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             },
           });
           return;
+        }
+
+        // -------- Stage 8 Vendor Portal Extensions: RFQs, Slot Appointments & 8-Stage CRM --------
+        if (method === 'GET' && route === '/vendor-portal/crm') {
+          sendJson(res, 200, { ok: true, data: buildVendorCrmOverview(db, vendor) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/vendor-portal/rfqs') {
+          sendJson(res, 200, { ok: true, data: listRfqsForVendor(db, vendor.id) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/vendor-portal/appointments') {
+          sendJson(res, 200, { ok: true, data: listVendorMarketplaceAppointments(db, vendor.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/vendor-portal/crm/leads') {
+          const body = await readJsonBody(req);
+          const parsed = createVendorLeadSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor lead fields', parsed.error.flatten());
+            return;
+          }
+          const lead = createManualVendorLead(db, authUser, vendor.id, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor_crm.lead_created',
+            targetType: 'vendor_lead',
+            targetId: lead.id,
+            metadata: { vendorId: vendor.id, stage: lead.stage, estimatedValueEgp: lead.estimatedValueEgp },
+            ipAddress: ip,
+          });
+          sendJson(res, 201, { ok: true, data: { lead, crm: buildVendorCrmOverview(db, vendor) } });
+          return;
+        }
+
+        const crmLeadMatch = route.match(/^\/vendor-portal\/crm\/leads\/([^/]+)$/);
+        if (method === 'PATCH' && crmLeadMatch) {
+          const leadId = decodeURIComponent(crmLeadMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = patchVendorLeadSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vendor lead update', parsed.error.flatten());
+            return;
+          }
+          const updatedLead = patchVendorLead(db, authUser, vendor.id, leadId, parsed.data);
+          if (!updatedLead) {
+            sendError(res, 404, 'NOT_FOUND', 'Vendor CRM lead not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor_crm.lead_updated',
+            targetType: 'vendor_lead',
+            targetId: leadId,
+            metadata: { vendorId: vendor.id, stage: updatedLead.stage, estimatedValueEgp: updatedLead.estimatedValueEgp },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: { lead: updatedLead, crm: buildVendorCrmOverview(db, vendor) } });
+          return;
+        }
+
+        const crmActMatch = route.match(/^\/vendor-portal\/crm\/leads\/([^/]+)\/activities$/);
+        if (method === 'POST' && crmActMatch) {
+          const leadId = decodeURIComponent(crmActMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = createVendorLeadActivitySchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid lead activity entry', parsed.error.flatten());
+            return;
+          }
+          const activity = addVendorLeadActivity(db, authUser, vendor.id, leadId, parsed.data);
+          if (!activity) {
+            sendError(res, 404, 'NOT_FOUND', 'Vendor CRM lead not found');
+            return;
+          }
+          sendJson(res, 201, { ok: true, data: { activity, crm: buildVendorCrmOverview(db, vendor) } });
+          return;
+        }
+      }
+
+      // ================= STAGE 8: MULTI-VENDOR RFQ ENGINE & MARKETPLACE APPOINTMENTS =================
+      if (method === 'GET' && route === '/rfq') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view your RFQ requests');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: listRfqsForCustomer(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/rfq') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to submit an RFQ request');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createRfqRequestSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid RFQ payload', parsed.error.flatten());
+          return;
+        }
+        const catRow = db
+          .prepare('SELECT slug FROM vendor_categories WHERE slug = ?')
+          .get(parsed.data.categorySlug) as { slug: string } | undefined;
+        if (!catRow) {
+          sendError(res, 400, 'VALIDATION_ERROR', `Unknown vendor category "${parsed.data.categorySlug}"`);
+          return;
+        }
+        const rfq = createRfqRequest(db, authUser, parsed.data);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'rfq.created',
+          targetType: 'rfq_request',
+          targetId: rfq.id,
+          metadata: {
+            categorySlug: rfq.categorySlug,
+            governorateSlug: rfq.governorateSlug,
+            invitationsCount: rfq.invitationsCount ?? 0,
+          },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: rfq });
+        return;
+      }
+
+      const rfqDetailMatch = route.match(/^\/rfq\/([^/]+)$/);
+      if (method === 'GET' && rfqDetailMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to inspect RFQ details');
+          return;
+        }
+        const rfqId = decodeURIComponent(rfqDetailMatch[1]);
+        const requestedVendorId = url.searchParams.get('vendorId');
+        const access = getAuthorizedRfqForUser(db, authUser, rfqId, requestedVendorId);
+        if (access.status === 'not_found') {
+          sendError(res, 404, 'NOT_FOUND', 'RFQ request not found');
+          return;
+        }
+        if (access.status === 'forbidden') {
+          sendError(res, 403, 'FORBIDDEN', 'Only the RFQ owner, invited vendor, or admin can view this RFQ');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: access.rfq });
+        return;
+      }
+
+      const rfqQuoteMatch = route.match(/^\/rfq\/([^/]+)\/quotes$/);
+      if (method === 'POST' && rfqQuoteMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to submit an RFQ quotation');
+          return;
+        }
+        const rfqId = decodeURIComponent(rfqQuoteMatch[1]);
+        const body = await readJsonBody(req);
+        const parsed = submitRfqQuoteSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid RFQ quotation payload', parsed.error.flatten());
+          return;
+        }
+
+        const rfqExists = db.prepare('SELECT id FROM rfq_requests WHERE id = ?').get(rfqId) as
+          | { id: string }
+          | undefined;
+        if (!rfqExists) {
+          sendError(res, 404, 'NOT_FOUND', 'RFQ request not found');
+          return;
+        }
+
+        const requestedVendorId = parsed.data.vendorId || url.searchParams.get('vendorId');
+        let resolvedVendorId = '';
+        if (requestedVendorId) {
+          const targetVendor = getVendorDetailBySlugOrId(db, requestedVendorId, false);
+          if (!targetVendor) {
+            sendError(res, 404, 'NOT_FOUND', 'Vendor not found');
+            return;
+          }
+          if (
+            targetVendor.ownerUserId !== authUser.id &&
+            !hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ) {
+            sendError(res, 403, 'FORBIDDEN', 'Only the vendor owner can submit quotes for this business');
+            return;
+          }
+          resolvedVendorId = targetVendor.id;
+        } else {
+          const invitedOwned = db
+            .prepare(
+              `SELECT v.id
+               FROM rfq_invitations ri
+               JOIN vendors v ON v.id = ri.vendor_id
+               WHERE ri.rfq_id = ? AND v.owner_user_id = ?
+               ORDER BY ri.invited_at ASC
+               LIMIT 1`,
+            )
+            .get(rfqId, authUser.id) as { id: string } | undefined;
+          if (!invitedOwned) {
+            sendError(
+              res,
+              403,
+              'FORBIDDEN',
+              'You do not own an invited vendor profile for this RFQ',
+            );
+            return;
+          }
+          resolvedVendorId = invitedOwned.id;
+        }
+
+        try {
+          const submitted = submitVendorRfqQuote(db, authUser, rfqId, resolvedVendorId, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'rfq.quote_submitted',
+            targetType: 'rfq_quote',
+            targetId: submitted.quote.id,
+            metadata: {
+              rfqId,
+              vendorId: resolvedVendorId,
+              quotedAmountEgp: submitted.quote.quotedAmountEgp,
+            },
+            ipAddress: ip,
+          });
+          sendJson(res, 201, { ok: true, data: submitted });
+          return;
+        } catch (err) {
+          const code = err instanceof Error ? err.message : '';
+          if (code === 'RFQ_NOT_FOUND' || code === 'VENDOR_NOT_FOUND') {
+            sendError(res, 404, 'NOT_FOUND', code);
+            return;
+          }
+          if (code === 'VENDOR_NOT_INVITED') {
+            sendError(res, 403, 'FORBIDDEN', 'Vendor is not invited to quote on this RFQ');
+            return;
+          }
+          if (code === 'RFQ_CLOSED') {
+            sendError(res, 409, 'RFQ_CLOSED', 'This RFQ is already accepted or closed');
+            return;
+          }
+          throw err;
+        }
+      }
+
+      const rfqDecideMatch = route.match(/^\/rfq\/([^/]+)\/quotes\/([^/]+)\/decide$/);
+      if (method === 'POST' && rfqDecideMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to accept or reject a quote');
+          return;
+        }
+        const rfqId = decodeURIComponent(rfqDecideMatch[1]);
+        const quoteId = decodeURIComponent(rfqDecideMatch[2]);
+        const body = await readJsonBody(req);
+        const parsed = decideRfqQuoteSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid quote decision payload', parsed.error.flatten());
+          return;
+        }
+        try {
+          const decided = decideRfqQuote(db, authUser, rfqId, quoteId, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'rfq.quote_decided',
+            targetType: 'rfq_quote',
+            targetId: quoteId,
+            metadata: {
+              rfqId,
+              decision: parsed.data.decision,
+              linkedBudgetExpenseId: decided.linkedBudgetExpenseId,
+            },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: decided });
+          return;
+        } catch (err) {
+          const code = err instanceof Error ? err.message : '';
+          if (code === 'RFQ_NOT_FOUND' || code === 'QUOTE_NOT_FOUND') {
+            sendError(res, 404, 'NOT_FOUND', code);
+            return;
+          }
+          if (code === 'FORBIDDEN') {
+            sendError(res, 403, 'FORBIDDEN', 'Only the RFQ owner can decide on submitted quotes');
+            return;
+          }
+          if (code === 'RFQ_ALREADY_ACCEPTED') {
+            sendError(res, 409, 'RFQ_ALREADY_ACCEPTED', 'Another quote has already been accepted for this RFQ');
+            return;
+          }
+          throw err;
+        }
+      }
+
+      const rfqMsgMatch = route.match(/^\/rfq\/([^/]+)\/messages$/);
+      if (method === 'POST' && rfqMsgMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to post RFQ messages');
+          return;
+        }
+        const rfqId = decodeURIComponent(rfqMsgMatch[1]);
+        const body = await readJsonBody(req);
+        const parsed = createRfqMessageSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid message payload', parsed.error.flatten());
+          return;
+        }
+        try {
+          const msgResult = postRfqMessage(db, authUser, rfqId, {
+            body: parsed.data.body,
+            vendorId: parsed.data.vendorId || url.searchParams.get('vendorId') || undefined,
+          });
+          sendJson(res, 201, { ok: true, data: msgResult });
+          return;
+        } catch (err) {
+          const code = err instanceof Error ? err.message : '';
+          if (code === 'RFQ_NOT_FOUND') {
+            sendError(res, 404, 'NOT_FOUND', 'RFQ request not found');
+            return;
+          }
+          if (code === 'FORBIDDEN' || code === 'VENDOR_NOT_INVITED') {
+            sendError(res, 403, 'FORBIDDEN', 'Not permitted to post messages on this RFQ thread');
+            return;
+          }
+          throw err;
+        }
+      }
+
+      if (method === 'GET' && route === '/appointments') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view your booked marketplace appointments');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: listCustomerMarketplaceAppointments(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/appointments') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to book an appointment');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createMarketplaceAppointmentSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid appointment request fields', parsed.error.flatten());
+          return;
+        }
+        try {
+          const apt = createMarketplaceAppointment(db, authUser, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'appointment.created',
+            targetType: 'appointment',
+            targetId: apt.id,
+            metadata: { vendorId: apt.vendorId, slotDate: apt.slotDate, slotTime: apt.slotTime },
+            ipAddress: ip,
+          });
+          sendJson(res, 201, { ok: true, data: apt });
+          return;
+        } catch (err) {
+          const code = err instanceof Error ? err.message : '';
+          if (code === 'VENDOR_NOT_FOUND') {
+            sendError(res, 404, 'NOT_FOUND', 'Target vendor not found or inactive');
+            return;
+          }
+          throw err;
+        }
+      }
+
+      const aptPatchMatch = route.match(/^\/appointments\/([^/]+)$/);
+      if (method === 'PATCH' && aptPatchMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to update this appointment');
+          return;
+        }
+        const aptId = decodeURIComponent(aptPatchMatch[1]);
+        const body = await readJsonBody(req);
+        const parsed = patchMarketplaceAppointmentSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid appointment update payload', parsed.error.flatten());
+          return;
+        }
+        try {
+          const updated = patchMarketplaceAppointment(db, authUser, aptId, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'appointment.updated',
+            targetType: 'appointment',
+            targetId: aptId,
+            metadata: { status: updated.status, slotDate: updated.slotDate, slotTime: updated.slotTime },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: updated });
+          return;
+        } catch (err) {
+          const code = err instanceof Error ? err.message : '';
+          if (code === 'APPOINTMENT_NOT_FOUND') {
+            sendError(res, 404, 'NOT_FOUND', 'Appointment not found');
+            return;
+          }
+          if (code === 'FORBIDDEN') {
+            sendError(res, 403, 'FORBIDDEN', 'Only participants may modify this appointment');
+            return;
+          }
+          if (code === 'CUSTOMER_CANNOT_CONFIRM') {
+            sendError(
+              res,
+              403,
+              'CUSTOMER_CANNOT_CONFIRM',
+              'Only the vendor can confirm or mark a marketplace appointment as completed',
+            );
+            return;
+          }
+          throw err;
         }
       }
 

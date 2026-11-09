@@ -1718,5 +1718,182 @@ export interface LocalCategoryGuidePayload {
   regionalBaselineMax: number;
 }
 
+// ==================== STAGE 8: MULTI-VENDOR RFQ ENGINE, SLOT APPOINTMENTS & VENDOR CRM ====================
+
+export type RfqStatus = 'open' | 'quoted' | 'accepted' | 'closed' | 'cancelled';
+export type RfqInvitationStatus = 'invited' | 'viewed' | 'quoted' | 'declined';
+export type RfqQuoteStatus = 'submitted' | 'accepted' | 'rejected' | 'withdrawn';
+export type MarketplaceAppointmentType =
+  | 'site_visit'
+  | 'showroom'
+  | 'hall_tour'
+  | 'video_consultation'
+  | 'contract_signing'
+  | 'measuring';
+export type MarketplaceAppointmentStatus =
+  | 'requested'
+  | 'confirmed'
+  | 'rescheduled'
+  | 'cancelled'
+  | 'completed';
+export type VendorLeadStage =
+  | 'new_lead'
+  | 'contacted'
+  | 'quotation_sent'
+  | 'negotiation'
+  | 'accepted'
+  | 'in_progress'
+  | 'completed'
+  | 'lost';
+export type VendorLeadActivityType =
+  | 'status_change'
+  | 'note'
+  | 'call'
+  | 'quote_sent'
+  | 'appointment'
+  | 'budget_accepted';
+
+export interface RfqInvitation {
+  id: string;
+  rfqId: string;
+  vendorId: string;
+  vendorSlug?: string;
+  vendorNameAr?: string;
+  vendorNameEn?: string;
+  verificationStatus?: VendorVerificationStatus;
+  status: RfqInvitationStatus;
+  invitedAt: string;
+}
+
+export interface RfqQuote {
+  id: string;
+  rfqId: string;
+  vendorId: string;
+  vendorSlug?: string;
+  vendorNameAr?: string;
+  vendorNameEn?: string;
+  vendorVerificationStatus?: VendorVerificationStatus;
+  vendorRatingAvg?: number;
+  vendorReviewsCount?: number;
+  quotedAmountEgp: number;
+  depositAmountEgp: number;
+  estimatedDuration: string;
+  warrantyMonths: number;
+  scopeSummary: string;
+  termsNotes?: string | null;
+  validUntil: string;
+  status: RfqQuoteStatus;
+  customerDecisionNote?: string | null;
+  linkedBudgetExpenseId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RfqMessage {
+  id: string;
+  rfqId: string;
+  senderUserId: string;
+  senderRole: 'customer' | 'vendor' | 'admin';
+  senderName: string;
+  vendorId?: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface RfqRequest {
+  id: string;
+  userId: string;
+  customerName?: string;
+  title: string;
+  categorySlug: string;
+  categoryNameAr?: string;
+  categoryNameEn?: string;
+  governorateSlug: string;
+  citySlug?: string | null;
+  budgetMin: number;
+  budgetMax: number;
+  desiredDate?: string | null;
+  scopeDetails: string;
+  requirements: Record<string, string | number | boolean>;
+  preferredContact: 'platform' | 'phone' | 'whatsapp';
+  targetVendorId?: string | null;
+  status: RfqStatus;
+  acceptedQuoteId?: string | null;
+  invitationsCount?: number;
+  quotesCount?: number;
+  createdAt: string;
+  updatedAt: string;
+  invitations?: RfqInvitation[];
+  quotes?: RfqQuote[];
+  messages?: RfqMessage[];
+}
+
+export interface MarketplaceAppointment {
+  id: string;
+  userId: string;
+  customerName?: string;
+  vendorId: string;
+  vendorSlug?: string;
+  vendorNameAr?: string;
+  vendorNameEn?: string;
+  vendorPhone?: string;
+  vendorVerificationStatus?: VendorVerificationStatus;
+  serviceId?: string | null;
+  serviceTitleAr?: string | null;
+  serviceTitleEn?: string | null;
+  rfqId?: string | null;
+  appointmentType: MarketplaceAppointmentType;
+  slotDate: string;
+  slotTime: string;
+  durationMinutes: number;
+  customerPhone: string;
+  customerNotes?: string | null;
+  vendorResponseNote?: string | null;
+  status: MarketplaceAppointmentStatus;
+  confirmedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorLeadActivity {
+  id: string;
+  leadId: string;
+  actorUserId: string;
+  actorName?: string;
+  activityType: VendorLeadActivityType;
+  note: string;
+  createdAt: string;
+}
+
+export interface VendorLead {
+  id: string;
+  vendorId: string;
+  customerUserId?: string | null;
+  rfqId?: string | null;
+  appointmentId?: string | null;
+  leadSource: 'rfq' | 'appointment' | 'direct_portal' | 'manual';
+  customerName: string;
+  customerPhone?: string | null;
+  title: string;
+  stage: VendorLeadStage;
+  estimatedValueEgp: number;
+  nextFollowUpDate?: string | null;
+  lossReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  activities?: VendorLeadActivity[];
+}
+
+export interface VendorCrmOverviewPayload {
+  vendor: VendorListing;
+  leads: VendorLead[];
+  rfqs: RfqRequest[];
+  appointments: MarketplaceAppointment[];
+  stageCounts: Record<VendorLeadStage, number>;
+  pipelineValueEgp: number;
+  wonValueEgp: number;
+}
+
+
 
 

@@ -67,9 +67,14 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET /api/v1/vendor-portal/overview`, `PATCH /api/v1/vendor-portal/profile`, `POST/DELETE /api/v1/vendor-portal/services`, `POST/DELETE /api/v1/vendor-portal/promotions`, `POST /api/v1/vendor-portal/subscription` *(Owner-Guarded RBAC)* — Enforces strict owner/admin checks when `?vendorId=` targets a business (`403 FORBIDDEN`), enforces commercial plan service/promo/portfolio quotas (`403 PLAN_QUOTA_EXCEEDED`), creates billing ledger records (`vendor_billing_records`), and preserves existing `verificationStatus`.
 - `GET /api/v1/admin/vendors`, `PATCH /api/v1/admin/vendors/:id/verify`, `GET /api/v1/admin/subscription-plans`, `PATCH /api/v1/admin/subscription-plans/:id`, `GET /api/v1/admin/audit-logs` *(Full Admin RBAC)* — Audit-only verification governance decoupled from commercial plans + plan quota/price configurator + immutable `audit_logs` feed.
 
-## RFQ Engine & Appointments *(Planned Stage 8)*
-- `POST /api/v1/rfq` (Customer), `GET /api/v1/rfq` (Owner or authorized matched vendor only), `POST /api/v1/rfq/:id/quotes` (Vendor), `POST /api/v1/rfq/:id/quotes/:quoteId/decide` (Customer accepts/rejects, linking to budget).
-- `GET/POST/PATCH /api/v1/appointments` — Slot booking & explicit vendor confirmation/reschedule/cancel.
+## Multi-Vendor RFQ Engine, Slot Appointments & Vendor CRM *(Stage 8 Implemented)*
+- `GET /api/v1/rfq` & `GET /api/v1/rfq/:id` *(Auth-Required)* — Customer views their RFQs with side-by-side quote comparison and vendor-threaded Q&A; authorized vendors receive strictly scoped RFQ access containing zero competitor quotes or competitor threads (`403` for non-invited users).
+- `POST /api/v1/rfq` *(Auth-Required)* — Creates structured RFQ, auto-matches up to 6 verified/eligible vendors (`selectMatchedVendorsForRfq`) by category & governorate (+ optional `targetVendorId`), generates `rfq_invitations` & `vendor_leads`, and notifies matched vendor owners.
+- `POST /api/v1/rfq/:id/quotes` *(Invited Vendor Owner / Admin)* — Submits or updates sealed quotation (`amountEgp`, `depositAmountEgp`, `estimatedDuration`, `warrantyMonths`, `scopeSummary`, `validUntil`), advances vendor lead to `quotation_sent`, and notifies customer.
+- `POST /api/v1/rfq/:id/quotes/:quoteId/decide` *(RFQ Customer Owner)* — Rejects or atomically accepts winning quote (guarding `409 RFQ_ALREADY_ACCEPTED`), marks winning CRM lead `accepted` and losing open leads `lost`, notifies winning vendor, and idempotently upserts `source_type = 'rfq_quote'` expense into `budget_expenses`.
+- `POST /api/v1/rfq/:id/messages` *(Participant Scoped)* — Posts confidential message on explicit `(rfq_id, vendor_id)` thread.
+- `GET /api/v1/appointments`, `POST /api/v1/appointments`, `PATCH /api/v1/appointments/:id` *(Auth-Required)* — Slot booking scheduling (`requested`), customer reschedule/cancel (blocks customer self-confirm with `403 CUSTOMER_CANNOT_CONFIRM`), and vendor confirmation/completion syncing CRM activities and notifications.
+- `GET /api/v1/vendor-portal/crm`, `GET /api/v1/vendor-portal/rfqs`, `GET /api/v1/vendor-portal/appointments`, `POST /api/v1/vendor-portal/crm/leads`, `PATCH /api/v1/vendor-portal/crm/leads/:leadId`, `POST /api/v1/vendor-portal/crm/leads/:leadId/activities` *(Owner-Guarded RBAC)* — Full 8-stage CRM pipeline, KPI totals, stage transitions, and activity timeline feed.
 
 ## Community, Stories, AI, Wedding Day & Home Care
 - `GET/POST /api/v1/community/questions`, `POST /:id/answers`, `POST /:id/vote`, `POST /api/v1/community/reports`

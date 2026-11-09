@@ -924,12 +924,20 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                     ? `المقايسات (${finishingInquiries.length}) والحاسبات المحفوظة (${calculatorRuns.length})`
                     : `Finishing Quotes (${finishingInquiries.length}) & Saved Calculators (${calculatorRuns.length})`}
                 </h2>
-                <Link
-                  to="/calculators"
-                  className="bg-red-gradient text-white font-bold text-xs px-4 py-2 rounded-xl"
-                >
-                  {language === 'ar' ? 'فتح الـ 20 حاسبة' : 'Open Calculators'}
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to="/rfq"
+                    className="px-4 py-2 rounded-xl bg-white border border-[#D91B3E]/30 text-[#B31331] font-bold text-xs"
+                  >
+                    {language === 'ar' ? 'مركز عروض أسعار الشركاء (RFQ)' : 'Multi-Vendor RFQ Center'}
+                  </Link>
+                  <Link
+                    to="/calculators"
+                    className="bg-red-gradient text-white font-bold text-xs px-4 py-2 rounded-xl"
+                  >
+                    {language === 'ar' ? 'فتح الـ 20 حاسبة' : 'Open Calculators'}
+                  </Link>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

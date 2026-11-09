@@ -35,6 +35,7 @@ export const SeoHead: React.FC = () => {
     const isPrivate =
       pathname.startsWith('/portal') ||
       pathname.startsWith('/my') ||
+      pathname.startsWith('/rfq') ||
       pathname.startsWith('/admin') ||
       pathname === '/vendor' ||
       pathname.startsWith('/vendor/');
@@ -208,6 +209,13 @@ export const SeoHead: React.FC = () => {
     } else if (pathname === '/vendor' || pathname.startsWith('/vendor/')) {
       titleAr = 'بوابة الشركاء وإدارة الخدمات والباقات | جواز إن';
       titleEn = 'Vendor Partner Portal — Services, Promos & Subscriptions | GAWAZ INN';
+    } else if (pathname === '/rfq' || pathname.startsWith('/rfq/')) {
+      titleAr = 'مركز طلبات التسعير والمواعيد (RFQ) | جواز إن';
+      titleEn = 'Multi-Vendor RFQ Center & Slot Appointments | GAWAZ INN';
+      descAr =
+        'اطلب عروض أسعار من عدة شركاء في تخصصك وقارنها بوضوح مع سرية تامة وربط مباشر بميزانية الزواج.';
+      descEn =
+        'Submit multi-vendor RFQs, compare sealed quotations side-by-side, book slot appointments, and sync winning quotes into your Wedding Budget Manager.';
     } else if (locCatMatch) {
       const govSlug = decodeURIComponent(locCatMatch[1]);
       const catSlug = decodeURIComponent(locCatMatch[2]);

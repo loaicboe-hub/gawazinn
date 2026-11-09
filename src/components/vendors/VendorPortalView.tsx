@@ -10,14 +10,19 @@ import {
 import {
   AlertCircle,
   BadgeDollarSign,
+  Briefcase,
   Building2,
+  Calendar,
   CheckCircle2,
   CreditCard,
   ExternalLink,
+  FileText,
   Layers,
   Lock,
+  MessageSquare,
   Plus,
   Save,
+  Send,
   ShieldCheck,
   Sparkles,
   Store,
@@ -25,11 +30,37 @@ import {
   Trash2,
 } from 'lucide-react';
 import type {
+  MarketplaceAppointmentStatus,
+  RfqRequest,
   SubscriptionPlanCode,
   VendorBillingRecord,
+  VendorCrmOverviewPayload,
+  VendorLeadActivityType,
+  VendorLeadStage,
   VendorPortalOverviewPayload,
   VendorPriceTier,
 } from '../../types';
+
+const CRM_STAGE_META: {
+  key: VendorLeadStage;
+  ar: string;
+  en: string;
+  cls: string;
+}[] = [
+  { key: 'new_lead', ar: 'عميل جديد', en: 'New Lead', cls: 'bg-sky-50 text-sky-900 border-sky-200' },
+  { key: 'contacted', ar: 'تم التواصل', en: 'Contacted', cls: 'bg-indigo-50 text-indigo-900 border-indigo-200' },
+  {
+    key: 'quotation_sent',
+    ar: 'تم إرسال عرض',
+    en: 'Quotation Sent',
+    cls: 'bg-[#FDE8ED] text-[#B31331] border-[#D91B3E]/30',
+  },
+  { key: 'negotiation', ar: 'تفاوض', en: 'Negotiation', cls: 'bg-amber-50 text-amber-900 border-amber-200' },
+  { key: 'accepted', ar: 'مقبول / تعاقد', en: 'Accepted', cls: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
+  { key: 'in_progress', ar: 'قيد التنفيذ', en: 'In Progress', cls: 'bg-teal-50 text-teal-900 border-teal-200' },
+  { key: 'completed', ar: 'مكتمل', en: 'Completed', cls: 'bg-emerald-100 text-emerald-950 border-emerald-300' },
+  { key: 'lost', ar: 'مفقود / مرفوض', en: 'Lost', cls: 'bg-gray-100 text-gray-700 border-gray-300' },
+];
 
 export const VendorPortalView: React.FC = () => {
   const {
@@ -48,12 +79,43 @@ export const VendorPortalView: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedVendorId = searchParams.get('vendorId') || '';
 
-  const [portalTab, setPortalTab] = useState<'profile' | 'services' | 'promotions' | 'billing'>(
-    'profile',
-  );
+  const [portalTab, setPortalTab] = useState<
+    'profile' | 'services' | 'promotions' | 'billing' | 'rfqs' | 'appointments' | 'crm'
+  >('profile');
   const [overview, setOverview] = useState<VendorPortalOverviewPayload | null>(null);
+  const [crmOverview, setCrmOverview] = useState<VendorCrmOverviewPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Stage 8 Vendor RFQ Quote Drafts & Messages
+  const [quoteDrafts, setQuoteDrafts] = useState<
+    Record<
+      string,
+      {
+        quotedAmountEgp: number;
+        depositAmountEgp: number;
+        estimatedDuration: string;
+        warrantyMonths: number;
+        scopeSummary: string;
+        validUntil: string;
+      }
+    >
+  >({});
+  const [rfqReplyDrafts, setRfqReplyDrafts] = useState<Record<string, string>>({});
+  const [aptNoteDrafts, setAptNoteDrafts] = useState<Record<string, string>>({});
+  const [aptDateDrafts, setAptDateDrafts] = useState<Record<string, string>>({});
+  const [aptTimeDrafts, setAptTimeDrafts] = useState<Record<string, string>>({});
+
+  // Stage 8 Vendor CRM States
+  const [crmStageFilter, setCrmStageFilter] = useState<'all' | VendorLeadStage>('all');
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [newLeadTitle, setNewLeadTitle] = useState('');
+  const [newLeadStage, setNewLeadStage] = useState<VendorLeadStage>('new_lead');
+  const [newLeadValue, setNewLeadValue] = useState(80000);
+  const [leadActNotes, setLeadActNotes] = useState<Record<string, string>>({});
+  const [leadActTypes, setLeadActTypes] = useState<Record<string, VendorLeadActivityType>>({});
+  const [stage8BusyId, setStage8BusyId] = useState<string | null>(null);
 
   // Registration Form State (when user has no vendor yet)
   const [regNameAr, setRegNameAr] = useState('');
@@ -150,6 +212,14 @@ export const VendorPortalView: React.FC = () => {
         if (!active) return;
         setOverview(data);
         hydrateFormFromOverview(data);
+        if (data.vendor) {
+          const crmRes = await apiRequest<VendorCrmOverviewPayload>(
+            `/vendor-portal/crm?vendorId=${encodeURIComponent(data.vendor.id)}`,
+          ).catch(() => null);
+          if (active) setCrmOverview(crmRes);
+        } else {
+          setCrmOverview(null);
+        }
         setErrorMsg(null);
       } catch (err) {
         if (!active) return;
@@ -170,9 +240,191 @@ export const VendorPortalView: React.FC = () => {
     };
   }, [currentUser, apiConnected, requestedVendorId, hydrateFormFromOverview, language]);
 
-  const activeVendorIdQuery = overview?.vendor?.id
-    ? `?vendorId=${encodeURIComponent(overview.vendor.id)}`
+  const activeVendorId = overview?.vendor?.id || '';
+  const activeVendorIdQuery = activeVendorId
+    ? `?vendorId=${encodeURIComponent(activeVendorId)}`
     : '';
+
+  const refreshCrmData = useCallback(async () => {
+    if (!activeVendorId) return;
+    const crmRes = await apiRequest<VendorCrmOverviewPayload>(
+      `/vendor-portal/crm?vendorId=${encodeURIComponent(activeVendorId)}`,
+    ).catch(() => null);
+    if (crmRes) setCrmOverview(crmRes);
+  }, [activeVendorId]);
+
+  const handleSubmitRfqQuote = async (rfq: RfqRequest, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overview?.vendor) return;
+    const existingQuote = rfq.quotes?.[0];
+    const draft = quoteDrafts[rfq.id] || {
+      quotedAmountEgp: existingQuote?.quotedAmountEgp || Math.max(rfq.budgetMin, 50000),
+      depositAmountEgp: existingQuote?.depositAmountEgp || 15000,
+      estimatedDuration: existingQuote?.estimatedDuration || '30 يوم عمل',
+      warrantyMonths: existingQuote?.warrantyMonths ?? 24,
+      scopeSummary:
+        existingQuote?.scopeSummary ||
+        `عرض تسعير متكامل لطلب "${rfq.title}" شامل المعاينة وجدول التسليم.`,
+      validUntil: existingQuote?.validUntil || '2026-12-31',
+    };
+    setStage8BusyId(`quote-${rfq.id}`);
+    setErrorMsg(null);
+    try {
+      await apiRequest(`/rfq/${encodeURIComponent(rfq.id)}/quotes`, {
+        method: 'POST',
+        body: JSON.stringify({
+          vendorId: overview.vendor.id,
+          quotedAmountEgp: Number(draft.quotedAmountEgp),
+          depositAmountEgp: Number(draft.depositAmountEgp),
+          estimatedDuration: draft.estimatedDuration.trim(),
+          warrantyMonths: Number(draft.warrantyMonths),
+          scopeSummary: draft.scopeSummary.trim(),
+          validUntil: draft.validUntil,
+        }),
+      });
+      await refreshCrmData();
+      showToast(
+        language === 'ar'
+          ? 'تم إرسال عرض السعر السري للعميل وترقية الحالة في CRM.'
+          : 'Confidential RFQ quote sent and CRM lead moved to Quotation Sent.',
+      );
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to submit RFQ quote');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
+
+  const handleSendRfqVendorReply = async (rfqId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overview?.vendor) return;
+    const body = (rfqReplyDrafts[rfqId] || '').trim();
+    if (body.length < 2) return;
+    setStage8BusyId(`reply-${rfqId}`);
+    try {
+      await apiRequest(`/rfq/${encodeURIComponent(rfqId)}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ vendorId: overview.vendor.id, body }),
+      });
+      setRfqReplyDrafts((prev) => ({ ...prev, [rfqId]: '' }));
+      await refreshCrmData();
+      showToast(language === 'ar' ? 'تم إرسال ردك للعميل.' : 'Reply sent to customer.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Message send error');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
+
+  const handleUpdateVendorApt = async (
+    aptId: string,
+    nextStatus: MarketplaceAppointmentStatus,
+  ) => {
+    setStage8BusyId(`apt-${aptId}`);
+    setErrorMsg(null);
+    try {
+      await apiRequest(`/appointments/${encodeURIComponent(aptId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: nextStatus,
+          slotDate: aptDateDrafts[aptId] || undefined,
+          slotTime: aptTimeDrafts[aptId] || undefined,
+          vendorResponseNote: aptNoteDrafts[aptId] || undefined,
+        }),
+      });
+      await refreshCrmData();
+      showToast(
+        language === 'ar'
+          ? `تم تحديث حالة الموعد إلى "${nextStatus}" وإشعار العميل.`
+          : `Appointment marked "${nextStatus}" and customer notified.`,
+      );
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to update appointment');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
+
+  const handleCreateManualLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overview?.vendor) return;
+    setStage8BusyId('new-lead');
+    setErrorMsg(null);
+    try {
+      const res = await apiRequest<{ crm: VendorCrmOverviewPayload }>(
+        `/vendor-portal/crm/leads${activeVendorIdQuery}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            customerName: newLeadName.trim(),
+            customerPhone: newLeadPhone.trim() || null,
+            title: newLeadTitle.trim(),
+            stage: newLeadStage,
+            estimatedValueEgp: Number(newLeadValue),
+          }),
+        },
+      );
+      setCrmOverview(res.crm);
+      setNewLeadName('');
+      setNewLeadPhone('');
+      setNewLeadTitle('');
+      showToast(
+        language === 'ar' ? 'تمت إضافة عميل جديد لخط CRM.' : 'New lead added to CRM pipeline.',
+      );
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to create CRM lead');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
+
+  const handleChangeLeadStage = async (leadId: string, stage: VendorLeadStage) => {
+    if (!overview?.vendor) return;
+    setStage8BusyId(`stage-${leadId}`);
+    try {
+      const res = await apiRequest<{ crm: VendorCrmOverviewPayload }>(
+        `/vendor-portal/crm/leads/${encodeURIComponent(leadId)}${activeVendorIdQuery}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ stage }),
+        },
+      );
+      setCrmOverview(res.crm);
+      showToast(language === 'ar' ? 'تم تحديث مرحلة العميل في CRM.' : 'CRM stage updated.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Lead stage update failed');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
+
+  const handleAddLeadActivity = async (leadId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overview?.vendor) return;
+    const note = (leadActNotes[leadId] || '').trim();
+    if (note.length < 2) return;
+    const rawType = leadActTypes[leadId];
+    const activityType =
+      rawType === 'call' || rawType === 'quote_sent' || rawType === 'appointment'
+        ? rawType
+        : 'note';
+    setStage8BusyId(`act-${leadId}`);
+    try {
+      const res = await apiRequest<{ crm: VendorCrmOverviewPayload }>(
+        `/vendor-portal/crm/leads/${encodeURIComponent(leadId)}/activities${activeVendorIdQuery}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ activityType, note }),
+        },
+      );
+      setCrmOverview(res.crm);
+      setLeadActNotes((prev) => ({ ...prev, [leadId]: '' }));
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to log activity');
+    } finally {
+      setStage8BusyId(null);
+    }
+  };
 
   const handleSelfRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -779,6 +1031,24 @@ export const VendorPortalView: React.FC = () => {
                   ar: 'الباقات التجارية والفواتير',
                   en: 'Commercial Plans & Billing',
                   icon: <CreditCard className="w-4 h-4" />,
+                },
+                {
+                  key: 'rfqs' as const,
+                  ar: `طلبات التسعير (${crmOverview?.rfqs.length ?? 0})`,
+                  en: `Invited RFQs (${crmOverview?.rfqs.length ?? 0})`,
+                  icon: <FileText className="w-4 h-4" />,
+                },
+                {
+                  key: 'appointments' as const,
+                  ar: `المواعيد المحجوزة (${crmOverview?.appointments.length ?? 0})`,
+                  en: `Slot Bookings (${crmOverview?.appointments.length ?? 0})`,
+                  icon: <Calendar className="w-4 h-4" />,
+                },
+                {
+                  key: 'crm' as const,
+                  ar: `نظام CRM (${crmOverview?.leads.length ?? 0})`,
+                  en: `8-Stage CRM (${crmOverview?.leads.length ?? 0})`,
+                  icon: <Briefcase className="w-4 h-4" />,
                 },
               ].map((tab) => (
                 <button
@@ -1465,6 +1735,682 @@ export const VendorPortalView: React.FC = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: Invited Multi-Vendor RFQs (Confidential Vendor Scope) */}
+            {portalTab === 'rfqs' && (
+              <div className="space-y-6" data-testid="portal-rfqs-panel">
+                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                  <span>
+                    {language === 'ar'
+                      ? 'سرية المنافسة: تشاهد هنا فقط طلبات التسعير المدعو لها نشاطك التجاري وعرض سعرك ومحادتك الخاصة مع العميل، ولا يمكنك الاطلاع على عروض أي منافس.'
+                      : 'Competitive Confidentiality: You only see RFQs invited to this business listing, your own quotation, and your private customer Q&A thread.'}
+                  </span>
+                </div>
+
+                {(crmOverview?.rfqs || []).length === 0 ? (
+                  <div className="bg-white rounded-3xl p-10 border border-rose-100 text-center text-xs font-bold text-gray-600">
+                    {language === 'ar'
+                      ? 'لا توجد طلبات تسعير مدعو لها هذا الملف حالياً.'
+                      : 'No RFQ invitations received for this vendor listing yet.'}
+                  </div>
+                ) : (
+                  (crmOverview?.rfqs || []).map((rfq) => {
+                    const myQuote = rfq.quotes?.[0];
+                    const draft = quoteDrafts[rfq.id] || {
+                      quotedAmountEgp: myQuote?.quotedAmountEgp || Math.max(rfq.budgetMin, 50000),
+                      depositAmountEgp: myQuote?.depositAmountEgp || 15000,
+                      estimatedDuration: myQuote?.estimatedDuration || '30 يوم عمل',
+                      warrantyMonths: myQuote?.warrantyMonths ?? 24,
+                      scopeSummary:
+                        myQuote?.scopeSummary ||
+                        `عرض سعر شامل التنفيذ والضمان لطلب "${rfq.title}"`,
+                      validUntil: myQuote?.validUntil || '2026-12-31',
+                    };
+                    const setDraftField = <K extends keyof typeof draft>(
+                      key: K,
+                      val: (typeof draft)[K],
+                    ) => {
+                      setQuoteDrafts((prev) => ({
+                        ...prev,
+                        [rfq.id]: { ...draft, [key]: val },
+                      }));
+                    };
+
+                    return (
+                      <div
+                        key={rfq.id}
+                        data-testid={`portal-rfq-card-${rfq.id}`}
+                        className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#FDE8ED] text-[#B31331]">
+                                {rfq.status}
+                              </span>
+                              <span className="text-gray-500">
+                                {language === 'ar' ? 'العميل:' : 'Client:'} {rfq.customerName || rfq.userId}
+                              </span>
+                              <span className="text-gray-500">• {rfq.governorateSlug}</span>
+                            </div>
+                            <h3 className="text-base font-black text-[#2A1D20]">{rfq.title}</h3>
+                            <p className="text-xs text-gray-700 leading-relaxed">{rfq.scopeDetails}</p>
+                          </div>
+                          <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-rose-100 text-xs shrink-0">
+                            <span className="text-[10px] text-gray-500 block">
+                              {language === 'ar' ? 'الميزانية المقدرة من العميل' : 'Customer Budget'}
+                            </span>
+                            <strong className="font-black text-[#D91B3E]">
+                              {rfq.budgetMin.toLocaleString()} – {rfq.budgetMax.toLocaleString()}{' '}
+                              {language === 'ar' ? 'ج.م' : 'EGP'}
+                            </strong>
+                          </div>
+                        </div>
+
+                        {myQuote && (
+                          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-black text-emerald-900">
+                              {language === 'ar' ? 'عرضك المسجل حالياً:' : 'Your Submitted Offer:'}{' '}
+                              {myQuote.quotedAmountEgp.toLocaleString()}{' '}
+                              {language === 'ar' ? 'ج.م' : 'EGP'} ({myQuote.status})
+                            </span>
+                            <span className="text-emerald-800 font-semibold">
+                              {myQuote.estimatedDuration} • {myQuote.warrantyMonths}{' '}
+                              {language === 'ar' ? 'شهر ضمان' : 'm warranty'}
+                            </span>
+                          </div>
+                        )}
+
+                        {rfq.status !== 'accepted' && rfq.status !== 'closed' && (
+                          <form
+                            onSubmit={(e) => handleSubmitRfqQuote(rfq, e)}
+                            className="bg-[#FAF7F2] rounded-2xl p-4 border border-rose-100 space-y-3"
+                          >
+                            <h4 className="text-xs font-black text-[#2A1D20]">
+                              {myQuote
+                                ? language === 'ar'
+                                  ? 'تحديث عرض السعر المقدم'
+                                  : 'Update Your Confidential Quotation'
+                                : language === 'ar'
+                                  ? 'تقديم عرض سعر جديد للعميل'
+                                  : 'Submit Confidential Quotation'}
+                            </h4>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-gray-700">
+                                  {language === 'ar' ? 'إجمالي السعر (ج.م):' : 'Total Quote (EGP):'}
+                                </label>
+                                <input
+                                  type="number"
+                                  required
+                                  min={100}
+                                  value={draft.quotedAmountEgp}
+                                  onChange={(e) =>
+                                    setDraftField('quotedAmountEgp', Number(e.target.value))
+                                  }
+                                  data-testid={`portal-rfq-amount-${rfq.id}`}
+                                  className="w-full p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-gray-700">
+                                  {language === 'ar' ? 'دفعة التعاقد:' : 'Deposit (EGP):'}
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={draft.depositAmountEgp}
+                                  onChange={(e) =>
+                                    setDraftField('depositAmountEgp', Number(e.target.value))
+                                  }
+                                  data-testid={`portal-rfq-deposit-${rfq.id}`}
+                                  className="w-full p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-gray-700">
+                                  {language === 'ar' ? 'مدة التنفيذ:' : 'Duration:'}
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  minLength={2}
+                                  value={draft.estimatedDuration}
+                                  onChange={(e) =>
+                                    setDraftField('estimatedDuration', e.target.value)
+                                  }
+                                  data-testid={`portal-rfq-duration-${rfq.id}`}
+                                  className="w-full p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-gray-700">
+                                  {language === 'ar' ? 'الضمان (شهور):' : 'Warranty (mo):'}
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={240}
+                                  value={draft.warrantyMonths}
+                                  onChange={(e) =>
+                                    setDraftField('warrantyMonths', Number(e.target.value))
+                                  }
+                                  className="w-full p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-gray-700">
+                                  {language === 'ar' ? 'صالح حتى:' : 'Valid Until:'}
+                                </label>
+                                <input
+                                  type="date"
+                                  required
+                                  value={draft.validUntil}
+                                  onChange={(e) => setDraftField('validUntil', e.target.value)}
+                                  className="w-full p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                                />
+                              </div>
+                            </div>
+
+                            <textarea
+                              rows={2}
+                              required
+                              minLength={10}
+                              value={draft.scopeSummary}
+                              onChange={(e) => setDraftField('scopeSummary', e.target.value)}
+                              data-testid={`portal-rfq-summary-${rfq.id}`}
+                              placeholder={
+                                language === 'ar'
+                                  ? 'ملخص المواصفات والخامات وشروط الضمان...'
+                                  : 'Scope of work, brand guarantees, and milestone terms...'
+                              }
+                              className="w-full p-2.5 rounded-xl bg-white border border-gray-200 text-xs"
+                            />
+
+                            <button
+                              type="submit"
+                              disabled={stage8BusyId === `quote-${rfq.id}`}
+                              data-testid={`portal-rfq-submit-btn-${rfq.id}`}
+                              className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>
+                                {myQuote
+                                  ? language === 'ar'
+                                    ? 'تحديث عرض السعر'
+                                    : 'Update Quotation'
+                                  : language === 'ar'
+                                    ? 'إرسال عرض السعر للعميل'
+                                    : 'Submit Quotation'}
+                              </span>
+                            </button>
+                          </form>
+                        )}
+
+                        {/* Scoped Q&A Reply Thread */}
+                        <div className="space-y-2 pt-2 border-t border-gray-100">
+                          <span className="text-xs font-black text-[#2A1D20] flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-[#D91B3E]" />
+                            <span>
+                              {language === 'ar'
+                                ? `الاستفسارات المباشرة مع العميل (${rfq.messages?.length ?? 0})`
+                                : `Private Customer Q&A (${rfq.messages?.length ?? 0})`}
+                            </span>
+                          </span>
+                          {(rfq.messages || []).map((m) => (
+                            <div
+                              key={m.id}
+                              className="p-2.5 rounded-xl bg-[#FAF7F2] border border-rose-100 text-xs"
+                            >
+                              <strong className="text-[#2A1D20]">{m.senderName}:</strong>{' '}
+                              <span className="text-gray-700">{m.body}</span>
+                            </div>
+                          ))}
+                          <form
+                            onSubmit={(e) => handleSendRfqVendorReply(rfq.id, e)}
+                            className="flex flex-col sm:flex-row gap-2"
+                          >
+                            <input
+                              type="text"
+                              minLength={2}
+                              value={rfqReplyDrafts[rfq.id] || ''}
+                              onChange={(e) =>
+                                setRfqReplyDrafts((prev) => ({ ...prev, [rfq.id]: e.target.value }))
+                              }
+                              data-testid={`portal-rfq-msg-input-${rfq.id}`}
+                              placeholder={
+                                language === 'ar'
+                                  ? 'أجب عن استفسار العميل حول المواصفات أو المعاينة...'
+                                  : 'Reply privately to customer inquiry...'
+                              }
+                              className="flex-1 min-w-0 p-2 rounded-xl border border-gray-200 text-xs"
+                            />
+                            <button
+                              type="submit"
+                              disabled={stage8BusyId === `reply-${rfq.id}`}
+                              data-testid={`portal-rfq-msg-send-${rfq.id}`}
+                              className="px-4 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                            >
+                              {language === 'ar' ? 'رد' : 'Reply'}
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* TAB 6: Vendor Slot Appointments Confirmation Desk */}
+            {portalTab === 'appointments' && (
+              <div className="space-y-4" data-testid="portal-appointments-panel">
+                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700">
+                  {language === 'ar'
+                    ? 'إدارة حجوزات المعاينة وزيارة المعرض: تأكيد الموعد أو اقتراح ميعاد بديل يرسل إشعاراً فورياً للعميل ويسجل النشاط في CRM.'
+                    : 'Manage customer slot bookings: Confirming or rescheduling notifies the customer immediately and logs a timeline entry in Vendor CRM.'}
+                </div>
+
+                {(crmOverview?.appointments || []).length === 0 ? (
+                  <div className="bg-white rounded-3xl p-10 border border-rose-100 text-center text-xs font-bold text-gray-600">
+                    {language === 'ar'
+                      ? 'لا توجد مواعيد محجوزة لهذا الشريك بعد.'
+                      : 'No customer appointment requests yet.'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {(crmOverview?.appointments || []).map((apt) => (
+                      <div
+                        key={apt.id}
+                        data-testid={`portal-apt-${apt.id}`}
+                        className="bg-white rounded-2xl p-5 border border-rose-100 shadow-sm space-y-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[11px] font-black ${
+                              apt.status === 'confirmed' || apt.status === 'completed'
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : apt.status === 'cancelled'
+                                  ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-900 border border-amber-200'
+                            }`}
+                          >
+                            {apt.status}
+                          </span>
+                          <span className="text-[11px] font-bold text-gray-500">
+                            {apt.appointmentType}
+                          </span>
+                        </div>
+
+                        <div className="text-xs space-y-1">
+                          <strong className="text-sm font-black text-[#2A1D20] block">
+                            {apt.customerName || apt.userId} —{' '}
+                            <span dir="ltr">{apt.customerPhone}</span>
+                          </strong>
+                          <p className="font-bold text-[#D91B3E]">
+                            📅 <span dir="ltr">{apt.slotDate}</span> • ⏰{' '}
+                            <span dir="ltr">{apt.slotTime}</span> ({apt.durationMinutes} min)
+                          </p>
+                          {apt.customerNotes && (
+                            <p className="text-gray-600 bg-[#FAF7F2] p-2.5 rounded-xl">
+                              {apt.customerNotes}
+                            </p>
+                          )}
+                        </div>
+
+                        {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                          <div className="space-y-2 pt-2 border-t border-gray-100">
+                            <input
+                              type="text"
+                              value={aptNoteDrafts[apt.id] ?? apt.vendorResponseNote ?? ''}
+                              onChange={(e) =>
+                                setAptNoteDrafts((prev) => ({ ...prev, [apt.id]: e.target.value }))
+                              }
+                              data-testid={`portal-apt-note-${apt.id}`}
+                              placeholder={
+                                language === 'ar'
+                                  ? 'ملاحظة التأكيد للعميل (مثال: اسم المهندس أو العنوان)...'
+                                  : 'Confirmation or reschedule note for customer...'
+                              }
+                              className="w-full p-2 rounded-xl border border-gray-200 text-xs"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="date"
+                                value={aptDateDrafts[apt.id] ?? apt.slotDate}
+                                onChange={(e) =>
+                                  setAptDateDrafts((prev) => ({
+                                    ...prev,
+                                    [apt.id]: e.target.value,
+                                  }))
+                                }
+                                className="p-2 rounded-xl border border-gray-200 text-xs"
+                              />
+                              <input
+                                type="time"
+                                value={aptTimeDrafts[apt.id] ?? apt.slotTime}
+                                onChange={(e) =>
+                                  setAptTimeDrafts((prev) => ({
+                                    ...prev,
+                                    [apt.id]: e.target.value,
+                                  }))
+                                }
+                                className="p-2 rounded-xl border border-gray-200 text-xs"
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {apt.status !== 'confirmed' && (
+                                <button
+                                  type="button"
+                                  disabled={stage8BusyId === `apt-${apt.id}`}
+                                  data-testid={`portal-apt-confirm-${apt.id}`}
+                                  onClick={() => handleUpdateVendorApt(apt.id, 'confirmed')}
+                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                >
+                                  {language === 'ar' ? 'تأكيد الموعد' : 'Confirm Slot'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                disabled={stage8BusyId === `apt-${apt.id}`}
+                                data-testid={`portal-apt-reschedule-${apt.id}`}
+                                onClick={() => handleUpdateVendorApt(apt.id, 'rescheduled')}
+                                className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer"
+                              >
+                                {language === 'ar' ? 'تعديل الميعاد' : 'Reschedule'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={stage8BusyId === `apt-${apt.id}`}
+                                data-testid={`portal-apt-complete-${apt.id}`}
+                                onClick={() => handleUpdateVendorApt(apt.id, 'completed')}
+                                className="px-3.5 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                              >
+                                {language === 'ar' ? 'إتمام الزيارة' : 'Mark Completed'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 7: 8-Stage Vendor CRM Pipeline */}
+            {portalTab === 'crm' && crmOverview && (
+              <div className="space-y-6" data-testid="portal-crm-panel">
+                {/* Pipeline Metrics Strip */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                    <span className="text-[11px] text-gray-500 block">
+                      {language === 'ar' ? 'إجمالي العملاء المحتملين' : 'Total CRM Leads'}
+                    </span>
+                    <strong data-testid="crm-total-leads" className="text-xl font-black text-[#2A1D20]">
+                      {crmOverview.leads.length}
+                    </strong>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                    <span className="text-[11px] text-gray-500 block">
+                      {language === 'ar' ? 'قيمة خط المبيعات النشط' : 'Active Pipeline Value'}
+                    </span>
+                    <strong className="text-xl font-black text-[#D91B3E]">
+                      {crmOverview.pipelineValueEgp.toLocaleString()}{' '}
+                      {language === 'ar' ? 'ج.م' : 'EGP'}
+                    </strong>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white border border-emerald-200 shadow-sm">
+                    <span className="text-[11px] text-gray-500 block">
+                      {language === 'ar' ? 'قيمة العقود المقبولة/المنفذة' : 'Won / Accepted Value'}
+                    </span>
+                    <strong className="text-xl font-black text-emerald-700">
+                      {crmOverview.wonValueEgp.toLocaleString()}{' '}
+                      {language === 'ar' ? 'ج.م' : 'EGP'}
+                    </strong>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                    <span className="text-[11px] text-gray-500 block">
+                      {language === 'ar' ? 'ملفات مقبولة / قيد التنفيذ' : 'Accepted & In Progress'}
+                    </span>
+                    <strong className="text-xl font-black text-[#2A1D20]">
+                      {(crmOverview.stageCounts.accepted ?? 0) +
+                        (crmOverview.stageCounts.in_progress ?? 0) +
+                        (crmOverview.stageCounts.completed ?? 0)}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Add Manual Lead Form */}
+                <form
+                  onSubmit={handleCreateManualLead}
+                  data-testid="crm-add-lead-form"
+                  className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-3"
+                >
+                  <h3 className="text-sm font-black text-[#2A1D20]">
+                    {language === 'ar'
+                      ? 'إضافة عميل محتمل جديد يدوياً لخط المتابعة'
+                      : 'Add Manual CRM Lead'}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <input
+                      type="text"
+                      required
+                      minLength={2}
+                      value={newLeadName}
+                      onChange={(e) => setNewLeadName(e.target.value)}
+                      data-testid="crm-new-name"
+                      placeholder={language === 'ar' ? 'اسم العميل' : 'Customer Name'}
+                      className="p-2.5 rounded-xl border border-gray-200 text-xs"
+                    />
+                    <input
+                      type="tel"
+                      value={newLeadPhone}
+                      onChange={(e) => setNewLeadPhone(e.target.value)}
+                      data-testid="crm-new-phone"
+                      placeholder={language === 'ar' ? 'رقم الهاتف' : 'Phone'}
+                      className="p-2.5 rounded-xl border border-gray-200 text-xs"
+                    />
+                    <input
+                      type="text"
+                      required
+                      minLength={3}
+                      value={newLeadTitle}
+                      onChange={(e) => setNewLeadTitle(e.target.value)}
+                      data-testid="crm-new-title"
+                      placeholder={language === 'ar' ? 'عنوان المشروع / الطلب' : 'Project Title'}
+                      className="p-2.5 rounded-xl border border-gray-200 text-xs"
+                    />
+                    <select
+                      value={newLeadStage}
+                      onChange={(e) => setNewLeadStage(e.target.value as VendorLeadStage)}
+                      className="p-2.5 rounded-xl border border-gray-200 text-xs font-bold"
+                    >
+                      {CRM_STAGE_META.map((st) => (
+                        <option key={st.key} value={st.key}>
+                          {language === 'ar' ? st.ar : st.en}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      value={newLeadValue}
+                      onChange={(e) => setNewLeadValue(Number(e.target.value))}
+                      data-testid="crm-new-value"
+                      placeholder="EGP"
+                      className="p-2.5 rounded-xl border border-gray-200 text-xs"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={stage8BusyId === 'new-lead'}
+                    data-testid="crm-new-submit"
+                    className="px-5 py-2 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{language === 'ar' ? 'إضافة للـ CRM' : 'Add Lead'}</span>
+                  </button>
+                </form>
+
+                {/* 8-Stage Filter Strip */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCrmStageFilter('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                      crmStageFilter === 'all'
+                        ? 'bg-[#2A1D20] text-white'
+                        : 'bg-white border border-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {language === 'ar' ? 'الكل' : 'All'} ({crmOverview.leads.length})
+                  </button>
+                  {CRM_STAGE_META.map((st) => (
+                    <button
+                      key={st.key}
+                      type="button"
+                      data-testid={`crm-filter-${st.key}`}
+                      onClick={() => setCrmStageFilter(st.key)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
+                        crmStageFilter === st.key
+                          ? 'bg-[#D91B3E] text-white border-[#D91B3E]'
+                          : 'bg-white border-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {language === 'ar' ? st.ar : st.en} ({crmOverview.stageCounts[st.key] ?? 0})
+                    </button>
+                  ))}
+                </div>
+
+                {/* CRM Leads Cards */}
+                <div className="space-y-4">
+                  {crmOverview.leads
+                    .filter((l) => crmStageFilter === 'all' || l.stage === crmStageFilter)
+                    .map((lead) => {
+                      const stMeta =
+                        CRM_STAGE_META.find((s) => s.key === lead.stage) || CRM_STAGE_META[0];
+                      return (
+                        <div
+                          key={lead.id}
+                          data-testid={`crm-lead-card-${lead.id}`}
+                          className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                                <span className={`px-2.5 py-0.5 rounded-full border ${stMeta.cls}`}>
+                                  {language === 'ar' ? stMeta.ar : stMeta.en}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-lg bg-[#FAF7F2] text-gray-600 border border-gray-200">
+                                  {lead.leadSource}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-black text-[#2A1D20]">{lead.title}</h4>
+                              <p className="text-xs text-gray-600">
+                                {lead.customerName}{' '}
+                                {lead.customerPhone ? `• ${lead.customerPhone}` : ''}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 min-w-0">
+                              <div className="text-end">
+                                <span className="text-[10px] text-gray-500 block">
+                                  {language === 'ar' ? 'القيمة المتوقعة' : 'Est. Value'}
+                                </span>
+                                <strong className="text-sm font-black text-[#D91B3E]">
+                                  {lead.estimatedValueEgp.toLocaleString()}{' '}
+                                  {language === 'ar' ? 'ج.م' : 'EGP'}
+                                </strong>
+                              </div>
+                              <select
+                                value={lead.stage}
+                                disabled={stage8BusyId === `stage-${lead.id}`}
+                                data-testid={`crm-lead-stage-${lead.id}`}
+                                onChange={(e) =>
+                                  handleChangeLeadStage(lead.id, e.target.value as VendorLeadStage)
+                                }
+                                className="w-full sm:w-auto max-w-full min-w-0 truncate p-2 rounded-xl bg-[#FAF7F2] border border-gray-200 text-xs font-bold"
+                              >
+                                {CRM_STAGE_META.map((st) => (
+                                  <option key={st.key} value={st.key}>
+                                    {language === 'ar' ? st.ar : st.en}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Activities & Add Activity */}
+                          <div className="bg-[#FAF7F2] rounded-2xl p-3.5 border border-rose-100 space-y-2.5">
+                            {(lead.activities || []).slice(0, 4).map((act) => (
+                              <div key={act.id} className="text-xs text-gray-700 flex items-start gap-2">
+                                <span className="px-2 py-0.5 rounded bg-white border border-gray-200 text-[10px] font-bold shrink-0">
+                                  {act.activityType}
+                                </span>
+                                <span>{act.note}</span>
+                              </div>
+                            ))}
+
+                            <form
+                              onSubmit={(e) => handleAddLeadActivity(lead.id, e)}
+                              className="flex flex-wrap gap-2 pt-1"
+                            >
+                              <select
+                                value={leadActTypes[lead.id] || 'note'}
+                                onChange={(e) =>
+                                  setLeadActTypes((prev) => ({
+                                    ...prev,
+                                    [lead.id]: e.target.value as VendorLeadActivityType,
+                                  }))
+                                }
+                                className="p-2 rounded-xl bg-white border border-gray-200 text-xs font-bold"
+                              >
+                                <option value="note">{language === 'ar' ? 'ملاحظة' : 'Note'}</option>
+                                <option value="call">{language === 'ar' ? 'مكالمة' : 'Call'}</option>
+                                <option value="appointment">
+                                  {language === 'ar' ? 'معاينة' : 'Visit'}
+                                </option>
+                                <option value="quote_sent">
+                                  {language === 'ar' ? 'عرض سعر' : 'Quote Sent'}
+                                </option>
+                              </select>
+                              <input
+                                type="text"
+                                minLength={2}
+                                value={leadActNotes[lead.id] || ''}
+                                onChange={(e) =>
+                                  setLeadActNotes((prev) => ({
+                                    ...prev,
+                                    [lead.id]: e.target.value,
+                                  }))
+                                }
+                                data-testid={`crm-lead-activity-input-${lead.id}`}
+                                placeholder={
+                                  language === 'ar'
+                                    ? 'أضف ملاحظة متابعة أو ملخص مكالمة...'
+                                    : 'Log follow-up note or call outcome...'
+                                }
+                                className="flex-1 p-2 rounded-xl bg-white border border-gray-200 text-xs"
+                              />
+                              <button
+                                type="submit"
+                                disabled={stage8BusyId === `act-${lead.id}`}
+                                data-testid={`crm-lead-activity-btn-${lead.id}`}
+                                className="px-3.5 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                              >
+                                {language === 'ar' ? 'تسجيل' : 'Log'}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}

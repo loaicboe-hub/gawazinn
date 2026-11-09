@@ -75,6 +75,10 @@ import type {
   VendorListing,
   VendorReview,
   VendorVerificationStatus,
+  MarketplaceAppointment,
+  MarketplaceAppointmentStatus,
+  MarketplaceAppointmentType,
+  RfqRequest,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -140,6 +144,7 @@ export type SectionKey =
   | 'compare'
   | 'shoppingLists'
   | 'vendors'
+  | 'rfq'
   | 'vendorPortal'
   | 'myHub'
   | 'customerPortal'
@@ -165,6 +170,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   compare: '/products/compare',
   shoppingLists: '/my/shopping-lists',
   vendors: '/vendors',
+  rfq: '/rfq',
   vendorPortal: '/vendor',
   myHub: '/my/workspace',
   customerPortal: '/portal',
@@ -749,6 +755,51 @@ interface AppContextType {
     },
   ) => Promise<SubscriptionPlan[]>;
 
+  // Stage 8: Multi-Vendor RFQ Engine & Marketplace Slot Appointments
+  myRfqs: RfqRequest[];
+  marketplaceAppointments: MarketplaceAppointment[];
+  refreshRfqAndAppointments: () => Promise<void>;
+  createRfqRequest: (input: {
+    title: string;
+    categorySlug: string;
+    governorateSlug: string;
+    citySlug?: string | null;
+    budgetMin: number;
+    budgetMax: number;
+    desiredDate?: string | null;
+    scopeDetails: string;
+    requirements?: Record<string, string | number | boolean>;
+    preferredContact: 'platform' | 'phone' | 'whatsapp';
+    targetVendorId?: string | null;
+  }) => Promise<RfqRequest>;
+  decideRfqQuote: (
+    rfqId: string,
+    quoteId: string,
+    input: { decision: 'accept' | 'reject'; customerDecisionNote?: string | null; linkToBudget?: boolean },
+  ) => Promise<{ rfq: RfqRequest; linkedBudgetExpenseId: string | null }>;
+  postRfqMessage: (rfqId: string, body: string, vendorId?: string) => Promise<RfqRequest>;
+  createMarketplaceAppointment: (input: {
+    vendorId: string;
+    serviceId?: string | null;
+    rfqId?: string | null;
+    appointmentType: MarketplaceAppointmentType;
+    slotDate: string;
+    slotTime: string;
+    durationMinutes?: number;
+    customerPhone: string;
+    customerNotes?: string | null;
+  }) => Promise<MarketplaceAppointment>;
+  patchMarketplaceAppointment: (
+    aptId: string,
+    patch: {
+      status?: MarketplaceAppointmentStatus;
+      slotDate?: string;
+      slotTime?: string;
+      customerNotes?: string | null;
+      vendorResponseNote?: string | null;
+    },
+  ) => Promise<MarketplaceAppointment>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -831,6 +882,7 @@ function resolveSectionFromPath(pathname: string): SectionKey {
     return 'encyclopedia';
   }
   if (pathname.startsWith('/discover') || pathname.startsWith('/locations')) return 'discover';
+  if (pathname === '/rfq' || pathname.startsWith('/rfq/')) return 'rfq';
   if (pathname.startsWith('/vendors')) return 'vendors';
   if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
   if (pathname.startsWith('/portal') || pathname.startsWith('/my')) return 'customerPortal';
@@ -1019,6 +1071,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
   const [adminVendors, setAdminVendors] = useState<VendorListing[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [myRfqs, setMyRfqs] = useState<RfqRequest[]>([]);
+  const [marketplaceAppointments, setMarketplaceAppointments] = useState<MarketplaceAppointment[]>([]);
 
   const loadUserScopedData = useCallback(async (user: User | null, connected: boolean) => {
     if (!user) {
@@ -1037,6 +1091,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAdminUsers([]);
       setAdminVendors([]);
       setAuditLogs([]);
+      setMyRfqs([]);
+      setMarketplaceAppointments([]);
       setUserGroomPlan(getStoredItem<UserGroomPlanState>('user_groom_plan_v2', DEFAULT_GUEST_GROOM_PLAN));
       setUserBridePlan(
         getStoredItem<UserBridePlanState>('user_bride_plan_v2', createDefaultGuestBridePlan()),
@@ -1085,6 +1141,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         uMyHub,
         uShoppingLists,
         uPriceAlerts,
+        uRfqs,
+        uAppointments,
       ] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
@@ -1100,6 +1158,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<MyGawazInnHubPayload>('/my/hub').catch(() => null),
           apiRequest<ShoppingList[]>('/shopping-lists').catch(() => []),
           apiRequest<PriceAlert[]>('/price-alerts').catch(() => []),
+          apiRequest<RfqRequest[]>('/rfq').catch(() => []),
+          apiRequest<MarketplaceAppointment[]>('/appointments').catch(() => []),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -1116,6 +1176,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setMyHubPayload(uMyHub);
       setShoppingLists(uShoppingLists);
       setPriceAlerts(uPriceAlerts);
+      setMyRfqs(uRfqs);
+      setMarketplaceAppointments(uAppointments);
     } catch {
       // Non-fatal fallback
     }
@@ -3143,6 +3205,151 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [language, showToast],
   );
 
+  // Stage 8 Actions: RFQ Engine & Marketplace Slot Appointments
+  const refreshRfqAndAppointments = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const [rfqs, apts] = await Promise.all([
+      apiRequest<RfqRequest[]>('/rfq').catch(() => []),
+      apiRequest<MarketplaceAppointment[]>('/appointments').catch(() => []),
+    ]);
+    setMyRfqs(rfqs);
+    setMarketplaceAppointments(apts);
+  }, [apiConnected, currentUser]);
+
+  const createRfqRequest = useCallback(
+    async (input: {
+      title: string;
+      categorySlug: string;
+      governorateSlug: string;
+      citySlug?: string | null;
+      budgetMin: number;
+      budgetMax: number;
+      desiredDate?: string | null;
+      scopeDetails: string;
+      requirements?: Record<string, string | number | boolean>;
+      preferredContact: 'platform' | 'phone' | 'whatsapp';
+      targetVendorId?: string | null;
+    }) => {
+      const created = await apiRequest<RfqRequest>('/rfq', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMyRfqs((prev) => [created, ...prev.filter((r) => r.id !== created.id)]);
+      showToast(
+        language === 'ar'
+          ? `تم إرسال طلب التسعير ومطابقة ${created.invitationsCount ?? 0} مزود خدمة.`
+          : `RFQ sent & matched with ${created.invitationsCount ?? 0} qualified vendors.`,
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const decideRfqQuote = useCallback(
+    async (
+      rfqId: string,
+      quoteId: string,
+      input: { decision: 'accept' | 'reject'; customerDecisionNote?: string | null; linkToBudget?: boolean },
+    ) => {
+      const result = await apiRequest<{ rfq: RfqRequest; linkedBudgetExpenseId: string | null }>(
+        `/rfq/${encodeURIComponent(rfqId)}/quotes/${encodeURIComponent(quoteId)}/decide`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            decision: input.decision,
+            customerDecisionNote: input.customerDecisionNote ?? null,
+            linkToBudget: input.linkToBudget ?? true,
+          }),
+        },
+      );
+      setMyRfqs((prev) => prev.map((r) => (r.id === result.rfq.id ? result.rfq : r)));
+      if (input.decision === 'accept') {
+        const updatedBudget = await apiRequest<BudgetOverviewPayload>('/budget/overview').catch(() => null);
+        if (updatedBudget) setBudgetOverview(updatedBudget);
+      }
+      showToast(
+        input.decision === 'accept'
+          ? language === 'ar'
+            ? 'تم اعتماد عرض السعر وربطه مباشرةً بميزانية الزواج!'
+            : 'Quote accepted and synced directly into Wedding Budget Manager!'
+          : language === 'ar'
+            ? 'تم تحديث حالة عرض السعر.'
+            : 'Quote decision updated.',
+      );
+      return result;
+    },
+    [language, showToast],
+  );
+
+  const postRfqMessage = useCallback(
+    async (rfqId: string, body: string, vendorId?: string) => {
+      const res = await apiRequest<{ rfq: RfqRequest }>(
+        `/rfq/${encodeURIComponent(rfqId)}/messages`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ body, vendorId }),
+        },
+      );
+      setMyRfqs((prev) => prev.map((r) => (r.id === res.rfq.id ? res.rfq : r)));
+      return res.rfq;
+    },
+    [],
+  );
+
+  const createMarketplaceAppointment = useCallback(
+    async (input: {
+      vendorId: string;
+      serviceId?: string | null;
+      rfqId?: string | null;
+      appointmentType: MarketplaceAppointmentType;
+      slotDate: string;
+      slotTime: string;
+      durationMinutes?: number;
+      customerPhone: string;
+      customerNotes?: string | null;
+    }) => {
+      const created = await apiRequest<MarketplaceAppointment>('/appointments', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMarketplaceAppointments((prev) => [...prev.filter((a) => a.id !== created.id), created]);
+      showToast(
+        language === 'ar'
+          ? `تم إرسال طلب حجز الموعد (${created.slotDate} ${created.slotTime}) للشريك للتأكيد.`
+          : `Slot appointment requested (${created.slotDate} ${created.slotTime}). Awaiting vendor confirmation.`,
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const patchMarketplaceAppointment = useCallback(
+    async (
+      aptId: string,
+      patch: {
+        status?: MarketplaceAppointmentStatus;
+        slotDate?: string;
+        slotTime?: string;
+        customerNotes?: string | null;
+        vendorResponseNote?: string | null;
+      },
+    ) => {
+      const updated = await apiRequest<MarketplaceAppointment>(
+        `/appointments/${encodeURIComponent(aptId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setMarketplaceAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      showToast(
+        language === 'ar' ? 'تم تحديث بيانات الموعد.' : 'Appointment status updated.',
+      );
+      return updated;
+    },
+    [language, showToast],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -3323,6 +3530,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshAdminVendors,
         adminVerifyVendor,
         adminUpdateSubscriptionPlan,
+        myRfqs,
+        marketplaceAppointments,
+        refreshRfqAndAppointments,
+        createRfqRequest,
+        decideRfqQuote,
+        postRfqMessage,
+        createMarketplaceAppointment,
+        patchMarketplaceAppointment,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

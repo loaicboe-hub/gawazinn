@@ -68,6 +68,7 @@ export function seedDatabase(
   stage5Seeded: boolean;
   stage6Seeded: boolean;
   stage7Seeded: boolean;
+  stage8Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
@@ -82,6 +83,7 @@ export function seedDatabase(
     .get() as { cnt: number };
   const stage7VendorCountRow = db.prepare('SELECT COUNT(*) as cnt FROM vendors').get() as { cnt: number };
   const stage7LocCountRow = db.prepare('SELECT COUNT(*) as cnt FROM locations').get() as { cnt: number };
+  const stage8RfqCountRow = db.prepare('SELECT COUNT(*) as cnt FROM rfq_requests').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
@@ -91,6 +93,7 @@ export function seedDatabase(
   const needsBaseProductSlugFix = stage6SlugFixRow.cnt > 0;
   const needsStage7 = stage7VendorCountRow.cnt === 0;
   const needsExtraLocs = stage7LocCountRow.cnt < 15;
+  const needsStage8 = stage8RfqCountRow.cnt === 0;
 
   if (
     !needsStage1 &&
@@ -101,7 +104,8 @@ export function seedDatabase(
     !needsStage6 &&
     !needsBaseProductSlugFix &&
     !needsStage7 &&
-    !needsExtraLocs
+    !needsExtraLocs &&
+    !needsStage8
   ) {
     return {
       seeded: false,
@@ -111,6 +115,7 @@ export function seedDatabase(
       stage5Seeded: false,
       stage6Seeded: false,
       stage7Seeded: false,
+      stage8Seeded: false,
     };
   }
 
@@ -1510,6 +1515,237 @@ export function seedDatabase(
       }
     }
 
+    if (needsStage8) {
+      // ==================== STAGE 8: RFQ ENGINE, SLOT APPOINTMENTS & 8-STAGE VENDOR CRM ====================
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_requests
+          (id, user_id, title, category_slug, governorate_slug, city_slug, budget_min, budget_max, desired_date,
+           scope_details, requirements_json, preferred_contact, target_vendor_id, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'quoted', ?, ?)`,
+      ).run(
+        'rfq-seed-1',
+        'usr-1',
+        'تشطيب شقة 135 متر ألترا سوبر لوكس — القاهرة الجديدة',
+        'turnkey_finishing',
+        'cairo',
+        'fifth-settlement',
+        320000,
+        450000,
+        '2026-12-20',
+        'تشطيب متكامل على الطوب الأحمر شامل تأسيس السباكة BR الألماني وكهرباء السويدي وعزل الحمامات وسيراميك كليوباترا أو الجوهرة مع نقاشة جوتن.',
+        JSON.stringify({ areaSqm: 135, bedrooms: 3, bathrooms: 2, finishLevel: 'ultra_super_lux' }),
+        'platform',
+        'vnd-el-rowad',
+        now,
+        now,
+      );
+
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_invitations (id, rfq_id, vendor_id, status, invited_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run('rinv-seed-1', 'rfq-seed-1', 'vnd-el-rowad', 'quoted', now);
+
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_invitations (id, rfq_id, vendor_id, status, invited_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run('rinv-seed-2', 'rfq-seed-1', 'vnd-zayed-arch', 'invited', now);
+
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_quotes
+          (id, rfq_id, vendor_id, quoted_amount_egp, deposit_amount_egp, estimated_duration, warranty_months,
+           scope_summary, terms_notes, valid_until, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?)`,
+      ).run(
+        'rfqq-seed-1',
+        'rfq-seed-1',
+        'vnd-el-rowad',
+        365000,
+        50000,
+        '65 يوم عمل',
+        60,
+        'عرض متكامل شامل بند السباكة بضمان BR، أسلاك السويدي 100%، عزل سيكا، جيبسوم بورد للريسبشن ودهانات جوتن فينوماستيك بجدول دفعات من 4 مراحل.',
+        'الدفعات مربوطة بمراحل الاستلام الهندسي في العقد الموحد.',
+        '2026-12-30',
+        now,
+        now,
+      );
+
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_messages (id, rfq_id, sender_user_id, sender_role, sender_name, vendor_id, body, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        'rfqm-seed-1',
+        'rfq-seed-1',
+        'usr-1',
+        'customer',
+        'كريم عبد العزيز شريف',
+        'vnd-el-rowad',
+        'هل يشمل العرض توريد وتركيب السيراميك أم المصنعية فقط؟',
+        now,
+      );
+
+      db.prepare(
+        `INSERT OR IGNORE INTO rfq_messages (id, rfq_id, sender_user_id, sender_role, sender_name, vendor_id, body, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        'rfqm-seed-2',
+        'rfq-seed-1',
+        'usr-vendor',
+        'vendor',
+        'شركة الرواد للتشطيبات (شريك تجريبي)',
+        'vnd-el-rowad',
+        'العرض يشمل التوريد والتركيب والمون مع تسعير البورسلين بالريسبشن حسب المعاينة الهندسية.',
+        now,
+      );
+
+      db.prepare(
+        `INSERT OR IGNORE INTO appointments
+          (id, user_id, vendor_id, service_id, rfq_id, appointment_type, slot_date, slot_time, duration_minutes,
+           customer_phone, customer_notes, status, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, NULL, 'showroom', '2026-11-28', '14:00', 45, '01012345678', ?, 'requested', ?, ?)`,
+      ).run(
+        'mapt-seed-1',
+        'usr-1',
+        'vnd-al-motahida-appliances',
+        'استعراض باقة الأجهزة الكهربائية الكاملة مع مقارنة استهلاك الكهرباء A++.',
+        now,
+        now,
+      );
+
+      db.prepare(
+        `INSERT OR IGNORE INTO appointments
+          (id, user_id, vendor_id, service_id, rfq_id, appointment_type, slot_date, slot_time, duration_minutes,
+           customer_phone, customer_notes, vendor_response_note, status, confirmed_at, created_at, updated_at)
+         VALUES (?, ?, ?, 'vsrv-rowad-1', 'rfq-seed-1', 'site_visit', '2026-11-25', '11:00', 60, '01012345678', ?, ?, 'confirmed', ?, ?, ?)`,
+      ).run(
+        'mapt-seed-2',
+        'usr-1',
+        'vnd-el-rowad',
+        'معاينة شقة التجمع الخامس ورفع المقاسات الفعلية قبل التعاقد.',
+        'تم تأكيد الموعد — سيحضر م. أحمد فؤاد للمعاينة الهندسية.',
+        now,
+        now,
+        now,
+      );
+
+      // Starter Vendor CRM Leads across multiple pipeline stages
+      const insLead = db.prepare(
+        `INSERT OR IGNORE INTO vendor_leads
+          (id, vendor_id, customer_user_id, rfq_id, appointment_id, lead_source, customer_name, customer_phone,
+           title, stage, estimated_value_egp, next_follow_up_date, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      insLead.run(
+        'vlead-seed-rfq-rowad',
+        'vnd-el-rowad',
+        'usr-1',
+        'rfq-seed-1',
+        null,
+        'rfq',
+        'كريم عبد العزيز شريف',
+        '01012345678',
+        'تشطيب شقة 135 متر ألترا سوبر لوكس — القاهرة الجديدة',
+        'quotation_sent',
+        365000,
+        '2026-11-26',
+        now,
+        now,
+      );
+      insLead.run(
+        'vlead-seed-rfq-zayed',
+        'vnd-zayed-arch',
+        'usr-1',
+        'rfq-seed-1',
+        null,
+        'rfq',
+        'كريم عبد العزيز شريف',
+        '01012345678',
+        'تشطيب شقة 135 متر ألترا سوبر لوكس — القاهرة الجديدة',
+        'new_lead',
+        450000,
+        '2026-11-27',
+        now,
+        now,
+      );
+      insLead.run(
+        'vlead-seed-apt-rowad',
+        'vnd-el-rowad',
+        'usr-1',
+        null,
+        'mapt-seed-2',
+        'appointment',
+        'كريم عبد العزيز شريف',
+        '01012345678',
+        'حجز موعد معاينة موقع — التجمع الخامس',
+        'contacted',
+        365000,
+        '2026-11-25',
+        now,
+        now,
+      );
+      insLead.run(
+        'vlead-seed-apt-motahida',
+        'vnd-al-motahida-appliances',
+        'usr-1',
+        null,
+        'mapt-seed-1',
+        'appointment',
+        'كريم عبد العزيز شريف',
+        '01012345678',
+        'حجز موعد معرض الأجهزة الكهربائية — مدينة نصر',
+        'new_lead',
+        85000,
+        '2026-11-28',
+        now,
+        now,
+      );
+      insLead.run(
+        'vlead-seed-rowad-neg',
+        'vnd-el-rowad',
+        null,
+        null,
+        null,
+        'manual',
+        'أ. عمر طارق الديب',
+        '01277889900',
+        'باقة تشطيب شقة 160م — مدينتي B8',
+        'negotiation',
+        420000,
+        '2026-11-29',
+        now,
+        now,
+      );
+
+      const insAct = db.prepare(
+        `INSERT OR IGNORE INTO lead_activities (id, lead_id, actor_user_id, activity_type, note, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      insAct.run(
+        'lact-seed-1',
+        'vlead-seed-rfq-rowad',
+        'usr-vendor',
+        'quote_sent',
+        'تم إرسال عرض سعر متكامل بقيمة 365,000 ج.م لمدة 65 يوم عمل.',
+        now,
+      );
+      insAct.run(
+        'lact-seed-2',
+        'vlead-seed-apt-rowad',
+        'usr-vendor',
+        'appointment',
+        'تم تأكيد موعد المعاينة الهندسية مع العميل.',
+        now,
+      );
+      insAct.run(
+        'lact-seed-3',
+        'vlead-seed-rowad-neg',
+        'usr-vendor',
+        'call',
+        'مراجعة جدول الدفعات ونوع الرخام مع العميل تمهيداً للتوقيع.',
+        now,
+      );
+    }
+
     db.exec('COMMIT;');
     return {
       seeded:
@@ -1520,13 +1756,15 @@ export function seedDatabase(
         needsStage5 ||
         needsStage6 ||
         needsStage7 ||
-        needsExtraLocs,
+        needsExtraLocs ||
+        needsStage8,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
       stage5Seeded: needsStage5,
       stage6Seeded: needsStage6,
       stage7Seeded: needsStage7,
+      stage8Seeded: needsStage8,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

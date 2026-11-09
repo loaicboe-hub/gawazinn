@@ -740,5 +740,108 @@ export const adminUpdateSubscriptionPlanSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Stage 8 Schemas: Multi-Vendor RFQ Engine, Slot Appointments & Vendor CRM
+export const createRfqRequestSchema = z.object({
+  title: z.string().trim().min(4).max(180),
+  categorySlug: z.string().trim().min(2).max(80),
+  governorateSlug: z.string().trim().min(2).max(80),
+  citySlug: z.string().trim().max(80).nullable().optional(),
+  budgetMin: z.number().int().min(0).max(100000000).default(0),
+  budgetMax: z.number().int().min(0).max(100000000).default(0),
+  desiredDate: z.string().trim().max(32).nullable().optional(),
+  scopeDetails: z.string().trim().min(10).max(3000),
+  requirements: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  preferredContact: z.enum(['platform', 'phone', 'whatsapp']).default('platform'),
+  targetVendorId: z.string().trim().min(1).max(80).nullable().optional(),
+});
+
+export const submitRfqQuoteSchema = z.object({
+  vendorId: z.string().trim().min(1).max(80).optional(),
+  quotedAmountEgp: z.number().int().min(100).max(100000000),
+  depositAmountEgp: z.number().int().min(0).max(100000000).default(0),
+  estimatedDuration: z.string().trim().min(2).max(120),
+  warrantyMonths: z.number().int().min(0).max(240).default(12),
+  scopeSummary: z.string().trim().min(10).max(2000),
+  termsNotes: z.string().trim().max(800).nullable().optional(),
+  validUntil: z.string().trim().min(8).max(32),
+});
+
+export const decideRfqQuoteSchema = z.object({
+  decision: z.enum(['accept', 'reject']),
+  customerDecisionNote: z.string().trim().max(600).nullable().optional(),
+  linkToBudget: z.boolean().default(true),
+});
+
+export const createRfqMessageSchema = z.object({
+  body: z.string().trim().min(2).max(1500),
+  vendorId: z.string().trim().min(1).max(80).optional(),
+});
+
+export const createMarketplaceAppointmentSchema = z.object({
+  vendorId: z.string().trim().min(1).max(80),
+  serviceId: z.string().trim().max(80).nullable().optional(),
+  rfqId: z.string().trim().max(80).nullable().optional(),
+  appointmentType: z
+    .enum(['site_visit', 'showroom', 'hall_tour', 'video_consultation', 'contract_signing', 'measuring'])
+    .default('showroom'),
+  slotDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  slotTime: z.string().trim().regex(/^\d{2}:\d{2}$/),
+  durationMinutes: z.number().int().min(15).max(240).default(45),
+  customerPhone: z.string().trim().min(8).max(24),
+  customerNotes: z.string().trim().max(800).nullable().optional(),
+});
+
+export const patchMarketplaceAppointmentSchema = z.object({
+  status: z.enum(['requested', 'confirmed', 'rescheduled', 'cancelled', 'completed']).optional(),
+  slotDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  slotTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
+  customerNotes: z.string().trim().max(800).nullable().optional(),
+  vendorResponseNote: z.string().trim().max(800).nullable().optional(),
+});
+
+export const createVendorLeadSchema = z.object({
+  customerName: z.string().trim().min(2).max(120),
+  customerPhone: z.string().trim().max(24).nullable().optional(),
+  title: z.string().trim().min(3).max(180),
+  stage: z
+    .enum([
+      'new_lead',
+      'contacted',
+      'quotation_sent',
+      'negotiation',
+      'accepted',
+      'in_progress',
+      'completed',
+      'lost',
+    ])
+    .default('new_lead'),
+  estimatedValueEgp: z.number().int().min(0).max(100000000).default(0),
+  nextFollowUpDate: z.string().trim().max(32).nullable().optional(),
+});
+
+export const patchVendorLeadSchema = z.object({
+  stage: z
+    .enum([
+      'new_lead',
+      'contacted',
+      'quotation_sent',
+      'negotiation',
+      'accepted',
+      'in_progress',
+      'completed',
+      'lost',
+    ])
+    .optional(),
+  estimatedValueEgp: z.number().int().min(0).max(100000000).optional(),
+  nextFollowUpDate: z.string().trim().max(32).nullable().optional(),
+  lossReason: z.string().trim().max(300).nullable().optional(),
+});
+
+export const createVendorLeadActivitySchema = z.object({
+  activityType: z.enum(['note', 'call', 'quote_sent', 'appointment']).default('note'),
+  note: z.string().trim().min(2).max(1000),
+});
+
+
 
 
