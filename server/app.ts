@@ -9,19 +9,27 @@ import {
   hasAnyRole,
 } from '../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../shared/catalogMeta';
+import { getCalculatorSummary, listCalculatorSummaries, runCalculator } from '../shared/calculators';
 import {
   articleUpsertSchema,
+  calculateRequestSchema,
+  createBudgetExpenseSchema,
   createFinancingSchema,
   createFinishingInquirySchema,
   createOrderSchema,
   createSponsorshipSchema,
   createSupportCaseSchema,
   createWeddingBookingSchema,
+  importCalculatorToBudgetSchema,
   loginSchema,
   normalizeEgyptianPhone,
+  patchBudgetCategorySchema,
+  patchBudgetExpenseSchema,
   productUpsertSchema,
   registerSchema,
+  updateBudgetPlanSchema,
   updateProfileSchema,
+  upsertBudgetCategorySchema,
   userBridePlanSchema,
   userGroomPlanSchema,
   weddingServiceUpsertSchema,
@@ -32,6 +40,8 @@ import type {
   BeforeAfterProject,
   BrideCategoryGuide,
   BrideChecklistTemplateItem,
+  CalculatorOutput,
+  CalculatorRunRecord,
   ContentCategory,
   FaqEntry,
   FinancingApplication,
@@ -56,6 +66,12 @@ import type {
   WeddingBookingRequest,
   WeddingServiceItem,
 } from '../shared/types';
+import {
+  buildBudgetOverview,
+  ensureUserBudgetPlan,
+  syncUserTransactionsToBudget,
+  upsertBudgetExpenseFromSource,
+} from './budgetService';
 import {
   SlidingWindowRateLimiter,
   buildClearSessionCookieHeader,
@@ -729,6 +745,8 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/glossary',
           '/faqs',
           '/discover',
+          '/calculators',
+          ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
           .prepare("SELECT slug, updated_at FROM articles WHERE status = 'published'")
@@ -1471,6 +1489,536 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           unknown
         >;
         sendJson(res, 200, { ok: true, data: mapUserBridePlanRow(row) });
+        return;
+      }
+
+      // ================= STAGE 3: UNIFIED 20 SMART CALCULATORS & BUDGET MANAGER =================
+      if (method === 'GET' && route === '/calculators') {
+        sendJson(res, 200, { ok: true, data: listCalculatorSummaries() });
+        return;
+      }
+
+      if (method === 'POST' && route.startsWith('/calculators/') && route.endsWith('/calculate')) {
+        const slug = decodeURIComponent(route.slice('/calculators/'.length, -'/calculate'.length));
+        const def = getCalculatorSummary(slug);
+        if (!def) {
+          sendError(res, 404, 'CALCULATOR_NOT_FOUND', `Unknown calculator: ${slug}`);
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = calculateRequestSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid calculator inputs', parsed.error.flatten());
+          return;
+        }
+
+        const output = runCalculator(slug, parsed.data.inputs);
+        let runId: string | null = null;
+
+        if (authUser && parsed.data.saveRun) {
+          runId = `calc-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO calculator_runs (id, user_id, calculator_slug, inputs_json, outputs_json, primary_value, saved_title, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            runId,
+            authUser.id,
+            slug,
+            JSON.stringify({ ...def.defaultInputs, ...parsed.data.inputs }),
+            JSON.stringify(output),
+            output.primaryMetric.value,
+            parsed.data.savedTitle || output.suggestedBudgetTitleAr,
+            now,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'calculator.saved_run',
+            targetType: 'calculator_run',
+            targetId: runId,
+            metadata: { slug, primaryValue: output.primaryMetric.value },
+            ipAddress: ip,
+          });
+        }
+
+        sendJson(res, 200, { ok: true, data: { runId, output } });
+        return;
+      }
+
+      if (method === 'GET' && route === '/my/calculator-runs') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view saved calculator runs');
+          return;
+        }
+        const slug = url.searchParams.get('slug');
+        const rows = slug
+          ? (db
+              .prepare(
+                'SELECT * FROM calculator_runs WHERE user_id = ? AND calculator_slug = ? ORDER BY created_at DESC LIMIT 30',
+              )
+              .all(authUser.id, slug) as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM calculator_runs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50')
+              .all(authUser.id) as Record<string, unknown>[]);
+
+        const runs: CalculatorRunRecord[] = rows.map((r) => ({
+          id: String(r.id),
+          userId: r.user_id ? String(r.user_id) : null,
+          calculatorSlug: String(r.calculator_slug),
+          inputs: JSON.parse(String(r.inputs_json || '{}')) as Record<string, number | string | boolean>,
+          output: JSON.parse(String(r.outputs_json)) as CalculatorOutput,
+          primaryValue: Number(r.primary_value),
+          savedTitle: r.saved_title ? String(r.saved_title) : null,
+          createdAt: String(r.created_at),
+        }));
+        sendJson(res, 200, { ok: true, data: runs });
+        return;
+      }
+
+      if (method === 'DELETE' && route.startsWith('/my/calculator-runs/')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const runId = decodeURIComponent(route.slice('/my/calculator-runs/'.length));
+        const existing = db
+          .prepare('SELECT id, user_id FROM calculator_runs WHERE id = ?')
+          .get(runId) as { id: string; user_id: string | null } | undefined;
+        if (!existing || existing.user_id !== authUser.id) {
+          sendError(res, 404, 'NOT_FOUND', 'Saved calculation run not found');
+          return;
+        }
+        db.prepare('DELETE FROM calculator_runs WHERE id = ? AND user_id = ?').run(runId, authUser.id);
+        sendJson(res, 200, { ok: true, data: { deletedId: runId } });
+        return;
+      }
+
+      // ================= BUDGET MANAGER (OWNER-SCOPED) =================
+      if (method === 'GET' && route === '/budget/overview') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to access Wedding Budget Manager');
+          return;
+        }
+        const overview = buildBudgetOverview(db, authUser.id);
+        sendJson(res, 200, { ok: true, data: overview });
+        return;
+      }
+
+      if (method === 'PATCH' && route === '/budget/plan') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = updateBudgetPlanSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid budget plan values', parsed.error.flatten());
+          return;
+        }
+        ensureUserBudgetPlan(db, authUser.id);
+        const now = new Date().toISOString();
+        db.prepare(
+          `UPDATE budget_plans SET
+            title_ar = COALESCE(?, title_ar),
+            title_en = COALESCE(?, title_en),
+            total_budget_limit = COALESCE(?, total_budget_limit),
+            groom_contribution_target = COALESCE(?, groom_contribution_target),
+            bride_contribution_target = COALESCE(?, bride_contribution_target),
+            family_support_target = COALESCE(?, family_support_target),
+            emergency_reserve_target = COALESCE(?, emergency_reserve_target),
+            updated_at = ?
+           WHERE user_id = ?`,
+        ).run(
+          parsed.data.titleAr ?? null,
+          parsed.data.titleEn ?? null,
+          parsed.data.totalBudgetLimit ?? null,
+          parsed.data.groomContributionTarget ?? null,
+          parsed.data.brideContributionTarget ?? null,
+          parsed.data.familySupportTarget ?? null,
+          parsed.data.emergencyReserveTarget ?? null,
+          now,
+          authUser.id,
+        );
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'budget.plan_updated',
+          targetType: 'budget_plan',
+          targetId: authUser.id,
+          metadata: parsed.data,
+          ipAddress: ip,
+        });
+        sendJson(res, 200, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/budget/categories') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = upsertBudgetCategorySchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid category details', parsed.error.flatten());
+          return;
+        }
+        const plan = ensureUserBudgetPlan(db, authUser.id);
+        db.prepare(
+          `INSERT INTO budget_categories (id, budget_plan_id, user_id, slug, name_ar, name_en, owner_side, planned_amount, limit_amount, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(budget_plan_id, slug) DO UPDATE SET
+             name_ar = excluded.name_ar,
+             name_en = excluded.name_en,
+             owner_side = excluded.owner_side,
+             planned_amount = excluded.planned_amount,
+             limit_amount = excluded.limit_amount`,
+        ).run(
+          `bc-${crypto.randomUUID().slice(0, 10)}`,
+          plan.id,
+          authUser.id,
+          parsed.data.slug,
+          parsed.data.nameAr,
+          parsed.data.nameEn,
+          parsed.data.ownerSide,
+          parsed.data.plannedAmount,
+          parsed.data.limitAmount,
+          parsed.data.sortOrder ?? 20,
+        );
+        sendJson(res, 201, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'PATCH' && route.startsWith('/budget/categories/')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const catId = decodeURIComponent(route.slice('/budget/categories/'.length));
+        const existing = db
+          .prepare('SELECT id, user_id FROM budget_categories WHERE id = ?')
+          .get(catId) as { id: string; user_id: string } | undefined;
+        if (!existing || existing.user_id !== authUser.id) {
+          sendError(res, 404, 'NOT_FOUND', 'Budget category not found');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = patchBudgetCategorySchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid category updates', parsed.error.flatten());
+          return;
+        }
+        db.prepare(
+          `UPDATE budget_categories SET
+            name_ar = COALESCE(?, name_ar),
+            name_en = COALESCE(?, name_en),
+            owner_side = COALESCE(?, owner_side),
+            planned_amount = COALESCE(?, planned_amount),
+            limit_amount = COALESCE(?, limit_amount)
+           WHERE id = ? AND user_id = ?`,
+        ).run(
+          parsed.data.nameAr ?? null,
+          parsed.data.nameEn ?? null,
+          parsed.data.ownerSide ?? null,
+          parsed.data.plannedAmount ?? null,
+          parsed.data.limitAmount ?? null,
+          catId,
+          authUser.id,
+        );
+        sendJson(res, 200, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/budget/expenses') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createBudgetExpenseSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid expense fields', parsed.error.flatten());
+          return;
+        }
+        const plan = ensureUserBudgetPlan(db, authUser.id);
+        let categoryRow: { id: string } | undefined;
+        if (parsed.data.categoryId) {
+          categoryRow = db
+            .prepare('SELECT id FROM budget_categories WHERE id = ? AND user_id = ?')
+            .get(parsed.data.categoryId, authUser.id) as { id: string } | undefined;
+        } else if (parsed.data.categorySlug) {
+          categoryRow = db
+            .prepare('SELECT id FROM budget_categories WHERE slug = ? AND user_id = ?')
+            .get(parsed.data.categorySlug, authUser.id) as { id: string } | undefined;
+        }
+        if (!categoryRow) {
+          categoryRow = db
+            .prepare('SELECT id FROM budget_categories WHERE user_id = ? ORDER BY sort_order ASC LIMIT 1')
+            .get(authUser.id) as { id: string } | undefined;
+        }
+        if (!categoryRow) {
+          sendError(res, 400, 'CATEGORY_MISSING', 'Budget category does not exist');
+          return;
+        }
+
+        const now = new Date().toISOString();
+        if (parsed.data.sourceId && parsed.data.sourceType !== 'manual') {
+          const result = upsertBudgetExpenseFromSource(db, {
+            userId: authUser.id,
+            budgetPlanId: plan.id,
+            categoryId: categoryRow.id,
+            title: parsed.data.title,
+            vendorOrPayee: parsed.data.vendorOrPayee ?? null,
+            amount: parsed.data.amount,
+            paymentType: parsed.data.paymentType,
+            status: parsed.data.status,
+            paidBySide: parsed.data.paidBySide,
+            dueDate: parsed.data.dueDate ?? null,
+            paidAt: parsed.data.paidAt ?? null,
+            sourceType: parsed.data.sourceType,
+            sourceId: parsed.data.sourceId,
+            notes: parsed.data.notes ?? null,
+          });
+          sendJson(res, result.inserted ? 201 : 200, {
+            ok: true,
+            data: buildBudgetOverview(db, authUser.id),
+          });
+          return;
+        }
+
+        const expId = `bexp-${crypto.randomUUID().slice(0, 10)}`;
+        db.prepare(
+          `INSERT INTO budget_expenses
+             (id, budget_plan_id, budget_category_id, user_id, title, vendor_or_payee, amount, payment_type, status, paid_by_side, due_date, paid_at, source_type, source_id, notes, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', NULL, ?, ?, ?)`,
+        ).run(
+          expId,
+          plan.id,
+          categoryRow.id,
+          authUser.id,
+          parsed.data.title,
+          parsed.data.vendorOrPayee ?? null,
+          parsed.data.amount,
+          parsed.data.paymentType,
+          parsed.data.status,
+          parsed.data.paidBySide,
+          parsed.data.dueDate ?? null,
+          parsed.data.status === 'paid' ? parsed.data.paidAt || now.slice(0, 10) : null,
+          parsed.data.notes ?? null,
+          now,
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'budget.expense_created',
+          targetType: 'budget_expense',
+          targetId: expId,
+          metadata: { amount: parsed.data.amount, status: parsed.data.status },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'PATCH' && route.startsWith('/budget/expenses/')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const expId = decodeURIComponent(route.slice('/budget/expenses/'.length));
+        const existing = db
+          .prepare('SELECT id, user_id, paid_at FROM budget_expenses WHERE id = ?')
+          .get(expId) as { id: string; user_id: string; paid_at: string | null } | undefined;
+        if (!existing || existing.user_id !== authUser.id) {
+          sendError(res, 404, 'NOT_FOUND', 'Budget expense not found');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = patchBudgetExpenseSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid expense update', parsed.error.flatten());
+          return;
+        }
+        const now = new Date().toISOString();
+        const resolvedPaidAt =
+          parsed.data.paidAt !== undefined
+            ? parsed.data.paidAt
+            : parsed.data.status === 'paid' && !existing.paid_at
+              ? now.slice(0, 10)
+              : existing.paid_at;
+
+        db.prepare(
+          `UPDATE budget_expenses SET
+            title = COALESCE(?, title),
+            vendor_or_payee = CASE WHEN ? IS NOT NULL THEN ? ELSE vendor_or_payee END,
+            amount = COALESCE(?, amount),
+            payment_type = COALESCE(?, payment_type),
+            status = COALESCE(?, status),
+            paid_by_side = COALESCE(?, paid_by_side),
+            due_date = CASE WHEN ? IS NOT NULL THEN ? ELSE due_date END,
+            paid_at = ?,
+            notes = CASE WHEN ? IS NOT NULL THEN ? ELSE notes END,
+            updated_at = ?
+           WHERE id = ? AND user_id = ?`,
+        ).run(
+          parsed.data.title ?? null,
+          parsed.data.vendorOrPayee === undefined ? null : 'set',
+          parsed.data.vendorOrPayee ?? null,
+          parsed.data.amount ?? null,
+          parsed.data.paymentType ?? null,
+          parsed.data.status ?? null,
+          parsed.data.paidBySide ?? null,
+          parsed.data.dueDate === undefined ? null : 'set',
+          parsed.data.dueDate ?? null,
+          resolvedPaidAt,
+          parsed.data.notes === undefined ? null : 'set',
+          parsed.data.notes ?? null,
+          now,
+          expId,
+          authUser.id,
+        );
+        sendJson(res, 200, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'DELETE' && route.startsWith('/budget/expenses/')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const expId = decodeURIComponent(route.slice('/budget/expenses/'.length));
+        const existing = db
+          .prepare('SELECT id, user_id FROM budget_expenses WHERE id = ?')
+          .get(expId) as { id: string; user_id: string } | undefined;
+        if (!existing || existing.user_id !== authUser.id) {
+          sendError(res, 404, 'NOT_FOUND', 'Budget expense not found');
+          return;
+        }
+        db.prepare('DELETE FROM budget_expenses WHERE id = ? AND user_id = ?').run(expId, authUser.id);
+        sendJson(res, 200, { ok: true, data: buildBudgetOverview(db, authUser.id) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/budget/import-from-calculator') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to link calculator results to your Wedding Budget');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = importCalculatorToBudgetSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid import parameters', parsed.error.flatten());
+          return;
+        }
+        const summary = getCalculatorSummary(parsed.data.calculatorSlug);
+        if (!summary) {
+          sendError(res, 404, 'CALCULATOR_NOT_FOUND', `Unknown calculator: ${parsed.data.calculatorSlug}`);
+          return;
+        }
+
+        const output = runCalculator(parsed.data.calculatorSlug, parsed.data.inputs);
+        const now = new Date().toISOString();
+        let runId = parsed.data.runId;
+        if (runId) {
+          const runOwned = db
+            .prepare('SELECT id FROM calculator_runs WHERE id = ? AND user_id = ?')
+            .get(runId, authUser.id) as { id: string } | undefined;
+          if (!runOwned) runId = undefined;
+        }
+        if (!runId) {
+          runId = `calc-${crypto.randomUUID().slice(0, 10)}`;
+          db.prepare(
+            `INSERT INTO calculator_runs (id, user_id, calculator_slug, inputs_json, outputs_json, primary_value, saved_title, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            runId,
+            authUser.id,
+            parsed.data.calculatorSlug,
+            JSON.stringify({ ...summary.defaultInputs, ...parsed.data.inputs }),
+            JSON.stringify(output),
+            output.primaryMetric.value,
+            parsed.data.title || output.suggestedBudgetTitleAr,
+            now,
+          );
+        }
+
+        const plan = ensureUserBudgetPlan(db, authUser.id);
+        const targetSlug = parsed.data.categorySlug || output.suggestedBudgetCategorySlug;
+        const targetCat =
+          (db
+            .prepare('SELECT id, name_ar FROM budget_categories WHERE slug = ? AND user_id = ?')
+            .get(targetSlug, authUser.id) as { id: string; name_ar: string } | undefined) ||
+          (db
+            .prepare('SELECT id, name_ar FROM budget_categories WHERE user_id = ? ORDER BY sort_order ASC LIMIT 1')
+            .get(authUser.id) as { id: string; name_ar: string });
+
+        const rawAmount = parsed.data.expenseAmount ?? output.primaryMetric.value;
+        const safeAmount = Math.max(100, Math.round(rawAmount));
+
+        if (parsed.data.mode === 'set_planned') {
+          db.prepare('UPDATE budget_categories SET planned_amount = ? WHERE id = ? AND user_id = ?').run(
+            safeAmount,
+            targetCat.id,
+            authUser.id,
+          );
+        } else {
+          upsertBudgetExpenseFromSource(db, {
+            userId: authUser.id,
+            budgetPlanId: plan.id,
+            categoryId: targetCat.id,
+            title: parsed.data.title || output.suggestedBudgetTitleAr,
+            vendorOrPayee: `حاسبة: ${output.nameAr}`,
+            amount: safeAmount,
+            paymentType: parsed.data.mode === 'add_deposit' ? 'deposit' : 'full',
+            status: parsed.data.mode === 'add_deposit' ? 'paid' : 'planned',
+            paidBySide: parsed.data.paidBySide,
+            paidAt: parsed.data.mode === 'add_deposit' ? now.slice(0, 10) : null,
+            sourceType: 'calculator_run',
+            sourceId: runId,
+            notes: `مرتبط بنتيجة الحاسبة (${output.slug}) بدون تكرار`,
+          });
+        }
+
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'budget.imported_calculator',
+          targetType: 'calculator_run',
+          targetId: runId,
+          metadata: { slug: parsed.data.calculatorSlug, mode: parsed.data.mode, amount: safeAmount },
+          ipAddress: ip,
+        });
+
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            runId,
+            output,
+            overview: buildBudgetOverview(db, authUser.id),
+          },
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/budget/sync-transactions') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const result = syncUserTransactionsToBudget(db, authUser.id);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'budget.synced_transactions',
+          targetType: 'budget_plan',
+          targetId: result.overview.plan.id,
+          metadata: { syncedCount: result.syncedCount },
+          ipAddress: ip,
+        });
+        sendJson(res, 200, { ok: true, data: result });
         return;
       }
 

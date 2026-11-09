@@ -364,6 +364,18 @@ export const FinishingView: React.FC = () => {
                     <ArrowIcon className="w-4 h-4" />
                   </button>
 
+                  <Link
+                    to="/calculators/finishing-cost"
+                    className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-rose-100 text-xs font-bold border border-white/15 transition flex items-center justify-center gap-1.5"
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    <span>
+                      {language === 'ar'
+                        ? 'احسب بالمحافظة والبنود واحفظ في ميزانيتك ←'
+                        : 'Open Governorate BOQ Calculator & Save to Budget'}
+                    </span>
+                  </Link>
+
                   <p className="text-[10px] text-gray-400 text-center">
                     {language === 'ar'
                       ? 'معاينة مجانية للشقة وتحديد المقايسة الدقيقة خلال 48 ساعة'

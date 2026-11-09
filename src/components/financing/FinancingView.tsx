@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
   CreditCard,
@@ -6,6 +7,7 @@ import {
   ArrowRight,
   BadgeCheck,
   AlertCircle,
+  Calculator,
 } from 'lucide-react';
 
 export const FinancingView: React.FC = () => {
@@ -176,12 +178,24 @@ export const FinancingView: React.FC = () => {
 
                 <button
                   onClick={handleApply}
-                  className="w-full bg-red-gradient text-white font-bold text-sm py-4 rounded-xl shadow-lg hover:opacity-95 transition flex items-center justify-center gap-2"
+                  className="w-full bg-red-gradient text-white font-bold text-sm py-4 rounded-xl shadow-lg hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <CreditCard className="w-4 h-4 text-white" />
                   <span>{t.installments.applyForInstallment}</span>
                   <ArrowIcon className="w-4 h-4" />
                 </button>
+
+                <Link
+                  to="/calculators/installment-plan"
+                  className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-rose-100 text-xs font-bold border border-white/15 transition flex items-center justify-center gap-1.5"
+                >
+                  <Calculator className="w-3.5 h-3.5" />
+                  <span>
+                    {language === 'ar'
+                      ? 'احسب نسبة العبء للدخل واحفظ بميزانيتك'
+                      : 'Check DTI Burden Ratio & Link to Budget'}
+                  </span>
+                </Link>
 
                 <p className="text-[10px] text-gray-400 text-center">
                   {language === 'ar' ? 'إجراءات سريعة ومراجعة إلكترونية بالرقم القومي خلال 24 ساعة' : 'Expedited review with National ID within 24h'}

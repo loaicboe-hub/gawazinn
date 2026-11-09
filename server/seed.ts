@@ -27,16 +27,23 @@ import {
 } from '../shared/trousseauEncyclopediaData';
 import { STAGE2_FAQ_ITEMS, STAGE2_GLOSSARY_TERMS } from '../shared/knowledgeGlossaryData';
 import { maskNationalId } from '../shared/catalogMeta';
+import { runCalculator } from '../shared/calculators';
+import { ensureUserBudgetPlan, upsertBudgetExpenseFromSource } from './budgetService';
 import { hashPassword, hashSensitiveField } from './security';
 
-export function seedDatabase(db: DatabaseSync, secret = 'gawazinn-dev-local-secret-change-in-production'): { seeded: boolean; stage2Seeded: boolean } {
+export function seedDatabase(
+  db: DatabaseSync,
+  secret = 'gawazinn-dev-local-secret-change-in-production',
+): { seeded: boolean; stage2Seeded: boolean; stage3Seeded: boolean } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
+  const stage3PlanCountRow = db.prepare('SELECT COUNT(*) as cnt FROM budget_plans').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
+  const needsStage3 = stage3PlanCountRow.cnt === 0;
 
-  if (!needsStage1 && !needsStage2) {
-    return { seeded: false, stage2Seeded: false };
+  if (!needsStage1 && !needsStage2 && !needsStage3) {
+    return { seeded: false, stage2Seeded: false, stage3Seeded: false };
   }
 
   const now = new Date().toISOString();
@@ -767,8 +774,103 @@ export function seedDatabase(db: DatabaseSync, secret = 'gawazinn-dev-local-secr
       ).run(JSON.stringify(['chk-1', 'chk-4', 'chk-8']), JSON.stringify({ 'chk-8': 8 }), now);
     }
 
+    if (needsStage3) {
+      // Seed Karim Sherif's (usr-1) starter Budget Plan, Expenses, and Saved Calculator Runs
+      const karimExists = db.prepare("SELECT id FROM users WHERE id = 'usr-1'").get();
+      if (karimExists) {
+        const plan = ensureUserBudgetPlan(db, 'usr-1');
+        const catRows = db
+          .prepare("SELECT id, slug FROM budget_categories WHERE user_id = 'usr-1'")
+          .all() as { id: string; slug: string }[];
+        const bySlug = new Map<string, string>(catRows.map((c) => [c.slug, c.id]));
+
+        const finishingOut = runCalculator('finishing-cost', {
+          areaSqm: 120,
+          tier: 'medium',
+          condition: 'red_brick',
+          bathroomsCount: 2,
+          governorate: 'cairo',
+          includeGypsumAndAcPrep: true,
+        });
+        db.prepare(
+          `INSERT OR IGNORE INTO calculator_runs (id, user_id, calculator_slug, inputs_json, outputs_json, primary_value, saved_title, created_at)
+           VALUES ('run-karim-fin-1', 'usr-1', 'finishing-cost', ?, ?, ?, 'تشطيب شقة التجمع 120م', ?)`,
+        ).run(
+          JSON.stringify({ areaSqm: 120, tier: 'medium', condition: 'red_brick', bathroomsCount: 2, governorate: 'cairo', includeGypsumAndAcPrep: true }),
+          JSON.stringify(finishingOut),
+          finishingOut.primaryMetric.value,
+          now,
+        );
+
+        const totalOut = runCalculator('total-marriage-budget', { areaSqm: 120, finishingTier: 'medium', governorate: 'cairo' });
+        db.prepare(
+          `INSERT OR IGNORE INTO calculator_runs (id, user_id, calculator_slug, inputs_json, outputs_json, primary_value, saved_title, created_at)
+           VALUES ('run-karim-tot-1', 'usr-1', 'total-marriage-budget', ?, ?, ?, 'خطة الميزانية الكلية 2026', ?)`,
+        ).run(
+          JSON.stringify({ areaSqm: 120, finishingTier: 'medium', governorate: 'cairo' }),
+          JSON.stringify(totalOut),
+          totalOut.primaryMetric.value,
+          now,
+        );
+
+        const dueIn5Days = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+        upsertBudgetExpenseFromSource(db, {
+          userId: 'usr-1',
+          budgetPlanId: plan.id,
+          categoryId: bySlug.get('finishing')!,
+          title: 'دفعة أولى: تأسيس سباكة وكهرباء وعزل الحمامات',
+          vendorOrPayee: 'م. طارق المنياوي — المكتب الهندسي',
+          amount: 55000,
+          paymentType: 'deposit',
+          status: 'paid',
+          paidBySide: 'groom',
+          paidAt: now.slice(0, 10),
+          sourceType: 'finishing_inquiry',
+          sourceId: 'fin-seed-karim-1',
+          notes: 'مرتبط باختبار الكبس الهيدروليكي',
+        });
+
+        upsertBudgetExpenseFromSource(db, {
+          userId: 'usr-1',
+          budgetPlanId: plan.id,
+          categoryId: bySlug.get('wedding')!,
+          title: 'عربون قاعة الزفاف (الدفعة الثانية)',
+          vendorOrPayee: 'فندق قصر النيل الملكي',
+          amount: 25000,
+          paymentType: 'deposit',
+          status: 'upcoming',
+          paidBySide: 'shared',
+          dueDate: dueIn5Days,
+          sourceType: 'wedding_booking',
+          sourceId: 'wb-seed-karim-1',
+          notes: 'تنبيه سداد خلال 5 أيام لتثبيت التاريخ',
+        });
+
+        upsertBudgetExpenseFromSource(db, {
+          userId: 'usr-1',
+          budgetPlanId: plan.id,
+          categoryId: bySlug.get('gold_shabka')!,
+          title: 'تجهيز دبل وتوينز الخطوبة (عيار 21)',
+          vendorOrPayee: 'صاغة معتمدون',
+          amount: 42000,
+          paymentType: 'full',
+          status: 'paid',
+          paidBySide: 'groom',
+          paidAt: now.slice(0, 10),
+          sourceType: 'calculator_run',
+          sourceId: 'run-seed-gold-karim',
+          notes: 'فاتورة مدموغة بالوزن بالجرام',
+        });
+      }
+    }
+
     db.exec('COMMIT;');
-    return { seeded: needsStage1 || needsStage2, stage2Seeded: needsStage2 };
+    return {
+      seeded: needsStage1 || needsStage2 || needsStage3,
+      stage2Seeded: needsStage2,
+      stage3Seeded: needsStage3,
+    };
   } catch (err) {
     db.exec('ROLLBACK;');
     throw err;

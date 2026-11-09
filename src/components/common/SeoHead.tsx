@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { getCalculatorSummary } from '../../../shared/calculators';
 
 const BASE_ORIGIN = 'https://gawazinn.vercel.app';
 
@@ -44,6 +45,7 @@ export const SeoHead: React.FC = () => {
 
     const articleMatch = pathname.match(/^\/guides\/([^/]+)$/);
     const locMatch = pathname.match(/^\/locations\/([^/]+)$/);
+    const calcMatch = pathname.match(/^\/calculators\/([^/]+)$/);
 
     if (pathname === '/finishing') {
       titleAr = 'تشطيب الشقة والباقات الهندسية | جواز إن';
@@ -94,6 +96,25 @@ export const SeoHead: React.FC = () => {
     } else if (pathname === '/discover') {
       titleAr = 'دليل المحافظات والمناطق في مصر | جواز إن';
       titleEn = 'Discover Finishing & Wedding Services Across Egypt | GAWAZ INN';
+    } else if (pathname === '/calculators') {
+      titleAr = 'محرك الحاسبات الذكية للزواج وتشطيب الشقة (20 حاسبة) | جواز إن';
+      titleEn = '20 Smart Marriage, Apartment Finishing & Budget Calculators | GAWAZ INN';
+      descAr =
+        'احسب بدقة تكلفة تشطيب الشقة، كميات السيراميك والدهان، المطبخ، جهاز العريس والعروسة، الشبكة، الفرح، القسط والادخار.';
+      descEn =
+        'Calculate Egyptian apartment finishing, tile & paint quantities, kitchen per-meter cost, groom & bride trousseau, wedding, and savings.';
+    } else if (calcMatch) {
+      const slug = decodeURIComponent(calcMatch[1]);
+      const calc = getCalculatorSummary(slug);
+      if (calc) {
+        titleAr = `${calc.nameAr} | حاسبات جواز إن الذكية`;
+        titleEn = `${calc.nameEn} | GAWAZ INN Smart Calculators`;
+        descAr = calc.shortDescAr.slice(0, 158);
+        descEn = calc.shortDescEn.slice(0, 158);
+      }
+    } else if (pathname.startsWith('/my/budget')) {
+      titleAr = 'مدير ميزانية الزواج والمصروفات | جواز إن';
+      titleEn = 'Personal Wedding & Home Budget Manager | GAWAZ INN';
     } else if (pathname.startsWith('/portal')) {
       titleAr = 'بوابة طلباتي ومتابعاتي | جواز إن';
       titleEn = 'My Unified Requests Portal | GAWAZ INN';

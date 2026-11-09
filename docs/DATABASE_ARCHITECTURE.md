@@ -19,13 +19,12 @@
 7. `journey_tasks`: `id`, `user_id` (FK), `workspace_id`, `phase` (`early_start|engagement|12m|9m|6m|3m|1m|final_week|wedding_day|post_wedding`), `title_ar`, `title_en`, `description`, `owner_side` (`bride|groom|shared`), `due_date`, `depends_on_task_id` (FK), `status` (`todo|in_progress|done`), `priority`, `attachment_url`, `created_at`, `updated_at`
 8. `task_comments`: `id`, `task_id` (FK), `user_id` (FK), `body`, `created_at`
 
-### Finance & Early Start (Modules A, H)
-9. `savings_goals`: `id`, `user_id` (FK), `goal_type` (`marriage|apartment_purchase|finishing|furniture|appliances|wedding|emergency`), `title_ar`, `title_en`, `target_amount`, `current_amount`, `monthly_contribution`, `target_date`, `is_private`, `created_at`
-10. `savings_contributions`: `id`, `savings_goal_id` (FK), `user_id` (FK), `amount`, `contribution_date`, `note`, `streak_month`, `created_at`
-11. `savings_badges`: `id`, `user_id` (FK), `badge_key`, `awarded_at`
-12. `budget_plans` & `budget_categories`: `id`, `user_id` (FK), `workspace_id`, `name_ar`, `name_en`, `planned_amount`, `limit_amount`, `reserved_amount`, `actual_spent`
-13. `budget_expenses`: `id`, `budget_category_id` (FK), `user_id` (FK), `title`, `amount`, `payment_type` (`deposit|installment|full|emergency`), `status` (`planned|paid|upcoming`), `due_date`, `paid_at`, `source_type` (`manual|order|rfq_quote|booking`), `source_id` (unique index on `(source_type, source_id)` prevents duplicate transactions!)
-14. `calculator_runs`: `id`, `user_id` (nullable FK), `calculator_slug`, `inputs_json`, `outputs_json`, `created_at`
+### Finance & Budget Manager (Modules G, H — **Stage 3 Implemented in `003_stage3_calculators_budget.sql`**; Module A Scheduled Stage 4)
+9. *(Planned Stage 4)* `early_start_profiles`, `savings_goals`, `savings_contributions`, `savings_badges`, `early_start_milestones`: up to 10-year pre-marriage planning, private future fund goals, contribution streaks, and non-public achievement badges.
+10. `budget_plans` *(Implemented `003`)*: `id`, `user_id` (unique FK -> users), `title_ar`, `title_en`, `total_limit`, `emergency_reserve_target`, `expected_wedding_date`, `groom_share_percent`, `bride_share_percent`, `family_support_expected`, `notes`, `created_at`, `updated_at`.
+11. `budget_categories` *(Implemented `003`)*: `id`, `budget_plan_id` (FK), `user_id` (FK), `slug`, `name_ar`, `name_en`, `owner_side` (`groom|bride|shared|family`), `planned_amount`, `limit_amount`, `sort_order`, `created_at`, `updated_at` (unique `(budget_plan_id, slug)`).
+12. `budget_expenses` *(Implemented `003`)*: `id`, `budget_category_id` (FK), `user_id` (FK), `title`, `amount`, `paid_by_side`, `payment_type` (`deposit|installment|full|emergency`), `status` (`planned|paid|upcoming`), `due_date`, `paid_at`, `source_type` (`manual|order|booking|finishing_inquiry|calculator|rfq_quote`), `source_id`, `notes`, `created_at`, `updated_at` with partial unique index `idx_budget_expense_source_dedup ON budget_expenses(user_id, source_type, source_id) WHERE source_id IS NOT NULL` preventing duplicate syncs.
+13. `calculator_runs` *(Implemented `003`)*: `id`, `user_id` (FK -> users), `calculator_slug`, `saved_title`, `inputs_json`, `primary_value`, `outputs_json`, `linked_budget_category_id` (nullable FK -> budget_categories `ON DELETE SET NULL`), `created_at`.
 
 ### Knowledge, CMS & Encyclopedia (Modules C, D, E, O — **Stage 2 Implemented in `002_stage2_encyclopedias.sql`**)
 15. `content_categories`: `id`, `slug` (unique), `parent_id`, `domain` (`finishing|groom|bride|wedding|married_life|early_start|editorial`), `name_ar`, `name_en`, `description_ar`, `description_en`, `icon_name`, `sort_order`

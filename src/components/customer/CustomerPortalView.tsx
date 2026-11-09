@@ -14,6 +14,8 @@ import {
   AlertCircle,
   ShieldCheck,
   Mail,
+  Wallet,
+  Calculator,
 } from 'lucide-react';
 import { getRoleLabel } from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
@@ -144,6 +146,23 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/my/budget"
+                data-testid="portal-open-budget-link"
+                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
+              >
+                <Wallet className="w-4 h-4" />
+                <span>{language === 'ar' ? 'مدير الميزانية' : 'Budget Manager'}</span>
+              </Link>
+
+              <Link
+                to="/calculators"
+                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
+              >
+                <Calculator className="w-4 h-4" />
+                <span>{language === 'ar' ? 'الحاسبات الذكية' : 'Calculators'}</span>
+              </Link>
+
               {isStaff && (
                 <Link
                   to="/admin"

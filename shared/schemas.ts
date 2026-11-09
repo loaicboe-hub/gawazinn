@@ -260,3 +260,83 @@ export const userBridePlanSchema = z.object({
     .default([]),
 });
 
+export const calculateRequestSchema = z.object({
+  inputs: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).default({}),
+  saveRun: z.boolean().default(true),
+  savedTitle: z.string().trim().max(160).optional(),
+});
+
+export const updateBudgetPlanSchema = z.object({
+  titleAr: z.string().trim().min(2).max(160).optional(),
+  titleEn: z.string().trim().min(2).max(160).optional(),
+  totalBudgetLimit: z.number().min(10000).max(50000000).optional(),
+  groomContributionTarget: z.number().min(0).max(50000000).optional(),
+  brideContributionTarget: z.number().min(0).max(50000000).optional(),
+  familySupportTarget: z.number().min(0).max(50000000).optional(),
+  emergencyReserveTarget: z.number().min(0).max(10000000).optional(),
+});
+
+export const upsertBudgetCategorySchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/),
+  nameAr: z.string().trim().min(2).max(120),
+  nameEn: z.string().trim().min(2).max(120),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).default('shared'),
+  plannedAmount: z.number().min(0).max(50000000),
+  limitAmount: z.number().min(0).max(50000000),
+  sortOrder: z.number().int().min(0).max(100).optional(),
+});
+
+export const patchBudgetCategorySchema = z.object({
+  nameAr: z.string().trim().min(2).max(120).optional(),
+  nameEn: z.string().trim().min(2).max(120).optional(),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).optional(),
+  plannedAmount: z.number().min(0).max(50000000).optional(),
+  limitAmount: z.number().min(0).max(50000000).optional(),
+});
+
+export const createBudgetExpenseSchema = z.object({
+  categoryId: z.string().min(1).max(64).optional(),
+  categorySlug: z.string().min(1).max(64).optional(),
+  title: z.string().trim().min(2).max(180),
+  vendorOrPayee: z.string().trim().max(160).optional(),
+  amount: z.number().min(1).max(50000000),
+  paymentType: z.enum(['deposit', 'installment', 'full', 'emergency']).default('full'),
+  status: z.enum(['planned', 'upcoming', 'paid']).default('paid'),
+  paidBySide: z.enum(['groom', 'bride', 'shared']).default('shared'),
+  dueDate: z.string().trim().max(32).nullable().optional(),
+  paidAt: z.string().trim().max(32).nullable().optional(),
+  sourceType: z
+    .enum(['manual', 'calculator_run', 'order', 'finishing_inquiry', 'wedding_booking', 'rfq_quote'])
+    .default('manual'),
+  sourceId: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+export const patchBudgetExpenseSchema = z.object({
+  title: z.string().trim().min(2).max(180).optional(),
+  vendorOrPayee: z.string().trim().max(160).nullable().optional(),
+  amount: z.number().min(1).max(50000000).optional(),
+  paymentType: z.enum(['deposit', 'installment', 'full', 'emergency']).optional(),
+  status: z.enum(['planned', 'upcoming', 'paid']).optional(),
+  paidBySide: z.enum(['groom', 'bride', 'shared']).optional(),
+  dueDate: z.string().trim().max(32).nullable().optional(),
+  paidAt: z.string().trim().max(32).nullable().optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const importCalculatorToBudgetSchema = z.object({
+  calculatorSlug: z.string().trim().min(2).max(80),
+  inputs: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).default({}),
+  runId: z.string().trim().max(80).optional(),
+  categorySlug: z.string().trim().max(64).optional(),
+  title: z.string().trim().min(2).max(180).optional(),
+  mode: z.enum(['set_planned', 'add_planned_expense', 'add_deposit']).default('add_planned_expense'),
+  expenseAmount: z.number().min(1).max(50000000).optional(),
+  paidBySide: z.enum(['groom', 'bride', 'shared']).default('shared'),
+});
+

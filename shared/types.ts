@@ -650,6 +650,211 @@ export interface FaqEntry {
   sortOrder: number;
 }
 
+// =========================================================================
+// STAGE 3: UNIFIED 20 SMART CALCULATORS & WEDDING BUDGET MANAGER (MODULES G, H)
+// =========================================================================
+
+export type CalculatorCategoryGroup =
+  | 'comprehensive'
+  | 'finishing_home'
+  | 'trousseau'
+  | 'celebration_life'
+  | 'finance_planning';
+
+export type CalculatorFieldType = 'number' | 'select' | 'boolean';
+
+export interface CalculatorFieldOption {
+  value: string;
+  labelAr: string;
+  labelEn: string;
+}
+
+export interface CalculatorFieldDescriptor {
+  key: string;
+  type: CalculatorFieldType;
+  labelAr: string;
+  labelEn: string;
+  helperAr?: string;
+  helperEn?: string;
+  unitAr?: string;
+  unitEn?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: CalculatorFieldOption[];
+}
+
+export interface CalculatorBreakdownItem {
+  key: string;
+  labelAr: string;
+  labelEn: string;
+  amount: number;
+  unit?: string;
+  unitLabelAr?: string;
+  unitLabelEn?: string;
+  percent?: number;
+}
+
+export interface CalculatorOutput {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  primaryMetric: {
+    labelAr: string;
+    labelEn: string;
+    value: number;
+    unit: string;
+    unitLabelAr: string;
+    unitLabelEn: string;
+  };
+  secondaryMetrics: {
+    key: string;
+    labelAr: string;
+    labelEn: string;
+    value: string;
+    rawValue?: number;
+  }[];
+  breakdown: CalculatorBreakdownItem[];
+  formulaSummaryAr: string;
+  formulaSummaryEn: string;
+  assumptionsAr: string[];
+  assumptionsEn: string[];
+  warningsAr: string[];
+  warningsEn: string[];
+  suggestedBudgetCategorySlug: string;
+  suggestedBudgetTitleAr: string;
+  suggestedBudgetTitleEn: string;
+  recommendedChecklistItems?: {
+    domain: 'finishing' | 'groom' | 'bride' | 'wedding';
+    labelAr: string;
+    labelEn: string;
+  }[];
+  computedAt: string;
+}
+
+export interface CalculatorSummary {
+  slug: string;
+  order: number;
+  categoryGroup: CalculatorCategoryGroup;
+  nameAr: string;
+  nameEn: string;
+  shortDescAr: string;
+  shortDescEn: string;
+  iconName: string;
+  primaryUnit: string;
+  suggestedBudgetCategorySlug: string;
+  defaultInputs: Record<string, number | string | boolean>;
+  fields: CalculatorFieldDescriptor[];
+}
+
+export interface CalculatorRunRecord {
+  id: string;
+  userId?: string | null;
+  calculatorSlug: string;
+  inputs: Record<string, number | string | boolean>;
+  output: CalculatorOutput;
+  primaryValue: number;
+  savedTitle?: string | null;
+  createdAt: string;
+}
+
+export type BudgetOwnerSide = 'groom' | 'bride' | 'shared';
+export type BudgetPaymentType = 'deposit' | 'installment' | 'full' | 'emergency';
+export type BudgetExpenseStatus = 'planned' | 'upcoming' | 'paid';
+export type BudgetSourceType =
+  | 'manual'
+  | 'calculator_run'
+  | 'order'
+  | 'finishing_inquiry'
+  | 'wedding_booking'
+  | 'rfq_quote';
+
+export interface BudgetPlan {
+  id: string;
+  userId: string;
+  titleAr: string;
+  titleEn: string;
+  totalBudgetLimit: number;
+  groomContributionTarget: number;
+  brideContributionTarget: number;
+  familySupportTarget: number;
+  emergencyReserveTarget: number;
+  currency: string;
+  updatedAt: string;
+}
+
+export interface BudgetCategory {
+  id: string;
+  budgetPlanId: string;
+  userId: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  ownerSide: BudgetOwnerSide;
+  plannedAmount: number;
+  limitAmount: number;
+  paidAmount: number;
+  upcomingAmount: number;
+  totalCommitted: number;
+  remainingAmount: number;
+  isOverLimit: boolean;
+  sortOrder: number;
+}
+
+export interface BudgetExpense {
+  id: string;
+  budgetPlanId: string;
+  budgetCategoryId: string;
+  categorySlug: string;
+  userId: string;
+  title: string;
+  vendorOrPayee?: string | null;
+  amount: number;
+  paymentType: BudgetPaymentType;
+  status: BudgetExpenseStatus;
+  paidBySide: BudgetOwnerSide;
+  dueDate?: string | null;
+  paidAt?: string | null;
+  sourceType: BudgetSourceType;
+  sourceId?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetAlert {
+  type: 'over_limit' | 'upcoming_payment' | 'reserve_low';
+  severity: 'warning' | 'critical';
+  titleAr: string;
+  titleEn: string;
+  detailAr: string;
+  detailEn: string;
+  categorySlug?: string;
+  expenseId?: string;
+}
+
+export interface BudgetOverviewPayload {
+  plan: BudgetPlan;
+  categories: BudgetCategory[];
+  expenses: BudgetExpense[];
+  alerts: BudgetAlert[];
+  summary: {
+    totalBudgetLimit: number;
+    totalPlanned: number;
+    totalPaid: number;
+    totalUpcoming: number;
+    totalCommitted: number;
+    remainingFromLimit: number;
+    utilizationPercent: number;
+    groomAllocated: number;
+    brideAllocated: number;
+    sharedAllocated: number;
+    groomPaid: number;
+    bridePaid: number;
+    sharedPaid: number;
+  };
+}
+
 export interface PaginatedMeta {
   page: number;
   limit: number;

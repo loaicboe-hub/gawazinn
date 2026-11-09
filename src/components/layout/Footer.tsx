@@ -14,6 +14,8 @@ import {
   CreditCard,
   Wrench,
   HelpCircle,
+  Calculator,
+  Wallet,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -136,6 +138,28 @@ export const Footer: React.FC = () => {
             >
               <HelpCircle className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/calculators"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Calculator className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? '20 حاسبة ذكية' : '20 Calculators'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/my/budget"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Wallet className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'ميزانية الزواج' : 'Wedding Budget'}</span>
             </Link>
 
             <span>•</span>

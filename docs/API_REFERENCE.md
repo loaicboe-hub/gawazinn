@@ -24,10 +24,15 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET/PUT /api/v1/my/groom-plan`, `GET/PUT /api/v1/my/bride-plan` *(Stage 2, Auth-Required)* — Strict owner-scoped SQLite persistence with Zod validation & audit logs.
 
 ## Calculators & Financial Planning
-- `POST /api/v1/calculators/:slug/calculate` — Server-validated execution of shared calculation engine (`shared/calculators/`) + optional saved run for authenticated users.
-- `GET /api/v1/early-start/goals` / `POST` / `PATCH /:id` / `DELETE /:id` — Owner-only future goals & My Future Fund.
-- `POST /api/v1/early-start/goals/:id/contributions` — Atomic transaction incrementing goal savings, recording contribution history, updating streak & awarding badges.
-- `GET/POST/PATCH/DELETE /api/v1/budget/plans`, `/categories`, `/expenses` — Personal/workspace budget manager with idempotent `(source_type, source_id)` linking.
+- `GET /api/v1/calculators` *(Stage 3 Public)* — Returns catalog summaries & field metadata for all 20 Smart Calculators (`?group=finishing_home|trousseau_celebration|finance_planning`).
+- `POST /api/v1/calculators/:slug/calculate` *(Stage 3 Public + Optional Save)* — Server-validated execution of `shared/calculators/` calculation engine; if `saveRun: true`, saves snapshot to `calculator_runs` for authenticated users (`401` if guest).
+- `GET /api/v1/my/calculator-runs` & `DELETE /api/v1/my/calculator-runs/:id` *(Stage 3 Auth-Required)* — Strict owner-scoped history of saved calculator snapshots.
+- `GET /api/v1/budget/overview`, `PATCH /api/v1/budget/plan` *(Stage 3 Auth-Required)* — Hydrates owner's Wedding Budget Manager (KPIs, overrun/80% warnings, category breakdowns, all expenses) and updates budget limits, expected wedding date, groom/bride ratio, & emergency reserve.
+- `POST/PATCH /api/v1/budget/categories` & `/:id` *(Stage 3 Auth-Required)* — Custom budget buckets and planned/limit cap management.
+- `POST/PATCH/DELETE /api/v1/budget/expenses` & `/:id` *(Stage 3 Auth-Required)* — Full planned/upcoming/paid expense tracking, payment confirmation (`mark paid`), and side attribution (`groom|bride|shared|family`).
+- `POST /api/v1/budget/import-from-calculator` *(Stage 3 Auth-Required)* — Atomic run of `shared/calculators/` linked straight into `budget_categories`/`budget_expenses` (`add_planned_expense`, `set_planned`, or `add_deposit` modes).
+- `POST /api/v1/budget/sync-transactions` *(Stage 3 Auth-Required)* — Idempotent sync importing paid/pending orders and wedding hall bookings into `budget_expenses` without duplicating (`idx_budget_expense_source_dedup`).
+- *(Planned Stage 4)* `GET/PUT /api/v1/early-start/profile`, `GET /api/v1/early-start/overview`, `POST/PATCH/DELETE /api/v1/early-start/goals`, `POST /api/v1/early-start/goals/:id/contributions` — Owner-only Future Fund, savings streaks & private badges.
 
 ## Personal Journey & Shared Workspace
 - `GET/POST/PATCH/DELETE /api/v1/journey/tasks` — Tasks, dependencies, checklists, timeline phases.

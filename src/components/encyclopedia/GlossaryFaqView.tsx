@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { getCalculatorSummary } from '../../../shared/calculators';
 import {
   BookOpen,
   Search,
@@ -28,22 +29,15 @@ const DOMAIN_FILTERS: { key: DomainFilter; ar: string; en: string }[] = [
 
 function resolveCalculatorRoute(slug?: string): { to: string; ar: string; en: string } | null {
   if (!slug) return null;
-  if (slug.includes('finishing')) {
-    return { to: '/finishing', ar: 'حاسبة التشطيب', en: 'Finishing Calculator' };
+  const matched = getCalculatorSummary(slug);
+  if (matched) {
+    return {
+      to: `/calculators/${matched.slug}`,
+      ar: matched.nameAr,
+      en: matched.nameEn,
+    };
   }
-  if (slug.includes('installment')) {
-    return { to: '/installments', ar: 'حاسبة التقسيط', en: 'Installments Calculator' };
-  }
-  if (slug.includes('groom')) {
-    return { to: '/groom', ar: 'مصمم باقات العريس', en: 'Groom Package Builder' };
-  }
-  if (slug.includes('bride')) {
-    return { to: '/bride', ar: 'منظم جهاز العروسة', en: 'Bridal Trousseau Planner' };
-  }
-  if (slug.includes('wedding')) {
-    return { to: '/wedding', ar: 'مخطط الفرح', en: 'Wedding Planner' };
-  }
-  return { to: '/installments', ar: 'أدوات التخطيط المالي', en: 'Financial Tools' };
+  return { to: '/calculators', ar: 'محرك الـ 20 حاسبة', en: '20 Smart Calculators' };
 }
 
 export const GlossaryFaqView: React.FC = () => {

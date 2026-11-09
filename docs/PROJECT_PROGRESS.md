@@ -2,7 +2,7 @@
 
 **Project Repository:** `d:\PROJECTS\gawazinn` (`origin`: `https://github.com/loaicboe-hub/gawazinn.git`, branch `main`)  
 **Live Baseline:** `https://gawazinn.vercel.app/`  
-**Current Active Phase:** Stage 2 Completed → Starting **Stage 3** (Unified 20 Smart Calculators & Wedding Budget Manager)
+**Current Active Phase:** Stage 3 Completed → Starting **Stage 4** (Early Start & My Future Fund — Up to 10 Years Before Marriage)
 
 ---
 
@@ -12,9 +12,9 @@
 |---|---|---|---|---|
 | **Stage 0** | Investigation, Live Inspection, Baseline Check & Blueprint Docs | **Completed** | `oxlint` (0 err / 100 warn), `tsc -b && vite build` (`1.81s`), live vs. local byte comparison (`500,931` bytes), headless Chrome desktop & mobile audit | `1755d71` |
 | **Stage 1** | Core Architecture, DB (`node:sqlite` + PG parity), Auth/RBAC, Routing, SEO & CMS Foundation | **Completed** | `oxlint` (0 err), `tsc -b` (0 err), `vitest run` (16/16 pass across unit, React UI & SQLite API integration), `vite build` (chunked, max chunk `< 250 kB`), `test:e2e` headless Chrome 1440px & Mobile RTL 375px pass (0 console/page/HTTP>=400 errors) | `f482610` |
-| **Stage 2** | Complete Encyclopedia & Knowledge Hub (Finishing 22 stages, Materials, Contractors, Groom `100k–500k` Configurator, Bride 19-Cat Smart Planner, Glossary & FAQs) | **Completed** | `oxlint` (0 err / 10 warn), `tsc -b` (0 err), `vitest run` (23/23 pass across 5 files), `vite build` (`1.33s`, Stage 2 lazy chunks `< 50 kB`), `test:e2e` (`stage1.e2e` + `stage2.e2e` desktop 1440px & mobile RTL 375px pass) | Stage 2 commit |
-| **Stage 3** | Unified 20 Smart Calculators & Wedding Budget Manager | In Progress | — | — |
-| **Stage 4** | Early Start & My Future Fund (Up to 10 Years Before Marriage) | Pending | — | — |
+| **Stage 2** | Complete Encyclopedia & Knowledge Hub (Finishing 22 stages, Materials, Contractors, Groom `100k–500k` Configurator, Bride 19-Cat Smart Planner, Glossary & FAQs) | **Completed** | `oxlint` (0 err / 10 warn), `tsc -b` (0 err), `vitest run` (23/23 pass across 5 files), `vite build` (`1.33s`, Stage 2 lazy chunks `< 50 kB`), `test:e2e` (`stage1.e2e` + `stage2.e2e` desktop 1440px & mobile RTL 375px pass) | `595f439` |
+| **Stage 3** | Unified 20 Smart Calculators & Wedding Budget Manager | **Completed** | `oxlint` (0 err / 0 Stage 3 warn), `tsc -b` (0 err), `vitest run` (**30/30 pass** across 7 files including `stage3Calculators.test.tsx` & `stage3Api.test.ts`), `vite build` (`1.58s`, lazy Stage 3 chunks), `test:e2e` (`stage1` + `stage2` + `stage3` desktop 1440px & mobile RTL 375px pass with 0 errors) | Stage 3 commit |
+| **Stage 4** | Early Start & My Future Fund (Up to 10 Years Before Marriage) | In Progress | — | — |
 | **Stage 5** | 11-Stage Lifecycle Onboarding, Journey Planner & My Gawaz Inn + Shared Workspace | Pending | — | — |
 | **Stage 6** | Product Encyclopedia, Comparisons & Shopping Lists | Pending | — | — |
 | **Stage 7** | Vendor Marketplace, Verification Tiers, Vendor Portal & Local SEO | Pending | — | — |
@@ -45,3 +45,11 @@
 - **API & Persistence:** Exposed `/api/v1/encyclopedia/bundle` + granular public endpoints (`/api/v1/finishing/*`, `/api/v1/contractors`, `/api/v1/groom/encyclopedia`, `/api/v1/bride/encyclopedia`, `/api/v1/glossary`, `/api/v1/faqs`), added strict owner-isolated `GET/PUT /api/v1/my/groom-plan` & `GET/PUT /api/v1/my/bride-plan` with Zod validation and audit logging, and extended `/sitemap.xml` with `/finishing/*`, `/groom/encyclopedia`, `/bride/encyclopedia`, `/glossary`, and `/faqs`.
 - **Frontend Views & Plazas (Red/White Preserved):** Delivered `FinishingEncyclopediaView.tsx` (`/finishing/encyclopedia`, `/finishing/materials`, `/finishing/contractors`), upgraded `FinishingView.tsx` (Before/After governorate filter + medium 4,300 EGP/m² quote sync), interactive Groom `100k–500k` configurator + `GroomEncyclopediaView.tsx` (`/groom/encyclopedia`), Smart Bride 19-category Trousseau Planner + `BrideEncyclopediaView.tsx` (`/bride/encyclopedia`), and `GlossaryFaqView.tsx` (`/glossary`, `/faqs`), plus race-safe post-login hydration in `AppContext.tsx`.
 - **Automated Verification:** Verified `npm run db:migrate`, `npm run db:seed`, `npm run lint` (`0` errors, `10` warnings), `npm run typecheck` (`0` errors), `npm run test` (**23/23 tests** across 5 suites including `stage2DataAndPlanners.test.tsx` & `stage2Api.test.ts`), `npm run build` (`1.33s`), and `npm run test:e2e` (`stage1.e2e.ts` + `stage2.e2e.ts` desktop `1440x900` & mobile RTL `375x812` passing cleanly).
+
+---
+
+## Verified Stage 3 Evidence (`2026-11-09`)
+- **20 Smart Calculators Engine (`shared/calculators/`):** Implemented all 20 server+client deterministic calculators (`#1..#20` across Finishing & Home, Trousseau & Celebration, Finance & Long-Term Planning: `finishing-cost`, `finishing-stage`, `tiles-ceramic`, `paint-quantities`, `electricity-loads`, `kitchen-sizing`, `ac-btu`, `groom-package`, `bride-trousseau`, `gold-shabka`, `wedding-budget`, `guest-count`, `catering-quantities`, `family-contributions`, `groom-vs-bride`, `marriage-budget`, `installment-plan`, `monthly-savings`, `long-term-projections`, `emergency-buffer`) with transparent formulas, bilingual assumptions, breakdown visualizations, and cross-references matching every article and glossary term.
+- **Database & Owner-Isolated Budget Manager (`003_stage3_calculators_budget.sql`):** Added SQLite + PostgreSQL parity tables (`calculator_runs`, `budget_plans`, `budget_categories`, `budget_expenses`) with partial unique deduplication index `idx_budget_expense_source_dedup`, atomic transactions in `server/budgetService.ts`, full CRUD `/api/v1/budget/*`, `POST /api/v1/budget/import-from-calculator` (one-click calculator-to-budget transfer), and idempotent `POST /api/v1/budget/sync-transactions` pulling platform orders & wedding bookings without duplicates.
+- **Frontend Plazas, Navigation & Cross-Links:** Delivered `/calculators` (`CalculatorsHubView.tsx`), `/calculators/:slug` (`CalculatorDetailView.tsx`), and `/my/budget` (`BudgetManagerView.tsx` with KPIs, overrun alerts, category cap editing, add/mark-paid/delete expenses, CSV BOM export, print report) integrated seamlessly across Header, Footer, `SplashHome`, articles, glossary pills, `FinishingView`, `FinancingView`, and `CustomerPortalView`.
+- **Automated Verification:** Verified `npm run lint` (`0` errors), `npm run typecheck` (`0` errors), `npm run test` (**30/30** tests across 7 suites including `stage3Calculators.test.tsx` & `stage3Api.test.ts`), `npm run build` (`1.58s`), and `npm run test:e2e` (`stage1.e2e.ts` + `stage2.e2e.ts` + `stage3.e2e.ts` desktop `1440x900` & mobile RTL `375x812` passing cleanly with 0 errors and 0 horizontal overflow).

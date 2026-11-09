@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { getCalculatorSummary } from '../../../shared/calculators';
 import type { ContentDomain } from '../../types';
 import {
   BookOpen,
@@ -201,45 +202,74 @@ export const ArticleDetailView: React.FC = () => {
         )}
 
         {/* Contextual CTA Card */}
-        <div className="rounded-3xl bg-gradient-to-br from-[#FDE8ED] to-[#FAF7F2] border border-[#D91B3E]/20 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D91B3E]">
-              <Calculator className="w-4 h-4" />
-              <span>{language === 'ar' ? 'خطوتك التالية على جواز إن' : 'Apply This Guide'}</span>
+        <div className="rounded-3xl bg-gradient-to-br from-[#FDE8ED] to-[#FAF7F2] border border-[#D91B3E]/20 p-6 sm:p-8 flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D91B3E]">
+                <Calculator className="w-4 h-4" />
+                <span>{language === 'ar' ? 'خطوتك التالية على جواز إن' : 'Apply This Guide'}</span>
+              </div>
+              <h3 className="text-lg font-black text-[#2A1D20]">
+                {language === 'ar'
+                  ? 'استكشف الباقات والمنتجات والأدوات المرتبطة بهذا الدليل'
+                  : 'Explore Related Packages, Products & Cost Estimators'}
+              </h3>
             </div>
-            <h3 className="text-lg font-black text-[#2A1D20]">
-              {language === 'ar'
-                ? 'استكشف الباقات والمنتجات والأدوات المرتبطة بهذا الدليل'
-                : 'Explore Related Packages, Products & Cost Estimators'}
-            </h3>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Link
+                to={domainCtaPath}
+                className="px-5 py-3 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition flex items-center gap-2"
+              >
+                <span>{language === 'ar' ? 'افتح القسم المختص' : 'Open Section'}</span>
+                <ArrowIcon className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/glossary"
+                className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
+              >
+                {language === 'ar' ? 'قاموس المصطلحات' : 'Glossary'}
+              </Link>
+              <Link
+                to="/faqs"
+                className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
+              >
+                {language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}
+              </Link>
+              <Link
+                to="/calculators"
+                className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
+              >
+                {language === 'ar' ? 'كل الحاسبات (20)' : 'All 20 Calculators'}
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <Link
-              to={domainCtaPath}
-              className="px-5 py-3 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition flex items-center gap-2"
-            >
-              <span>{language === 'ar' ? 'افتح القسم المختص' : 'Open Section'}</span>
-              <ArrowIcon className="w-3.5 h-3.5" />
-            </Link>
-            <Link
-              to="/glossary"
-              className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
-            >
-              {language === 'ar' ? 'قاموس المصطلحات' : 'Glossary'}
-            </Link>
-            <Link
-              to="/faqs"
-              className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
-            >
-              {language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}
-            </Link>
-            <Link
-              to="/installments"
-              className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
-            >
-              {language === 'ar' ? 'حاسبة التقسيط' : 'Installments'}
-            </Link>
-          </div>
+
+          {article.relatedCalculators.length > 0 && (
+            <div className="pt-3 border-t border-[#D91B3E]/15 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-[#B31331]">
+                {language === 'ar' ? 'حاسبات مرتبطة بهذا الدليل:' : 'Linked Smart Calculators:'}
+              </span>
+              {article.relatedCalculators.map((calcSlug) => {
+                const summary = getCalculatorSummary(calcSlug);
+                const to = summary ? `/calculators/${summary.slug}` : '/calculators';
+                const label = summary
+                  ? language === 'ar'
+                    ? summary.nameAr
+                    : summary.nameEn
+                  : calcSlug;
+                return (
+                  <Link
+                    key={calcSlug}
+                    to={to}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#D91B3E] border border-[#D91B3E]/25 hover:bg-[#D91B3E] hover:text-white text-[11px] font-bold transition"
+                  >
+                    <Calculator className="w-3 h-3" />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Related Articles */}

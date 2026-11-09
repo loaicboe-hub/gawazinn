@@ -32,6 +32,13 @@ import type {
   FaqEntry,
   UserGroomPlanState,
   UserBridePlanState,
+  CalculatorSummary,
+  CalculatorOutput,
+  CalculatorRunRecord,
+  BudgetOverviewPayload,
+  BudgetOwnerSide,
+  BudgetPaymentType,
+  BudgetExpenseStatus,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -61,6 +68,7 @@ import {
   BRIDE_CHECKLIST_TEMPLATES,
 } from '../../shared/trousseauEncyclopediaData';
 import { STAGE2_GLOSSARY_TERMS, STAGE2_FAQ_ITEMS } from '../../shared/knowledgeGlossaryData';
+import { listCalculatorSummaries, runCalculator } from '../../shared/calculators';
 import { ADMIN_PANEL_ROLES, hasAnyRole } from '../../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../../shared/catalogMeta';
 import { apiRequest, ApiClientError } from '../services/api';
@@ -74,6 +82,8 @@ export type SectionKey =
   | 'installments'
   | 'socialSupport'
   | 'encyclopedia'
+  | 'calculators'
+  | 'budget'
   | 'discover'
   | 'customerPortal'
   | 'admin';
@@ -87,6 +97,8 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   installments: '/installments',
   socialSupport: '/social-support',
   encyclopedia: '/encyclopedia',
+  calculators: '/calculators',
+  budget: '/my/budget',
   discover: '/discover',
   customerPortal: '/portal',
   admin: '/admin',
@@ -281,6 +293,81 @@ interface AppContextType {
   settings: PlatformSettings;
   updateSettings: (settings: PlatformSettings) => Promise<void>;
 
+  // Stage 3: Unified 20 Smart Calculators & Wedding Budget Manager
+  calculatorSummaries: CalculatorSummary[];
+  calculatorRuns: CalculatorRunRecord[];
+  budgetOverview: BudgetOverviewPayload | null;
+  runAndSaveCalculator: (
+    slug: string,
+    inputs: Record<string, number | string | boolean>,
+    savedTitle?: string,
+  ) => Promise<{ runId: string | null; output: CalculatorOutput }>;
+  deleteCalculatorRun: (runId: string) => Promise<void>;
+  refreshBudgetOverview: () => Promise<void>;
+  updateBudgetPlan: (patch: {
+    titleAr?: string;
+    titleEn?: string;
+    totalBudgetLimit?: number;
+    groomContributionTarget?: number;
+    brideContributionTarget?: number;
+    familySupportTarget?: number;
+    emergencyReserveTarget?: number;
+  }) => Promise<void>;
+  upsertBudgetCategory: (input: {
+    slug: string;
+    nameAr: string;
+    nameEn: string;
+    ownerSide: BudgetOwnerSide;
+    plannedAmount: number;
+    limitAmount: number;
+  }) => Promise<void>;
+  updateBudgetCategory: (
+    categoryId: string,
+    patch: {
+      nameAr?: string;
+      nameEn?: string;
+      ownerSide?: BudgetOwnerSide;
+      plannedAmount?: number;
+      limitAmount?: number;
+    },
+  ) => Promise<void>;
+  createBudgetExpense: (input: {
+    categoryId?: string;
+    categorySlug?: string;
+    title: string;
+    vendorOrPayee?: string;
+    amount: number;
+    paymentType: BudgetPaymentType;
+    status: BudgetExpenseStatus;
+    paidBySide: BudgetOwnerSide;
+    dueDate?: string | null;
+    notes?: string;
+  }) => Promise<void>;
+  updateBudgetExpense: (
+    expenseId: string,
+    patch: {
+      title?: string;
+      amount?: number;
+      status?: BudgetExpenseStatus;
+      paymentType?: BudgetPaymentType;
+      paidBySide?: BudgetOwnerSide;
+      dueDate?: string | null;
+      notes?: string | null;
+    },
+  ) => Promise<void>;
+  deleteBudgetExpense: (expenseId: string) => Promise<void>;
+  importCalculatorToBudget: (input: {
+    calculatorSlug: string;
+    inputs: Record<string, number | string | boolean>;
+    runId?: string;
+    categorySlug?: string;
+    title?: string;
+    mode: 'set_planned' | 'add_planned_expense' | 'add_deposit';
+    expenseAmount?: number;
+    paidBySide?: BudgetOwnerSide;
+  }) => Promise<{ runId: string; output: CalculatorOutput }>;
+  syncBudgetTransactions: () => Promise<number>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -338,6 +425,8 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/wedding')) return 'wedding';
   if (pathname.startsWith('/installments')) return 'installments';
   if (pathname.startsWith('/social-support')) return 'socialSupport';
+  if (pathname.startsWith('/calculators')) return 'calculators';
+  if (pathname.startsWith('/my/budget')) return 'budget';
   if (
     pathname.startsWith('/encyclopedia') ||
     pathname.startsWith('/guides') ||
@@ -462,6 +551,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>(STAGE2_GLOSSARY_TERMS);
   const [faqItems, setFaqItems] = useState<FaqEntry[]>(STAGE2_FAQ_ITEMS);
 
+  // Stage 3 Calculators & Budget State
+  const [calculatorSummaries, setCalculatorSummaries] = useState<CalculatorSummary[]>(() =>
+    listCalculatorSummaries(),
+  );
+  const [calculatorRuns, setCalculatorRuns] = useState<CalculatorRunRecord[]>([]);
+  const [budgetOverview, setBudgetOverview] = useState<BudgetOverviewPayload | null>(null);
+
   // Scoped Transaction State
   const [finishingInquiries, setFinishingInquiries] = useState<FinishingInquiry[]>([]);
   const [weddingBookings, setWeddingBookings] = useState<WeddingBookingRequest[]>([]);
@@ -498,6 +594,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setWeddingBookings([]);
       setFinancingApplications([]);
       setSupportCases([]);
+      setCalculatorRuns([]);
+      setBudgetOverview(null);
       setAdminStats(null);
       setAdminUsers([]);
       setAuditLogs([]);
@@ -535,15 +633,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan] = await Promise.all([
-        apiRequest<Order[]>('/orders'),
-        apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
-        apiRequest<WeddingBookingRequest[]>('/wedding-bookings'),
-        apiRequest<FinancingApplication[]>('/financing-applications'),
-        apiRequest<SupportCase[]>('/support-cases'),
-        apiRequest<UserGroomPlanState>('/my/groom-plan').catch(() => DEFAULT_GUEST_GROOM_PLAN),
-        apiRequest<UserBridePlanState>('/my/bride-plan').catch(() => createDefaultGuestBridePlan()),
-      ]);
+      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget] =
+        await Promise.all([
+          apiRequest<Order[]>('/orders'),
+          apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
+          apiRequest<WeddingBookingRequest[]>('/wedding-bookings'),
+          apiRequest<FinancingApplication[]>('/financing-applications'),
+          apiRequest<SupportCase[]>('/support-cases'),
+          apiRequest<UserGroomPlanState>('/my/groom-plan').catch(() => DEFAULT_GUEST_GROOM_PLAN),
+          apiRequest<UserBridePlanState>('/my/bride-plan').catch(() => createDefaultGuestBridePlan()),
+          apiRequest<CalculatorRunRecord[]>('/my/calculator-runs').catch(() => []),
+          apiRequest<BudgetOverviewPayload>('/budget/overview').catch(() => null),
+        ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
       setWeddingBookings(uWed);
@@ -553,6 +654,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       userBridePlanRef.current = uBridePlan;
       setUserGroomPlan(uGroomPlan);
       setUserBridePlan(uBridePlan);
+      setCalculatorRuns(uCalcRuns);
+      setBudgetOverview(uBudget);
     } catch {
       // Non-fatal fallback
     }
@@ -584,12 +687,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let active = true;
     (async () => {
       try {
-        const [payload, encBundle] = await Promise.all([
+        const [payload, encBundle, calcMeta] = await Promise.all([
           apiRequest<BootstrapPayload>('/bootstrap'),
           apiRequest<EncyclopediaBundlePayload>('/encyclopedia/bundle').catch(() => null),
+          apiRequest<CalculatorSummary[]>('/calculators').catch(() => null),
         ]);
         if (!active) return;
         setApiConnected(true);
+        if (calcMeta && calcMeta.length > 0) setCalculatorSummaries(calcMeta);
         if (payload.products.length > 0) setProducts(payload.products);
         if (payload.finishingPackages.length > 0) setFinishingPackages(payload.finishingPackages);
         if (payload.finishingServices.length > 0) setFinishingServices(payload.finishingServices);
@@ -1289,6 +1394,237 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(language === 'ar' ? 'تم حفظ إعدادات المنصة بنجاح.' : 'Settings saved successfully.');
   };
 
+  // Stage 3: Unified Calculators & Wedding Budget Manager Methods
+  const runAndSaveCalculator = useCallback(
+    async (
+      slug: string,
+      inputs: Record<string, number | string | boolean>,
+      savedTitle?: string,
+    ): Promise<{ runId: string | null; output: CalculatorOutput }> => {
+      if (apiConnected && currentUser) {
+        const res = await apiRequest<{ runId: string | null; output: CalculatorOutput }>(
+          `/calculators/${encodeURIComponent(slug)}/calculate`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ inputs, saveRun: true, savedTitle }),
+          },
+        );
+        if (res.runId) {
+          const updatedRuns = await apiRequest<CalculatorRunRecord[]>('/my/calculator-runs').catch(
+            () => null,
+          );
+          if (updatedRuns) setCalculatorRuns(updatedRuns);
+        }
+        showToast(
+          language === 'ar'
+            ? 'تم حفظ نتيجة الحاسبة في سجل حسابك.'
+            : 'Calculation saved to your account history.',
+        );
+        return res;
+      }
+
+      const output = runCalculator(slug, inputs);
+      showToast(
+        language === 'ar'
+          ? 'تم التحديث — سجل الدخول لحفظ النتائج في ميزانيتك السحابية.'
+          : 'Updated locally — sign in to save runs to your Wedding Budget.',
+      );
+      return { runId: null, output };
+    },
+    [apiConnected, currentUser, language, showToast],
+  );
+
+  const deleteCalculatorRun = useCallback(
+    async (runId: string) => {
+      if (apiConnected && currentUser) {
+        await apiRequest(`/my/calculator-runs/${encodeURIComponent(runId)}`, { method: 'DELETE' });
+      }
+      setCalculatorRuns((prev) => prev.filter((r) => r.id !== runId));
+      showToast(language === 'ar' ? 'تم حذف النتيجة المحفوظة.' : 'Saved run deleted.');
+    },
+    [apiConnected, currentUser, language, showToast],
+  );
+
+  const refreshBudgetOverview = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const overview = await apiRequest<BudgetOverviewPayload>('/budget/overview');
+    setBudgetOverview(overview);
+  }, [apiConnected, currentUser]);
+
+  const updateBudgetPlan = useCallback(
+    async (patch: {
+      titleAr?: string;
+      titleEn?: string;
+      totalBudgetLimit?: number;
+      groomContributionTarget?: number;
+      brideContributionTarget?: number;
+      familySupportTarget?: number;
+      emergencyReserveTarget?: number;
+    }) => {
+      const overview = await apiRequest<BudgetOverviewPayload>('/budget/plan', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم تحديث سقف وأهداف الميزانية.' : 'Budget limits updated.');
+    },
+    [language, showToast],
+  );
+
+  const upsertBudgetCategory = useCallback(
+    async (input: {
+      slug: string;
+      nameAr: string;
+      nameEn: string;
+      ownerSide: BudgetOwnerSide;
+      plannedAmount: number;
+      limitAmount: number;
+    }) => {
+      const overview = await apiRequest<BudgetOverviewPayload>('/budget/categories', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم حفظ بند الميزانية.' : 'Budget category saved.');
+    },
+    [language, showToast],
+  );
+
+  const updateBudgetCategory = useCallback(
+    async (
+      categoryId: string,
+      patch: {
+        nameAr?: string;
+        nameEn?: string;
+        ownerSide?: BudgetOwnerSide;
+        plannedAmount?: number;
+        limitAmount?: number;
+      },
+    ) => {
+      const overview = await apiRequest<BudgetOverviewPayload>(
+        `/budget/categories/${encodeURIComponent(categoryId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم تحديث تخصيص البند.' : 'Category allocation updated.');
+    },
+    [language, showToast],
+  );
+
+  const createBudgetExpense = useCallback(
+    async (input: {
+      categoryId?: string;
+      categorySlug?: string;
+      title: string;
+      vendorOrPayee?: string;
+      amount: number;
+      paymentType: BudgetPaymentType;
+      status: BudgetExpenseStatus;
+      paidBySide: BudgetOwnerSide;
+      dueDate?: string | null;
+      notes?: string;
+    }) => {
+      const overview = await apiRequest<BudgetOverviewPayload>('/budget/expenses', {
+        method: 'POST',
+        body: JSON.stringify({ ...input, sourceType: 'manual' }),
+      });
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم تسجيل المصروف/الالتزام بنجاح.' : 'Expense recorded.');
+    },
+    [language, showToast],
+  );
+
+  const updateBudgetExpense = useCallback(
+    async (
+      expenseId: string,
+      patch: {
+        title?: string;
+        amount?: number;
+        status?: BudgetExpenseStatus;
+        paymentType?: BudgetPaymentType;
+        paidBySide?: BudgetOwnerSide;
+        dueDate?: string | null;
+        notes?: string | null;
+      },
+    ) => {
+      const overview = await apiRequest<BudgetOverviewPayload>(
+        `/budget/expenses/${encodeURIComponent(expenseId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم تحديث حالة البند.' : 'Expense status updated.');
+    },
+    [language, showToast],
+  );
+
+  const deleteBudgetExpense = useCallback(
+    async (expenseId: string) => {
+      const overview = await apiRequest<BudgetOverviewPayload>(
+        `/budget/expenses/${encodeURIComponent(expenseId)}`,
+        { method: 'DELETE' },
+      );
+      setBudgetOverview(overview);
+      showToast(language === 'ar' ? 'تم حذف المصروف.' : 'Expense deleted.');
+    },
+    [language, showToast],
+  );
+
+  const importCalculatorToBudget = useCallback(
+    async (input: {
+      calculatorSlug: string;
+      inputs: Record<string, number | string | boolean>;
+      runId?: string;
+      categorySlug?: string;
+      title?: string;
+      mode: 'set_planned' | 'add_planned_expense' | 'add_deposit';
+      expenseAmount?: number;
+      paidBySide?: BudgetOwnerSide;
+    }): Promise<{ runId: string; output: CalculatorOutput }> => {
+      const res = await apiRequest<{
+        runId: string;
+        output: CalculatorOutput;
+        overview: BudgetOverviewPayload;
+      }>('/budget/import-from-calculator', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setBudgetOverview(res.overview);
+      const updatedRuns = await apiRequest<CalculatorRunRecord[]>('/my/calculator-runs').catch(() => null);
+      if (updatedRuns) setCalculatorRuns(updatedRuns);
+      showToast(
+        language === 'ar'
+          ? 'تم ربط نتيجة الحاسبة بميزانية زواجك دون تكرار.'
+          : 'Linked calculation directly into your Wedding Budget Manager.',
+      );
+      return { runId: res.runId, output: res.output };
+    },
+    [language, showToast],
+  );
+
+  const syncBudgetTransactions = useCallback(async () => {
+    const res = await apiRequest<{ syncedCount: number; overview: BudgetOverviewPayload }>(
+      '/budget/sync-transactions',
+      { method: 'POST' },
+    );
+    setBudgetOverview(res.overview);
+    showToast(
+      language === 'ar'
+        ? res.syncedCount > 0
+          ? `تمت مزامنة ${res.syncedCount} معاملات جديدة في الميزانية.`
+          : 'جميع طلباتك وحجوزاتك متزامنة بالفعل بدون تكرار.'
+        : res.syncedCount > 0
+          ? `Synced ${res.syncedCount} new transactions cleanly.`
+          : 'All orders & bookings are already synced with zero duplicates.',
+    );
+    return res.syncedCount;
+  }, [language, showToast]);
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -1392,6 +1728,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         finishingServices,
         settings,
         updateSettings,
+        calculatorSummaries,
+        calculatorRuns,
+        budgetOverview,
+        runAndSaveCalculator,
+        deleteCalculatorRun,
+        refreshBudgetOverview,
+        updateBudgetPlan,
+        upsertBudgetCategory,
+        updateBudgetCategory,
+        createBudgetExpense,
+        updateBudgetExpense,
+        deleteBudgetExpense,
+        importCalculatorToBudget,
+        syncBudgetTransactions,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

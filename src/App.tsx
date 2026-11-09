@@ -84,6 +84,21 @@ const AdminDashboardView = lazy(() =>
     default: m.AdminDashboardView,
   })),
 );
+const CalculatorsHubView = lazy(() =>
+  import('./components/calculators/CalculatorsHubView').then((m) => ({
+    default: m.CalculatorsHubView,
+  })),
+);
+const CalculatorDetailView = lazy(() =>
+  import('./components/calculators/CalculatorDetailView').then((m) => ({
+    default: m.CalculatorDetailView,
+  })),
+);
+const BudgetManagerView = lazy(() =>
+  import('./components/budget/BudgetManagerView').then((m) => ({
+    default: m.BudgetManagerView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -140,6 +155,9 @@ const MainContent: React.FC = () => {
             <Route path="/guides/:slug" element={<ArticleDetailView />} />
             <Route path="/discover" element={<LocalDiscoveryView />} />
             <Route path="/locations/:govSlug" element={<LocalDiscoveryView />} />
+            <Route path="/calculators" element={<CalculatorsHubView />} />
+            <Route path="/calculators/:slug" element={<CalculatorDetailView />} />
+            <Route path="/my/budget" element={<BudgetManagerView />} />
             <Route
               path="/portal"
               element={<CustomerPortalView onOpenCart={() => setIsCartOpen(true)} />}

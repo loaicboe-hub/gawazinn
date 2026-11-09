@@ -11,6 +11,8 @@ import {
   BookOpen,
   MapPin,
   CreditCard,
+  Calculator,
+  Wallet,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
 
@@ -188,6 +190,26 @@ export const SplashHome: React.FC = () => {
             <span>
               {language === 'ar' ? 'دليل المحافظات والأسعار' : 'Discover Egypt Locations'}
             </span>
+          </Link>
+
+          <Link
+            to="/calculators"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-calculators"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
+          >
+            <Calculator className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? '20 حاسبة ذكية' : '20 Smart Calculators'}</span>
+          </Link>
+
+          <Link
+            to="/my/budget"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-budget"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <Wallet className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'مدير ميزانية الزواج' : 'Wedding Budget Manager'}</span>
           </Link>
 
           <Link
