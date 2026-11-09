@@ -1008,6 +1008,385 @@ export interface EarlyStartOverviewPayload {
   };
 }
 
+// =========================================================================
+// STAGE 5: LIFECYCLE ONBOARDING, ENGAGEMENT, JOURNEY PLANNER & SHARED WORKSPACE (MODULES B, I, J)
+// =========================================================================
+
+export interface LifecycleStageInfo {
+  stage: LifecycleStage;
+  order: number;
+  titleAr: string;
+  titleEn: string;
+  subtitleAr: string;
+  subtitleEn: string;
+  recommendedPrimaryRoute: string;
+  recommendedPrimaryLabelAr: string;
+  recommendedPrimaryLabelEn: string;
+  recommendedSecondaryRoute: string;
+  recommendedSecondaryLabelAr: string;
+  recommendedSecondaryLabelEn: string;
+  keyFocusAr: string[];
+  keyFocusEn: string[];
+}
+
+export interface LifecycleTransitionRecord {
+  id: string;
+  userId: string;
+  fromStage?: LifecycleStage | null;
+  toStage: LifecycleStage;
+  note?: string | null;
+  changedAt: string;
+}
+
+export type EngagementVenueStatus = 'researching' | 'shortlisted' | 'booked' | 'home_ceremony';
+export type EngagementItemType = 'checklist' | 'gift_ring' | 'guest_group' | 'budget_line';
+export type EngagementItemStatus = 'planned' | 'in_progress' | 'done';
+
+export interface EngagementPlan {
+  id: string;
+  userId: string;
+  engagementDate?: string | null;
+  targetBudget: number;
+  shabkaBudget: number;
+  venueBudget: number;
+  attireBudget: number;
+  hospitalityBudget: number;
+  venueName?: string | null;
+  venueStatus: EngagementVenueStatus;
+  ringNotes?: string | null;
+  familyNotes?: string | null;
+  updatedAt: string;
+}
+
+export interface EngagementItem {
+  id: string;
+  userId: string;
+  itemType: EngagementItemType;
+  titleAr: string;
+  titleEn: string;
+  ownerSide: 'groom' | 'bride' | 'shared';
+  priority: 'high' | 'medium' | 'low';
+  estimatedCost: number;
+  actualCost: number;
+  guestCount: number;
+  status: EngagementItemStatus;
+  notes?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EngagementOverviewPayload {
+  plan: EngagementPlan;
+  items: EngagementItem[];
+  summary: {
+    targetBudget: number;
+    allocatedComponentsSum: number;
+    totalEstimatedItemsCost: number;
+    totalActualItemsCost: number;
+    totalInvitedGuests: number;
+    completedTasksCount: number;
+    totalChecklistCount: number;
+    completionPercent: number;
+  };
+}
+
+export type JourneyPhaseKey =
+  | 'early_start'
+  | 'engagement'
+  | '12m'
+  | '9m'
+  | '6m'
+  | '3m'
+  | '1m'
+  | 'final_week'
+  | 'wedding_day'
+  | 'post_wedding';
+
+export type JourneyTaskStatus = 'todo' | 'in_progress' | 'done';
+export type JourneyTaskPriority = 'low' | 'medium' | 'high';
+
+export interface JourneyPhaseInfo {
+  key: JourneyPhaseKey;
+  order: number;
+  titleAr: string;
+  titleEn: string;
+  windowLabelAr: string;
+  windowLabelEn: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface JourneyTask {
+  id: string;
+  userId: string;
+  workspaceId?: string | null;
+  phase: JourneyPhaseKey;
+  titleAr: string;
+  titleEn: string;
+  description?: string | null;
+  ownerSide: 'groom' | 'bride' | 'shared';
+  assignedUserId?: string | null;
+  dueDate?: string | null;
+  reminderDate?: string | null;
+  dependsOnTaskId?: string | null;
+  dependsOnTitleAr?: string | null;
+  dependsOnTitleEn?: string | null;
+  isDependencyBlocked?: boolean;
+  status: JourneyTaskStatus;
+  priority: JourneyTaskPriority;
+  estimatedCost: number;
+  attachmentLabel?: string | null;
+  attachmentUrl?: string | null;
+  sortOrder: number;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  comments: TaskComment[];
+}
+
+export interface JourneyOverviewPayload {
+  tasks: JourneyTask[];
+  workspaceId?: string | null;
+  summary: {
+    totalTasks: number;
+    doneTasks: number;
+    inProgressTasks: number;
+    todoTasks: number;
+    blockedTasks: number;
+    completionPercent: number;
+    overdueTasksCount: number;
+    upcomingRemindersCount: number;
+    byOwnerSide: {
+      groom: number;
+      bride: number;
+      shared: number;
+    };
+  };
+}
+
+export interface WorkspacePermissions {
+  budgetRead: boolean;
+  budgetWrite: boolean;
+  tasksRead: boolean;
+  tasksWrite: boolean;
+  shoppingRead: boolean;
+  shoppingWrite: boolean;
+  documentsRead: boolean;
+  documentsWrite: boolean;
+  approvePurchases: boolean;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  memberRole: 'owner' | 'partner' | 'planner_guest';
+  sideLabel: 'groom' | 'bride' | 'partner';
+  permissions: WorkspacePermissions;
+  status: 'active' | 'revoked';
+  joinedAt: string;
+  revokedAt?: string | null;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  workspaceNameAr: string;
+  workspaceNameEn: string;
+  inviterUserId: string;
+  inviterName: string;
+  inviteeEmail?: string | null;
+  inviteePhone?: string | null;
+  inviteToken: string;
+  proposedRole: 'partner' | 'planner_guest';
+  proposedSide: 'groom' | 'bride' | 'partner';
+  permissions: WorkspacePermissions;
+  status: 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
+  expiresAt: string;
+  createdAt: string;
+  respondedAt?: string | null;
+}
+
+export interface WorkspaceApproval {
+  id: string;
+  workspaceId: string;
+  requestedByUserId: string;
+  requestedByName: string;
+  title: string;
+  category: string;
+  estimatedAmount: number;
+  status: 'pending' | 'approved' | 'changes_requested' | 'rejected';
+  reviewerUserId?: string | null;
+  reviewerName?: string | null;
+  reviewerNote?: string | null;
+  createdAt: string;
+  decidedAt?: string | null;
+}
+
+export interface CoupleWorkspacePayload {
+  workspace: {
+    id: string;
+    ownerUserId: string;
+    nameAr: string;
+    nameEn: string;
+    engagementDate?: string | null;
+    weddingDate?: string | null;
+    status: 'active' | 'archived';
+    createdAt: string;
+    updatedAt: string;
+  };
+  myRole: 'owner' | 'partner' | 'planner_guest';
+  myPermissions: WorkspacePermissions;
+  members: WorkspaceMember[];
+  sentInvitations: WorkspaceInvitation[];
+  incomingInvitations: WorkspaceInvitation[];
+  approvals: WorkspaceApproval[];
+}
+
+export type UserDocumentType =
+  | 'contract'
+  | 'floor_plan'
+  | 'warranty'
+  | 'receipt'
+  | 'quote'
+  | 'id_copy'
+  | 'other';
+
+export interface UserDocumentItem {
+  id: string;
+  userId: string;
+  workspaceId?: string | null;
+  docType: UserDocumentType;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  referenceCode?: string | null;
+  notes?: string | null;
+  isSharedWithPartner: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserWarrantyItem {
+  id: string;
+  userId: string;
+  workspaceId?: string | null;
+  itemName: string;
+  category: string;
+  providerName: string;
+  modelSerial?: string | null;
+  startDate: string;
+  expiryDate: string;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type UserAppointmentType =
+  | 'finishing_visit'
+  | 'hall_tour'
+  | 'showroom'
+  | 'gold_shopping'
+  | 'photography_meeting'
+  | 'other';
+
+export type UserAppointmentStatus =
+  | 'scheduled'
+  | 'confirmed'
+  | 'rescheduled'
+  | 'completed'
+  | 'cancelled';
+
+export interface UserAppointmentItem {
+  id: string;
+  userId: string;
+  workspaceId?: string | null;
+  title: string;
+  appointmentType: UserAppointmentType;
+  providerName: string;
+  locationText: string;
+  scheduledAt: string;
+  status: UserAppointmentStatus;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NotificationType =
+  | 'reminder'
+  | 'budget_alert'
+  | 'workspace_invite'
+  | 'approval'
+  | 'milestone'
+  | 'system';
+
+export interface UserNotification {
+  id: string;
+  userId: string;
+  notifType: NotificationType;
+  titleAr: string;
+  titleEn: string;
+  bodyAr: string;
+  bodyEn: string;
+  linkPath?: string | null;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string | null;
+}
+
+export type MyGawazInnSubmoduleKey =
+  | 'profile'
+  | 'journey'
+  | 'budget'
+  | 'savings'
+  | 'checklists'
+  | 'shopping'
+  | 'favorites'
+  | 'comparisons'
+  | 'quotations'
+  | 'bookings'
+  | 'appointments'
+  | 'documents'
+  | 'invoices'
+  | 'warranties'
+  | 'notifications'
+  | 'workspace'
+  | 'settings';
+
+export interface MyGawazInnHubPayload {
+  currentStage: LifecycleStage;
+  lifecycleHistory: LifecycleTransitionRecord[];
+  engagement: EngagementOverviewPayload;
+  journey: JourneyOverviewPayload;
+  workspace: CoupleWorkspacePayload;
+  documents: UserDocumentItem[];
+  warranties: UserWarrantyItem[];
+  appointments: UserAppointmentItem[];
+  notifications: UserNotification[];
+  unreadNotificationsCount: number;
+  counts: {
+    ordersCount: number;
+    finishingInquiriesCount: number;
+    weddingBookingsCount: number;
+    financingAppsCount: number;
+    calculatorRunsCount: number;
+    documentsCount: number;
+    warrantiesCount: number;
+    appointmentsCount: number;
+    pendingApprovalsCount: number;
+  };
+}
+
 export interface PaginatedMeta {
   page: number;
   limit: number;

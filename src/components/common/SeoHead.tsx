@@ -128,6 +128,22 @@ export const SeoHead: React.FC = () => {
     } else if (pathname.startsWith('/my/future-fund')) {
       titleAr = 'صندوق مستقبلي الشخصي | جواز إن';
       titleEn = 'My Future Fund — Private Savings Goals | GAWAZ INN';
+    } else if (pathname === '/onboarding') {
+      titleAr = 'مسارك في جواز إن — 11 مرحلة من التفكير حتى البيت | جواز إن';
+      titleEn = '11-Stage Marriage & Home Lifecycle Onboarding | GAWAZ INN';
+      descAr =
+        'حدد مرحلتك الحالية من 11 مرحلة دون فقدان أي بيانات سابقة: من البداية المبكرة للخطوبة وتشطيب الشقة والزفاف وما بعد الزواج.';
+      descEn =
+        'Pick your current marriage preparation stage across 11 adaptive milestones with zero loss of prior savings or plans.';
+    } else if (pathname === '/engagement' || pathname.startsWith('/my/engagement')) {
+      titleAr = 'مخطط الخطوبة والشبكة وتنسيق العائلتين | جواز إن';
+      titleEn = 'Engagement Readiness Planner: Shabka, Guests & Venue | GAWAZ INN';
+    } else if (pathname === '/journey' || pathname.startsWith('/my/journey')) {
+      titleAr = 'مخطط رحلة الزواج والجدول الزمني التفاعلي | جواز إن';
+      titleEn = 'Interactive 10-Phase Wedding Journey Planner & Calendar | GAWAZ INN';
+    } else if (pathname.startsWith('/my/workspace')) {
+      titleAr = 'مركز قيادة جواز إن ومساحة الزوجين المشتركة | جواز إن';
+      titleEn = 'My Gawaz Inn 17-Module Hub & Shared Couple Workspace | GAWAZ INN';
     } else if (pathname.startsWith('/portal')) {
       titleAr = 'بوابة طلباتي ومتابعاتي | جواز إن';
       titleEn = 'My Unified Requests Portal | GAWAZ INN';

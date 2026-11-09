@@ -37,9 +37,16 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `POST/PATCH/DELETE /api/v1/early-start/goals` & `/:id`, `POST /api/v1/early-start/goals/:id/contributions` *(Stage 4 Auth-Required)* — CRUD over the 7 Future Fund savings buckets, atomic deposit logging, balance recalculation, and private milestone badge awards.
 - `POST/PATCH/DELETE /api/v1/early-start/milestones` & `/:id`, `POST /api/v1/early-start/academy/:slug/complete` *(Stage 4 Auth-Required)* — Preparation milestone management and Academy lesson completion toggle (`audit_logs` recorded, zero public savings exposure).
 
-## Personal Journey & Shared Workspace
-- `GET/POST/PATCH/DELETE /api/v1/journey/tasks` — Tasks, dependencies, checklists, timeline phases.
-- `POST /api/v1/workspace/invite`, `POST /api/v1/workspace/accept/:token`, `DELETE /api/v1/workspace/members/:id` — Explicit partner collaboration & revocation.
+## Lifecycle Onboarding, Engagement, Journey & Shared Workspace *(Stage 5 Auth-Required)*
+- `POST /api/v1/onboarding/stage` — Non-destructive transition across all 11 lifecycle stages (`thinking..maintaining_home`), writing `user_lifecycle_history` and preserving all prior plans & budgets.
+- `GET /api/v1/my/hub` — Aggregated 17-module My Gawaz Inn Command Center hydration (profile, lifecycle history, engagement overview, journey overview, couple workspace + incoming invitations, documents, warranties, appointments, notifications, orders, finishing/wedding/financing records, wishlist count).
+- `GET /api/v1/engagement/overview`, `PUT /api/v1/engagement/plan`, `POST /api/v1/engagement/items`, `PATCH/DELETE /api/v1/engagement/items/:id` — Owner-isolated Engagement Readiness Planner & typed checklist/ring/guest/budget items.
+- `GET /api/v1/journey/tasks`, `POST /api/v1/journey/tasks`, `PATCH/DELETE /api/v1/journey/tasks/:id`, `POST /api/v1/journey/tasks/:id/comments` — 10-phase Journey Planner with permission enforcement, prerequisite `dependencyWarning` checks, and threaded comments.
+- `GET/PATCH /api/v1/workspace`, `POST /api/v1/workspace/invite`, `POST /api/v1/workspace/invitations/:token/accept|decline`, `PATCH/DELETE /api/v1/workspace/members/:id`, `POST /api/v1/workspace/approvals`, `PATCH /api/v1/workspace/approvals/:id` — Explicit partner invitation tokens (matching recipient email/phone enforced), 9-flag permissions control, one-click revocation, and purchase approvals.
+- `GET/POST /api/v1/my/documents`, `DELETE /api/v1/my/documents/:id` — Documents locker enforcing owner visibility for `isSharedWithPartner = false` and workspace visibility only when explicitly marked shared.
+- `GET/POST /api/v1/my/warranties`, `DELETE /api/v1/my/warranties/:id` — Appliance/home warranty expiration tracker.
+- `GET/POST /api/v1/my/appointments`, `PATCH /api/v1/my/appointments/:id` — Showroom, contractor site-visit, and hall tour scheduling.
+- `POST /api/v1/my/notifications/read-all`, `POST /api/v1/my/notifications/:id/read` — Read-status management for user alerts and workspace invitations.
 
 ## Products, Shopping Lists & Price Intelligence
 - `GET /api/v1/products`, `GET /api/v1/products/:idOrSlug`, `POST /api/v1/products/compare` — Catalog search, filtering, price history, alternatives.

@@ -17,6 +17,8 @@ import {
   Wallet,
   Calculator,
   Compass,
+  Layers,
+  ListTodo,
 } from 'lucide-react';
 import { getRoleLabel } from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
@@ -147,6 +149,26 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/my/workspace"
+                data-testid="portal-open-workspace-link"
+                className="bg-white text-[#D91B3E] hover:bg-gray-50 font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2"
+              >
+                <Layers className="w-4 h-4 text-[#D91B3E]" />
+                <span>
+                  {language === 'ar' ? 'مركزي (17 وحدة) والشريك' : 'My 17-Module Hub'}
+                </span>
+              </Link>
+
+              <Link
+                to="/my/journey"
+                data-testid="portal-open-journey-link"
+                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
+              >
+                <ListTodo className="w-4 h-4" />
+                <span>{language === 'ar' ? 'مخطط الرحلة' : 'Journey Planner'}</span>
+              </Link>
+
               <Link
                 to="/my/future-fund"
                 data-testid="portal-open-future-fund-link"

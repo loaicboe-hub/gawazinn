@@ -34,23 +34,41 @@ import {
   ensureUserEarlyStartProfile,
   evaluateAndAwardPrivateBadges,
 } from './earlyStartService';
+import {
+  ensureUserEngagementAndJourney,
+  mapEngagementItemRow,
+} from './journeyWorkspaceService';
 import { hashPassword, hashSensitiveField } from './security';
 
 export function seedDatabase(
   db: DatabaseSync,
   secret = 'gawazinn-dev-local-secret-change-in-production',
-): { seeded: boolean; stage2Seeded: boolean; stage3Seeded: boolean; stage4Seeded: boolean } {
+): {
+  seeded: boolean;
+  stage2Seeded: boolean;
+  stage3Seeded: boolean;
+  stage4Seeded: boolean;
+  stage5Seeded: boolean;
+} {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
   const stage3PlanCountRow = db.prepare('SELECT COUNT(*) as cnt FROM budget_plans').get() as { cnt: number };
   const stage4EarlyCountRow = db.prepare('SELECT COUNT(*) as cnt FROM early_start_profiles').get() as { cnt: number };
+  const stage5JourneyCountRow = db.prepare('SELECT COUNT(*) as cnt FROM journey_tasks').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
   const needsStage4 = stage4EarlyCountRow.cnt === 0;
+  const needsStage5 = stage5JourneyCountRow.cnt === 0;
 
-  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4) {
-    return { seeded: false, stage2Seeded: false, stage3Seeded: false, stage4Seeded: false };
+  if (!needsStage1 && !needsStage2 && !needsStage3 && !needsStage4 && !needsStage5) {
+    return {
+      seeded: false,
+      stage2Seeded: false,
+      stage3Seeded: false,
+      stage4Seeded: false,
+      stage5Seeded: false,
+    };
   }
 
   const now = new Date().toISOString();
@@ -960,12 +978,164 @@ export function seedDatabase(
       }
     }
 
+    if (needsStage5) {
+      const karimExists = db.prepare("SELECT id FROM users WHERE id = 'usr-1'").get();
+      if (karimExists) {
+        const { workspaceId } = ensureUserEngagementAndJourney(db, 'usr-1');
+
+        // Seed lifecycle progression history for Karim
+        const insHist = db.prepare(
+          `INSERT OR IGNORE INTO user_lifecycle_history (id, user_id, from_stage, to_stage, note, changed_at)
+           VALUES (?, 'usr-1', ?, ?, ?, ?)`,
+        );
+        const dtEarly = new Date(Date.now() - 180 * 86400000).toISOString();
+        const dtEng = new Date(Date.now() - 90 * 86400000).toISOString();
+        const dtFin = new Date(Date.now() - 30 * 86400000).toISOString();
+        insHist.run('lh-seed-1', 'thinking', 'early_saving', 'بداية خطة التمويل الشخصي قبل الخطوبة', dtEarly);
+        insHist.run('lh-seed-2', 'early_saving', 'post_engagement', 'إتمام قراءة الفاتحة والشبكة', dtEng);
+        insHist.run('lh-seed-3', 'post_engagement', 'finishing_apartment', 'الانتقال لمرحلة تشطيب الشقة مع بقاء خطط الخطوبة', dtFin);
+
+        // Update Engagement checklist progress cleanly
+        db.prepare(
+          `UPDATE engagement_plans SET
+            venue_name = 'نادي الضباط — قاعة الياسمين',
+            venue_status = 'booked',
+            ring_notes = 'دبلة ذهب أبيض + توينز سوليتير مدموغ بفاتورة',
+            family_notes = 'اتفاق العائلتين على ميعاد الفرح والتجهيز المشترك للأجهزة',
+            updated_at = ?
+           WHERE user_id = 'usr-1'`,
+        ).run(now);
+
+        const engItems = (
+          db.prepare("SELECT * FROM engagement_items WHERE user_id = 'usr-1' ORDER BY sort_order ASC").all() as Record<
+            string,
+            unknown
+          >[]
+        ).map(mapEngagementItemRow);
+
+        if (engItems[0]) {
+          db.prepare("UPDATE engagement_items SET status = 'done' WHERE id = ?").run(engItems[0].id);
+        }
+        if (engItems[1]) {
+          db.prepare("UPDATE engagement_items SET status = 'done', actual_cost = 72000 WHERE id = ?").run(engItems[1].id);
+        }
+        if (engItems[2]) {
+          db.prepare("UPDATE engagement_items SET status = 'in_progress' WHERE id = ?").run(engItems[2].id);
+        }
+
+        // Mark first 3 starter journey tasks done (budget_baseline, engagement_agreement, apartment_survey) so dependencies unlock cleanly
+        const jtRows = db
+          .prepare("SELECT id, sort_order FROM journey_tasks WHERE user_id = 'usr-1' ORDER BY sort_order ASC")
+          .all() as { id: string; sort_order: number }[];
+        jtRows.forEach((r) => {
+          if (r.sort_order <= 3) {
+            db.prepare("UPDATE journey_tasks SET status = 'done', completed_at = ? WHERE id = ?").run(now, r.id);
+          } else if (r.sort_order === 4) {
+            db.prepare("UPDATE journey_tasks SET status = 'in_progress' WHERE id = ?").run(r.id);
+            db.prepare(
+              `INSERT OR IGNORE INTO task_comments (id, task_id, user_id, author_name, body, created_at)
+               VALUES (?, ?, 'usr-1', 'كريم عبد العزيز شريف', 'تم إجراء الكبس الهيدروليكي الأولي عند 10 بار وجاري مراجعة لوحة الكهرباء الفرعية.', ?)`,
+            ).run('tc-seed-karim-1', r.id, now);
+          }
+        });
+
+        // Seed 1 pending approval item inside Karim's workspace
+        db.prepare(
+          `INSERT OR IGNORE INTO workspace_approvals
+             (id, workspace_id, requested_by_user_id, title, category, estimated_amount, status, created_at)
+           VALUES ('wa-seed-1', ?, 'usr-1', 'اعتماد مواصفات ومقاسات مطبخ كلادينج وألومنيوم', 'kitchen', 48500, 'pending', ?)`,
+        ).run(workspaceId, now);
+
+        // Seed 3 Home & Marriage Documents
+        const insDoc = db.prepare(
+          `INSERT OR IGNORE INTO user_documents
+             (id, user_id, workspace_id, doc_type, title, file_name, mime_type, size_bytes, reference_code, notes, is_shared_with_partner, created_at, updated_at)
+           VALUES (?, 'usr-1', ?, ?, ?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)`,
+        );
+        insDoc.run(
+          'doc-seed-1',
+          workspaceId,
+          'contract',
+          'عقد مقاولات التشطيب وجدول الدفعات (مصر الجديدة)',
+          'finishing-contract-heliopolis.pdf',
+          428000,
+          'FIN-2026-441',
+          'يشمل ضمان 5 سنوات على السباكة والكهرباء',
+          1,
+          now,
+          now,
+        );
+        insDoc.run(
+          'doc-seed-2',
+          workspaceId,
+          'floor_plan',
+          'الرفع المساحي الهندسي 145 م² + توزيع التكييفات',
+          'apartment-145sqm-layout.pdf',
+          912000,
+          'CAD-145-B',
+          'مقاسات الحمامين والمطبخ قبل طلب الأجهزة',
+          1,
+          now,
+          now,
+        );
+        insDoc.run(
+          'doc-seed-3',
+          workspaceId,
+          'receipt',
+          'فاتورة دمغة الشبكة والدبل (الخاص)',
+          'shabka-hallmark-invoice.pdf',
+          215000,
+          'GLD-21K-098',
+          'محفوظ بخصوصية لصاحب الحساب فقط',
+          0,
+          now,
+          now,
+        );
+
+        // Seed 3 Appliance & Home Warranties
+        const insWar = db.prepare(
+          `INSERT OR IGNORE INTO user_warranties
+             (id, user_id, workspace_id, item_name, category, provider_name, model_serial, start_date, expiry_date, notes, created_at)
+           VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        );
+        const startIso = new Date().toISOString().slice(0, 10);
+        const exp5y = new Date(Date.now() + 5 * 365 * 86400000).toISOString().slice(0, 10);
+        const exp10y = new Date(Date.now() + 10 * 365 * 86400000).toISOString().slice(0, 10);
+        insWar.run('war-seed-1', workspaceId, 'ثلاجة إنفرتر 536 لتر ديجيتال', 'appliances', 'Sharp / El-Araby', 'SJ-GV58A-BK', startIso, exp10y, 'ضمان 10 سنوات على الضاغط', now);
+        insWar.run('war-seed-2', workspaceId, 'غسالة أتوماتيك 9 كيلو إنفرتر', 'appliances', 'LG Official Warranty', 'F4V5RYP2T', startIso, exp10y, 'ضمان موتور Direct Drive', now);
+        insWar.run('war-seed-3', workspaceId, 'تأسيس سباكة بولي بروبلين وكبس هيدروليكي', 'finishing', 'المكتب الهندسي المعتمد', 'PP-R-2026-KL', startIso, exp5y, 'شهادة اختبار ضغط موثقة', now);
+
+        // Seed 2 Scheduled Appointments
+        const insApt = db.prepare(
+          `INSERT OR IGNORE INTO user_appointments
+             (id, user_id, workspace_id, title, appointment_type, provider_name, location_text, scheduled_at, status, notes, created_at, updated_at)
+           VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        );
+        const in3Days = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) + 'T14:00';
+        const in9Days = new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10) + 'T18:30';
+        insApt.run('apt-seed-1', workspaceId, 'معاينة واستلام أعمال المحارة والكهرباء', 'finishing_visit', 'م. طارق المنياوي', 'مصر الجديدة — شارع الثورة', in3Days, 'confirmed', 'اصطحاب ميزان ليزر والشيك ليست', now, now);
+        insApt.run('apt-seed-2', workspaceId, 'جولة القاعة ومراجعة البوفيه والديكور', 'hall_tour', 'فندق قصر النيل الملكي', 'وسط البلد — كورنيش النيل', in9Days, 'scheduled', 'تنسيق موعد مع إدارة الضيافة', now, now);
+
+        // Seed 4 Notifications
+        const insNotif = db.prepare(
+          `INSERT OR IGNORE INTO notifications
+             (id, user_id, notif_type, title_ar, title_en, body_ar, body_en, link_path, is_read, created_at)
+           VALUES (?, 'usr-1', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        );
+        insNotif.run('ntf-seed-1', 'budget_alert', 'تذكير سداد عربون القاعة', 'Upcoming Hall Deposit Reminder', 'متبقي 5 أيام على موعد الدفعة الثانية لقاعة الزفاف (25,000 ج.م).', '5 days left before second venue deposit installment (25,000 EGP).', '/my/budget', 0, now);
+        insNotif.run('ntf-seed-2', 'reminder', 'مهمة مرحلة 9 أشهر: تأسيس السباكة والكهرباء', '9-Month Phase Task In Progress', 'يرجى التأكد من رفع شهادة الكبس الهيدروليكي قبل بند السيراميك.', 'Upload plumbing pressure-test certificate before tiling stage begins.', '/my/journey', 0, now);
+        insNotif.run('ntf-seed-3', 'approval', 'طلب اعتماد مشترك: مواصفات المطبخ', 'Pending Shared Kitchen Approval', 'ينتظر مقترح مطبخ الكلادينج مراجعتك في المساحة المشتركة.', 'Kitchen Cladding spec (48,500 EGP) is waiting in Couple Approvals.', '/my/workspace', 0, now);
+        insNotif.run('ntf-seed-4', 'milestone', 'انتقال المرحلة إلى تشطيب الشقة', 'Stage Transition Saved', 'تم تحديث مرحلتك إلى تشطيب الشقة مع الحفاظ على سجل الخطوبة والادخار.', 'Lifecycle updated cleanly preserving Engagement and Early Start funds.', '/onboarding', 1, now);
+      }
+    }
+
     db.exec('COMMIT;');
     return {
-      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4,
+      seeded: needsStage1 || needsStage2 || needsStage3 || needsStage4 || needsStage5,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
+      stage5Seeded: needsStage5,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

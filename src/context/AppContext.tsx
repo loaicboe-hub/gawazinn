@@ -46,6 +46,25 @@ import type {
   EarlyStartTimeframePreset,
   SavingsBadge,
   SavingsGoalType,
+  CoupleWorkspacePayload,
+  EngagementItemStatus,
+  EngagementItemType,
+  EngagementOverviewPayload,
+  EngagementVenueStatus,
+  JourneyOverviewPayload,
+  JourneyPhaseKey,
+  JourneyTaskPriority,
+  JourneyTaskStatus,
+  LifecycleStage,
+  MyGawazInnHubPayload,
+  UserAppointmentItem,
+  UserAppointmentStatus,
+  UserAppointmentType,
+  UserDocumentItem,
+  UserDocumentType,
+  UserNotification,
+  UserWarrantyItem,
+  WorkspacePermissions,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -83,7 +102,10 @@ import { apiRequest, ApiClientError } from '../services/api';
 
 export type SectionKey =
   | 'home'
+  | 'onboarding'
   | 'earlyStart'
+  | 'engagement'
+  | 'journey'
   | 'finishing'
   | 'groom'
   | 'bride'
@@ -94,12 +116,16 @@ export type SectionKey =
   | 'calculators'
   | 'budget'
   | 'discover'
+  | 'myHub'
   | 'customerPortal'
   | 'admin';
 
 export const SECTION_ROUTES: Record<SectionKey, string> = {
   home: '/',
+  onboarding: '/onboarding',
   earlyStart: '/early-start',
+  engagement: '/engagement',
+  journey: '/journey',
   finishing: '/finishing',
   groom: '/groom',
   bride: '/bride',
@@ -110,6 +136,7 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   calculators: '/calculators',
   budget: '/my/budget',
   discover: '/discover',
+  myHub: '/my/workspace',
   customerPortal: '/portal',
   admin: '/admin',
 };
@@ -434,6 +461,148 @@ interface AppContextType {
   deleteEarlyStartMilestone: (milestoneId: string) => Promise<void>;
   toggleAcademyLessonComplete: (slug: string, completed?: boolean) => Promise<SavingsBadge[]>;
 
+  // Stage 5: Lifecycle Onboarding, Engagement, Journey Planner & Shared Couple Workspace
+  myHubPayload: MyGawazInnHubPayload | null;
+  refreshMyHub: () => Promise<void>;
+  transitionLifecycleStage: (
+    targetStage: LifecycleStage,
+    note?: string,
+  ) => Promise<void>;
+  updateEngagementPlan: (patch: {
+    engagementDate?: string | null;
+    targetBudget?: number;
+    shabkaBudget?: number;
+    venueBudget?: number;
+    attireBudget?: number;
+    hospitalityBudget?: number;
+    venueName?: string | null;
+    venueStatus?: EngagementVenueStatus;
+    ringNotes?: string | null;
+    familyNotes?: string | null;
+  }) => Promise<void>;
+  createEngagementItem: (input: {
+    itemType: EngagementItemType;
+    titleAr: string;
+    titleEn: string;
+    ownerSide?: 'groom' | 'bride' | 'shared';
+    priority?: 'high' | 'medium' | 'low';
+    estimatedCost?: number;
+    actualCost?: number;
+    guestCount?: number;
+    status?: EngagementItemStatus;
+    notes?: string;
+  }) => Promise<void>;
+  patchEngagementItem: (
+    itemId: string,
+    patch: {
+      titleAr?: string;
+      titleEn?: string;
+      ownerSide?: 'groom' | 'bride' | 'shared';
+      priority?: 'high' | 'medium' | 'low';
+      estimatedCost?: number;
+      actualCost?: number;
+      guestCount?: number;
+      status?: EngagementItemStatus;
+      notes?: string | null;
+    },
+  ) => Promise<void>;
+  deleteEngagementItem: (itemId: string) => Promise<void>;
+  createJourneyTask: (input: {
+    phase: JourneyPhaseKey;
+    titleAr: string;
+    titleEn: string;
+    description?: string;
+    ownerSide?: 'groom' | 'bride' | 'shared';
+    dueDate?: string | null;
+    reminderDate?: string | null;
+    dependsOnTaskId?: string | null;
+    priority?: JourneyTaskPriority;
+    estimatedCost?: number;
+    attachmentLabel?: string;
+  }) => Promise<void>;
+  patchJourneyTask: (
+    taskId: string,
+    patch: {
+      phase?: JourneyPhaseKey;
+      titleAr?: string;
+      titleEn?: string;
+      description?: string | null;
+      ownerSide?: 'groom' | 'bride' | 'shared';
+      dueDate?: string | null;
+      reminderDate?: string | null;
+      dependsOnTaskId?: string | null;
+      status?: JourneyTaskStatus;
+      priority?: JourneyTaskPriority;
+      estimatedCost?: number;
+      attachmentLabel?: string | null;
+    },
+  ) => Promise<string | null>;
+  deleteJourneyTask: (taskId: string) => Promise<void>;
+  addJourneyTaskComment: (taskId: string, body: string) => Promise<void>;
+  updateWorkspaceMeta: (patch: {
+    nameAr?: string;
+    nameEn?: string;
+    engagementDate?: string | null;
+    weddingDate?: string | null;
+  }) => Promise<void>;
+  inviteWorkspacePartner: (input: {
+    inviteeIdentifier: string;
+    proposedRole?: 'partner' | 'planner_guest';
+    proposedSide?: 'groom' | 'bride' | 'partner';
+    permissions?: Partial<WorkspacePermissions>;
+  }) => Promise<string>;
+  respondWorkspaceInvitation: (token: string, action: 'accept' | 'decline') => Promise<void>;
+  updateWorkspaceMemberPermissions: (
+    memberId: string,
+    permissions: WorkspacePermissions,
+  ) => Promise<void>;
+  revokeWorkspaceMember: (memberId: string) => Promise<void>;
+  createWorkspaceApproval: (input: {
+    title: string;
+    category: string;
+    estimatedAmount: number;
+  }) => Promise<void>;
+  decideWorkspaceApproval: (
+    approvalId: string,
+    status: 'approved' | 'changes_requested' | 'rejected',
+    reviewerNote?: string,
+  ) => Promise<void>;
+  createUserDocument: (input: {
+    docType: UserDocumentType;
+    title: string;
+    fileName: string;
+    mimeType?: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp' | 'text/plain';
+    sizeBytes?: number;
+    referenceCode?: string;
+    notes?: string;
+    isSharedWithPartner?: boolean;
+  }) => Promise<void>;
+  deleteUserDocument: (docId: string) => Promise<void>;
+  createUserWarranty: (input: {
+    itemName: string;
+    category: string;
+    providerName: string;
+    modelSerial?: string;
+    startDate: string;
+    expiryDate: string;
+    notes?: string;
+  }) => Promise<void>;
+  deleteUserWarranty: (warrantyId: string) => Promise<void>;
+  createUserAppointment: (input: {
+    title: string;
+    appointmentType: UserAppointmentType;
+    providerName: string;
+    locationText: string;
+    scheduledAt: string;
+    notes?: string;
+  }) => Promise<void>;
+  patchUserAppointment: (
+    appointmentId: string,
+    patch: { status?: UserAppointmentStatus; scheduledAt?: string; notes?: string | null },
+  ) => Promise<void>;
+  markNotificationRead: (notifId: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -485,8 +654,15 @@ function setStoredItem<T>(key: string, value: T): void {
 }
 
 function resolveSectionFromPath(pathname: string): SectionKey {
+  if (pathname.startsWith('/onboarding')) return 'onboarding';
   if (pathname.startsWith('/early-start') || pathname.startsWith('/my/future-fund')) {
     return 'earlyStart';
+  }
+  if (pathname.startsWith('/engagement') || pathname.startsWith('/my/engagement')) {
+    return 'engagement';
+  }
+  if (pathname.startsWith('/journey') || pathname.startsWith('/my/journey')) {
+    return 'journey';
   }
   if (pathname.startsWith('/finishing')) return 'finishing';
   if (pathname.startsWith('/groom')) return 'groom';
@@ -496,6 +672,7 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/social-support')) return 'socialSupport';
   if (pathname.startsWith('/calculators')) return 'calculators';
   if (pathname.startsWith('/my/budget')) return 'budget';
+  if (pathname.startsWith('/my/workspace')) return 'myHub';
   if (
     pathname.startsWith('/encyclopedia') ||
     pathname.startsWith('/guides') ||
@@ -635,6 +812,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     null,
   );
 
+  // Stage 5 Lifecycle, Engagement, Journey & Shared Couple Workspace State
+  const [myHubPayload, setMyHubPayload] = useState<MyGawazInnHubPayload | null>(null);
+
   // Scoped Transaction State
   const [finishingInquiries, setFinishingInquiries] = useState<FinishingInquiry[]>([]);
   const [weddingBookings, setWeddingBookings] = useState<WeddingBookingRequest[]>([]);
@@ -674,6 +854,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCalculatorRuns([]);
       setBudgetOverview(null);
       setEarlyStartOverview(null);
+      setMyHubPayload(null);
       setAdminStats(null);
       setAdminUsers([]);
       setAuditLogs([]);
@@ -711,7 +892,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget, uEarlyStart] =
+      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan, uCalcRuns, uBudget, uEarlyStart, uMyHub] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
           apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
@@ -723,6 +904,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<CalculatorRunRecord[]>('/my/calculator-runs').catch(() => []),
           apiRequest<BudgetOverviewPayload>('/budget/overview').catch(() => null),
           apiRequest<EarlyStartOverviewPayload>('/early-start/overview').catch(() => null),
+          apiRequest<MyGawazInnHubPayload>('/my/hub').catch(() => null),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -736,6 +918,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCalculatorRuns(uCalcRuns);
       setBudgetOverview(uBudget);
       setEarlyStartOverview(uEarlyStart);
+      setMyHubPayload(uMyHub);
     } catch {
       // Non-fatal fallback
     }
@@ -1943,6 +2126,443 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [language, showToast],
   );
 
+  // Stage 5: Lifecycle Onboarding, Engagement, Journey Planner & Shared Couple Workspace Actions
+  const refreshMyHub = useCallback(async () => {
+    if (!apiConnected || !currentUser) return;
+    const hub = await apiRequest<MyGawazInnHubPayload>('/my/hub');
+    setMyHubPayload(hub);
+  }, [apiConnected, currentUser]);
+
+  const transitionLifecycleStage = useCallback(
+    async (targetStage: LifecycleStage, note?: string) => {
+      const res = await apiRequest<{
+        user: User;
+        currentStage: LifecycleStage;
+        hub: MyGawazInnHubPayload;
+      }>('/onboarding/stage', {
+        method: 'POST',
+        body: JSON.stringify({ targetStage, note }),
+      });
+      setCurrentUser(res.user);
+      setMyHubPayload(res.hub);
+      showToast(
+        language === 'ar'
+          ? 'تم تحديث مرحلتك بنجاح مع الحفاظ الكامل على كل بياناتك السابقة.'
+          : 'Lifecycle stage updated with all existing records preserved.',
+      );
+    },
+    [language, showToast],
+  );
+
+  const updateEngagementPlan = useCallback(
+    async (patch: {
+      engagementDate?: string | null;
+      targetBudget?: number;
+      shabkaBudget?: number;
+      venueBudget?: number;
+      attireBudget?: number;
+      hospitalityBudget?: number;
+      venueName?: string | null;
+      venueStatus?: EngagementVenueStatus;
+      ringNotes?: string | null;
+      familyNotes?: string | null;
+    }) => {
+      const eng = await apiRequest<EngagementOverviewPayload>('/engagement/plan', {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, engagement: eng } : prev));
+      showToast(language === 'ar' ? 'تم حفظ خطة وميزانية الخطوبة.' : 'Engagement plan saved.');
+    },
+    [language, showToast],
+  );
+
+  const createEngagementItem = useCallback(
+    async (input: {
+      itemType: EngagementItemType;
+      titleAr: string;
+      titleEn: string;
+      ownerSide?: 'groom' | 'bride' | 'shared';
+      priority?: 'high' | 'medium' | 'low';
+      estimatedCost?: number;
+      actualCost?: number;
+      guestCount?: number;
+      status?: EngagementItemStatus;
+      notes?: string;
+    }) => {
+      const res = await apiRequest<{ itemId: string; overview: EngagementOverviewPayload }>(
+        '/engagement/items',
+        { method: 'POST', body: JSON.stringify(input) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, engagement: res.overview } : prev));
+      showToast(language === 'ar' ? 'تمت إضافة العنصر لخطة الخطوبة.' : 'Engagement item added.');
+    },
+    [language, showToast],
+  );
+
+  const patchEngagementItem = useCallback(
+    async (
+      itemId: string,
+      patch: {
+        titleAr?: string;
+        titleEn?: string;
+        ownerSide?: 'groom' | 'bride' | 'shared';
+        priority?: 'high' | 'medium' | 'low';
+        estimatedCost?: number;
+        actualCost?: number;
+        guestCount?: number;
+        status?: EngagementItemStatus;
+        notes?: string | null;
+      },
+    ) => {
+      const overview = await apiRequest<EngagementOverviewPayload>(
+        `/engagement/items/${encodeURIComponent(itemId)}`,
+        { method: 'PATCH', body: JSON.stringify(patch) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, engagement: overview } : prev));
+    },
+    [],
+  );
+
+  const deleteEngagementItem = useCallback(
+    async (itemId: string) => {
+      const overview = await apiRequest<EngagementOverviewPayload>(
+        `/engagement/items/${encodeURIComponent(itemId)}`,
+        { method: 'DELETE' },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, engagement: overview } : prev));
+      showToast(language === 'ar' ? 'تم حذف عنصر الخطوبة.' : 'Engagement item deleted.');
+    },
+    [language, showToast],
+  );
+
+  const createJourneyTask = useCallback(
+    async (input: {
+      phase: JourneyPhaseKey;
+      titleAr: string;
+      titleEn: string;
+      description?: string;
+      ownerSide?: 'groom' | 'bride' | 'shared';
+      dueDate?: string | null;
+      reminderDate?: string | null;
+      dependsOnTaskId?: string | null;
+      priority?: JourneyTaskPriority;
+      estimatedCost?: number;
+      attachmentLabel?: string;
+    }) => {
+      const res = await apiRequest<{ taskId: string; overview: JourneyOverviewPayload }>(
+        '/journey/tasks',
+        { method: 'POST', body: JSON.stringify(input) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, journey: res.overview } : prev));
+      showToast(language === 'ar' ? 'تمت إضافة مهمة جديدة لمخطط الرحلة.' : 'Journey task created.');
+    },
+    [language, showToast],
+  );
+
+  const patchJourneyTask = useCallback(
+    async (
+      taskId: string,
+      patch: {
+        phase?: JourneyPhaseKey;
+        titleAr?: string;
+        titleEn?: string;
+        description?: string | null;
+        ownerSide?: 'groom' | 'bride' | 'shared';
+        dueDate?: string | null;
+        reminderDate?: string | null;
+        dependsOnTaskId?: string | null;
+        status?: JourneyTaskStatus;
+        priority?: JourneyTaskPriority;
+        estimatedCost?: number;
+        attachmentLabel?: string | null;
+      },
+    ): Promise<string | null> => {
+      const res = await apiRequest<{
+        dependencyWarning: string | null;
+        overview: JourneyOverviewPayload;
+      }>(`/journey/tasks/${encodeURIComponent(taskId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, journey: res.overview } : prev));
+      if (res.dependencyWarning) {
+        showToast(
+          language === 'ar'
+            ? `تنبيه اعتمادية: ${res.dependencyWarning}`
+            : `Dependency notice: ${res.dependencyWarning}`,
+        );
+      }
+      return res.dependencyWarning;
+    },
+    [language, showToast],
+  );
+
+  const deleteJourneyTask = useCallback(
+    async (taskId: string) => {
+      const overview = await apiRequest<JourneyOverviewPayload>(
+        `/journey/tasks/${encodeURIComponent(taskId)}`,
+        { method: 'DELETE' },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, journey: overview } : prev));
+      showToast(language === 'ar' ? 'تم حذف المهمة.' : 'Task deleted.');
+    },
+    [language, showToast],
+  );
+
+  const addJourneyTaskComment = useCallback(
+    async (taskId: string, body: string) => {
+      const overview = await apiRequest<JourneyOverviewPayload>(
+        `/journey/tasks/${encodeURIComponent(taskId)}/comments`,
+        { method: 'POST', body: JSON.stringify({ body }) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, journey: overview } : prev));
+      showToast(language === 'ar' ? 'تمت إضافة التعليق على المهمة.' : 'Task comment posted.');
+    },
+    [language, showToast],
+  );
+
+  const updateWorkspaceMeta = useCallback(
+    async (patch: {
+      nameAr?: string;
+      nameEn?: string;
+      engagementDate?: string | null;
+      weddingDate?: string | null;
+    }) => {
+      const ws = await apiRequest<CoupleWorkspacePayload>('/workspace', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: ws } : prev));
+      showToast(language === 'ar' ? 'تم تحديث بيانات المساحة المشتركة.' : 'Workspace settings updated.');
+    },
+    [language, showToast],
+  );
+
+  const inviteWorkspacePartner = useCallback(
+    async (input: {
+      inviteeIdentifier: string;
+      proposedRole?: 'partner' | 'planner_guest';
+      proposedSide?: 'groom' | 'bride' | 'partner';
+      permissions?: Partial<WorkspacePermissions>;
+    }): Promise<string> => {
+      const res = await apiRequest<{ inviteToken: string; workspace: CoupleWorkspacePayload }>(
+        '/workspace/invite',
+        { method: 'POST', body: JSON.stringify(input) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: res.workspace } : prev));
+      showToast(
+        language === 'ar'
+          ? 'تم إرسال دعوة المساحة المشتركة برمز تحقق خاص.'
+          : 'Workspace invitation sent with dedicated invite token.',
+      );
+      return res.inviteToken;
+    },
+    [language, showToast],
+  );
+
+  const respondWorkspaceInvitation = useCallback(
+    async (token: string, action: 'accept' | 'decline') => {
+      await apiRequest<CoupleWorkspacePayload>(
+        `/workspace/invitations/${encodeURIComponent(token)}/${action}`,
+        { method: 'POST' },
+      );
+      await refreshMyHub();
+      showToast(
+        language === 'ar'
+          ? action === 'accept'
+            ? 'انضممت إلى مساحة الزوجين المشتركة بنجاح.'
+            : 'تم رفض الدعوة.'
+          : action === 'accept'
+            ? 'Joined Shared Couple Workspace.'
+            : 'Invitation declined.',
+      );
+    },
+    [language, refreshMyHub, showToast],
+  );
+
+  const updateWorkspaceMemberPermissions = useCallback(
+    async (memberId: string, permissions: WorkspacePermissions) => {
+      const ws = await apiRequest<CoupleWorkspacePayload>(
+        `/workspace/members/${encodeURIComponent(memberId)}`,
+        { method: 'PATCH', body: JSON.stringify(permissions) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: ws } : prev));
+      showToast(language === 'ar' ? 'تم تحديث صلاحيات الشريك.' : 'Partner permissions updated.');
+    },
+    [language, showToast],
+  );
+
+  const revokeWorkspaceMember = useCallback(
+    async (memberId: string) => {
+      const ws = await apiRequest<CoupleWorkspacePayload>(
+        `/workspace/members/${encodeURIComponent(memberId)}`,
+        { method: 'DELETE' },
+      );
+      await refreshMyHub();
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: ws } : prev));
+      showToast(language === 'ar' ? 'تم إلغاء صلاحية الوصول للمساحة المشتركة.' : 'Workspace access revoked.');
+    },
+    [language, refreshMyHub, showToast],
+  );
+
+  const createWorkspaceApproval = useCallback(
+    async (input: { title: string; category: string; estimatedAmount: number }) => {
+      const ws = await apiRequest<CoupleWorkspacePayload>('/workspace/approvals', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: ws } : prev));
+      showToast(language === 'ar' ? 'تم إرسال طلب اعتماد الشراء للمساحة المشتركة.' : 'Purchase approval requested.');
+    },
+    [language, showToast],
+  );
+
+  const decideWorkspaceApproval = useCallback(
+    async (
+      approvalId: string,
+      status: 'approved' | 'changes_requested' | 'rejected',
+      reviewerNote?: string,
+    ) => {
+      const ws = await apiRequest<CoupleWorkspacePayload>(
+        `/workspace/approvals/${encodeURIComponent(approvalId)}`,
+        { method: 'PATCH', body: JSON.stringify({ status, reviewerNote }) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, workspace: ws } : prev));
+      showToast(language === 'ar' ? 'تم تسجيل القرار في سجل الموافقات.' : 'Approval decision saved.');
+    },
+    [language, showToast],
+  );
+
+  const createUserDocument = useCallback(
+    async (input: {
+      docType: UserDocumentType;
+      title: string;
+      fileName: string;
+      mimeType?: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp' | 'text/plain';
+      sizeBytes?: number;
+      referenceCode?: string;
+      notes?: string;
+      isSharedWithPartner?: boolean;
+    }) => {
+      const res = await apiRequest<{ document: UserDocumentItem; documents: UserDocumentItem[] }>(
+        '/my/documents',
+        { method: 'POST', body: JSON.stringify(input) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, documents: res.documents } : prev));
+      showToast(language === 'ar' ? 'تمت أرشفة المستند بأمان.' : 'Document stored cleanly.');
+    },
+    [language, showToast],
+  );
+
+  const deleteUserDocument = useCallback(
+    async (docId: string) => {
+      const docs = await apiRequest<UserDocumentItem[]>(
+        `/my/documents/${encodeURIComponent(docId)}`,
+        { method: 'DELETE' },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, documents: docs } : prev));
+      showToast(language === 'ar' ? 'تم حذف المستند.' : 'Document deleted.');
+    },
+    [language, showToast],
+  );
+
+  const createUserWarranty = useCallback(
+    async (input: {
+      itemName: string;
+      category: string;
+      providerName: string;
+      modelSerial?: string;
+      startDate: string;
+      expiryDate: string;
+      notes?: string;
+    }) => {
+      const warranties = await apiRequest<UserWarrantyItem[]>('/my/warranties', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, warranties } : prev));
+      showToast(language === 'ar' ? 'تم تسجيل شهادة الضمان.' : 'Warranty registered.');
+    },
+    [language, showToast],
+  );
+
+  const deleteUserWarranty = useCallback(
+    async (warrantyId: string) => {
+      const warranties = await apiRequest<UserWarrantyItem[]>(
+        `/my/warranties/${encodeURIComponent(warrantyId)}`,
+        { method: 'DELETE' },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, warranties } : prev));
+      showToast(language === 'ar' ? 'تم حذف الضمان.' : 'Warranty removed.');
+    },
+    [language, showToast],
+  );
+
+  const createUserAppointment = useCallback(
+    async (input: {
+      title: string;
+      appointmentType: UserAppointmentType;
+      providerName: string;
+      locationText: string;
+      scheduledAt: string;
+      notes?: string;
+    }) => {
+      const appointments = await apiRequest<UserAppointmentItem[]>('/my/appointments', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMyHubPayload((prev) => (prev ? { ...prev, appointments } : prev));
+      showToast(language === 'ar' ? 'تم تسجيل الموعد.' : 'Appointment scheduled.');
+    },
+    [language, showToast],
+  );
+
+  const patchUserAppointment = useCallback(
+    async (
+      appointmentId: string,
+      patch: { status?: UserAppointmentStatus; scheduledAt?: string; notes?: string | null },
+    ) => {
+      const appointments = await apiRequest<UserAppointmentItem[]>(
+        `/my/appointments/${encodeURIComponent(appointmentId)}`,
+        { method: 'PATCH', body: JSON.stringify(patch) },
+      );
+      setMyHubPayload((prev) => (prev ? { ...prev, appointments } : prev));
+    },
+    [],
+  );
+
+  const markNotificationRead = useCallback(async (notifId: string) => {
+    const notifications = await apiRequest<UserNotification[]>(
+      `/my/notifications/${encodeURIComponent(notifId)}/read`,
+      { method: 'POST' },
+    );
+    setMyHubPayload((prev) =>
+      prev
+        ? {
+            ...prev,
+            notifications,
+            unreadNotificationsCount: notifications.filter((n) => !n.isRead).length,
+          }
+        : prev,
+    );
+  }, []);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    const notifications = await apiRequest<UserNotification[]>('/my/notifications/read-all', {
+      method: 'POST',
+    });
+    setMyHubPayload((prev) =>
+      prev
+        ? {
+            ...prev,
+            notifications,
+            unreadNotificationsCount: 0,
+          }
+        : prev,
+    );
+  }, []);
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -2072,6 +2692,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleEarlyStartMilestone,
         deleteEarlyStartMilestone,
         toggleAcademyLessonComplete,
+        myHubPayload,
+        refreshMyHub,
+        transitionLifecycleStage,
+        updateEngagementPlan,
+        createEngagementItem,
+        patchEngagementItem,
+        deleteEngagementItem,
+        createJourneyTask,
+        patchJourneyTask,
+        deleteJourneyTask,
+        addJourneyTaskComment,
+        updateWorkspaceMeta,
+        inviteWorkspacePartner,
+        respondWorkspaceInvitation,
+        updateWorkspaceMemberPermissions,
+        revokeWorkspaceMember,
+        createWorkspaceApproval,
+        decideWorkspaceApproval,
+        createUserDocument,
+        deleteUserDocument,
+        createUserWarranty,
+        deleteUserWarranty,
+        createUserAppointment,
+        patchUserAppointment,
+        markNotificationRead,
+        markAllNotificationsRead,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

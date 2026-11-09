@@ -399,3 +399,192 @@ export const patchEarlyStartMilestoneSchema = z.object({
   completed: z.boolean(),
 });
 
+// Stage 5: Lifecycle Onboarding, Engagement Planner, Journey Planner & Shared Workspace Schemas
+export const lifecycleStageEnum = z.enum([
+  'thinking',
+  'early_saving',
+  'post_engagement',
+  'apartment_search',
+  'finishing_apartment',
+  'furnishing_groom',
+  'preparing_bride',
+  'planning_wedding',
+  'wedding_soon',
+  'newlywed',
+  'maintaining_home',
+]);
+
+export const onboardingStageTransitionSchema = z.object({
+  targetStage: lifecycleStageEnum,
+  note: z.string().trim().max(400).optional(),
+  city: z.string().trim().max(120).optional(),
+  governorateSlug: z.string().trim().max(64).optional(),
+  language: z.enum(['ar', 'en']).optional(),
+});
+
+export const updateEngagementPlanSchema = z.object({
+  engagementDate: z.string().trim().max(32).nullable().optional(),
+  targetBudget: z.number().min(5000).max(20000000).optional(),
+  shabkaBudget: z.number().min(0).max(10000000).optional(),
+  venueBudget: z.number().min(0).max(10000000).optional(),
+  attireBudget: z.number().min(0).max(5000000).optional(),
+  hospitalityBudget: z.number().min(0).max(5000000).optional(),
+  venueName: z.string().trim().max(160).nullable().optional(),
+  venueStatus: z.enum(['researching', 'shortlisted', 'booked', 'home_ceremony']).optional(),
+  ringNotes: z.string().trim().max(1000).nullable().optional(),
+  familyNotes: z.string().trim().max(2000).nullable().optional(),
+});
+
+export const createEngagementItemSchema = z.object({
+  itemType: z.enum(['checklist', 'gift_ring', 'guest_group', 'budget_line']),
+  titleAr: z.string().trim().min(2).max(180),
+  titleEn: z.string().trim().min(2).max(180),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).default('shared'),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+  estimatedCost: z.number().min(0).max(10000000).default(0),
+  actualCost: z.number().min(0).max(10000000).default(0),
+  guestCount: z.number().int().min(0).max(2000).default(0),
+  status: z.enum(['planned', 'in_progress', 'done']).default('planned'),
+  notes: z.string().trim().max(600).optional(),
+});
+
+export const patchEngagementItemSchema = z.object({
+  titleAr: z.string().trim().min(2).max(180).optional(),
+  titleEn: z.string().trim().min(2).max(180).optional(),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).optional(),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
+  estimatedCost: z.number().min(0).max(10000000).optional(),
+  actualCost: z.number().min(0).max(10000000).optional(),
+  guestCount: z.number().int().min(0).max(2000).optional(),
+  status: z.enum(['planned', 'in_progress', 'done']).optional(),
+  notes: z.string().trim().max(600).nullable().optional(),
+});
+
+export const journeyPhaseEnum = z.enum([
+  'early_start',
+  'engagement',
+  '12m',
+  '9m',
+  '6m',
+  '3m',
+  '1m',
+  'final_week',
+  'wedding_day',
+  'post_wedding',
+]);
+
+export const createJourneyTaskSchema = z.object({
+  phase: journeyPhaseEnum,
+  titleAr: z.string().trim().min(2).max(200),
+  titleEn: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(1000).optional(),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).default('shared'),
+  dueDate: z.string().trim().max(32).nullable().optional(),
+  reminderDate: z.string().trim().max(32).nullable().optional(),
+  dependsOnTaskId: z.string().trim().max(80).nullable().optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  estimatedCost: z.number().min(0).max(20000000).default(0),
+  attachmentLabel: z.string().trim().max(160).optional(),
+});
+
+export const patchJourneyTaskSchema = z.object({
+  phase: journeyPhaseEnum.optional(),
+  titleAr: z.string().trim().min(2).max(200).optional(),
+  titleEn: z.string().trim().min(2).max(200).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  ownerSide: z.enum(['groom', 'bride', 'shared']).optional(),
+  dueDate: z.string().trim().max(32).nullable().optional(),
+  reminderDate: z.string().trim().max(32).nullable().optional(),
+  dependsOnTaskId: z.string().trim().max(80).nullable().optional(),
+  status: z.enum(['todo', 'in_progress', 'done']).optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  estimatedCost: z.number().min(0).max(20000000).optional(),
+  attachmentLabel: z.string().trim().max(160).nullable().optional(),
+});
+
+export const createTaskCommentSchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+});
+
+export const workspacePermissionsSchema = z.object({
+  budgetRead: z.boolean().default(true),
+  budgetWrite: z.boolean().default(false),
+  tasksRead: z.boolean().default(true),
+  tasksWrite: z.boolean().default(true),
+  shoppingRead: z.boolean().default(true),
+  shoppingWrite: z.boolean().default(true),
+  documentsRead: z.boolean().default(true),
+  documentsWrite: z.boolean().default(false),
+  approvePurchases: z.boolean().default(true),
+});
+
+export const inviteWorkspacePartnerSchema = z.object({
+  inviteeIdentifier: z.string().trim().min(3).max(160),
+  proposedRole: z.enum(['partner', 'planner_guest']).default('partner'),
+  proposedSide: z.enum(['groom', 'bride', 'partner']).default('partner'),
+  permissions: workspacePermissionsSchema.optional(),
+});
+
+export const updateWorkspaceMetaSchema = z.object({
+  nameAr: z.string().trim().min(2).max(140).optional(),
+  nameEn: z.string().trim().min(2).max(140).optional(),
+  engagementDate: z.string().trim().max(32).nullable().optional(),
+  weddingDate: z.string().trim().max(32).nullable().optional(),
+});
+
+export const createWorkspaceApprovalSchema = z.object({
+  title: z.string().trim().min(2).max(180),
+  category: z.string().trim().min(2).max(80),
+  estimatedAmount: z.number().min(0).max(50000000),
+});
+
+export const decideWorkspaceApprovalSchema = z.object({
+  status: z.enum(['approved', 'changes_requested', 'rejected']),
+  reviewerNote: z.string().trim().max(600).optional(),
+});
+
+export const createUserDocumentSchema = z.object({
+  docType: z.enum(['contract', 'floor_plan', 'warranty', 'receipt', 'quote', 'id_copy', 'other']),
+  title: z.string().trim().min(2).max(160),
+  fileName: z.string().trim().min(2).max(160),
+  mimeType: z
+    .enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'text/plain'])
+    .default('application/pdf'),
+  sizeBytes: z.number().int().min(1).max(25000000).default(120000),
+  referenceCode: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(800).optional(),
+  isSharedWithPartner: z.boolean().default(false),
+});
+
+export const createUserWarrantySchema = z.object({
+  itemName: z.string().trim().min(2).max(160),
+  category: z.string().trim().min(2).max(80),
+  providerName: z.string().trim().min(2).max(120),
+  modelSerial: z.string().trim().max(100).optional(),
+  startDate: z.string().trim().min(8).max(32),
+  expiryDate: z.string().trim().min(8).max(32),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const createUserAppointmentSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  appointmentType: z.enum([
+    'finishing_visit',
+    'hall_tour',
+    'showroom',
+    'gold_shopping',
+    'photography_meeting',
+    'other',
+  ]),
+  providerName: z.string().trim().min(2).max(140),
+  locationText: z.string().trim().min(2).max(200),
+  scheduledAt: z.string().trim().min(8).max(40),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const patchUserAppointmentSchema = z.object({
+  status: z.enum(['scheduled', 'confirmed', 'rescheduled', 'completed', 'cancelled']).optional(),
+  scheduledAt: z.string().trim().min(8).max(40).optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+});
+

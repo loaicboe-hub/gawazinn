@@ -90,6 +90,39 @@ import {
   recordGoalContribution,
 } from './earlyStartService';
 import {
+  addUserNotification,
+  buildCoupleWorkspacePayload,
+  buildEngagementOverview,
+  buildJourneyOverview,
+  buildMyGawazInnHubPayload,
+  ensureUserEngagementAndJourney,
+  listVisibleDocumentsForUser,
+  mapAppointmentRow,
+  mapDocumentRow,
+  mapWarrantyRow,
+  resolveActiveWorkspaceForUser,
+  transitionLifecycleStage,
+} from './journeyWorkspaceService';
+import {
+  createEngagementItemSchema,
+  createJourneyTaskSchema,
+  createTaskCommentSchema,
+  createUserAppointmentSchema,
+  createUserDocumentSchema,
+  createUserWarrantySchema,
+  createWorkspaceApprovalSchema,
+  decideWorkspaceApprovalSchema,
+  inviteWorkspacePartnerSchema,
+  onboardingStageTransitionSchema,
+  patchEngagementItemSchema,
+  patchJourneyTaskSchema,
+  patchUserAppointmentSchema,
+  updateEngagementPlanSchema,
+  updateWorkspaceMetaSchema,
+  workspacePermissionsSchema,
+} from '../shared/schemas';
+import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
+import {
   SlidingWindowRateLimiter,
   buildClearSessionCookieHeader,
   buildSessionCookieHeader,
@@ -765,6 +798,9 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/calculators',
           '/early-start',
           '/early-start/academy',
+          '/onboarding',
+          '/engagement',
+          '/journey',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -2436,6 +2472,1070 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
               overview,
             },
           });
+          return;
+        }
+      }
+
+      // ================= STAGE 5: LIFECYCLE ONBOARDING, ENGAGEMENT, JOURNEY & WORKSPACE =================
+      if (
+        route === '/onboarding/stage' ||
+        route === '/my/hub' ||
+        route.startsWith('/engagement/') ||
+        route.startsWith('/journey/') ||
+        route === '/workspace' ||
+        route.startsWith('/workspace/') ||
+        route.startsWith('/my/documents') ||
+        route.startsWith('/my/warranties') ||
+        route.startsWith('/my/appointments') ||
+        route.startsWith('/my/notifications')
+      ) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication is required for personal workspace planning');
+          return;
+        }
+
+        // 1. 11-Stage Lifecycle Onboarding & Transitions (non-destructive)
+        if (method === 'POST' && route === '/onboarding/stage') {
+          const body = await readJsonBody(req);
+          const parsed = onboardingStageTransitionSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid lifecycle stage payload', parsed.error.flatten());
+            return;
+          }
+          const result = transitionLifecycleStage(db, authUser.id, parsed.data.targetStage, {
+            note: parsed.data.note,
+            city: parsed.data.city,
+            governorateSlug: parsed.data.governorateSlug,
+            language: parsed.data.language,
+          });
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'lifecycle.stage_transitioned',
+            targetType: 'user',
+            targetId: authUser.id,
+            metadata: { targetStage: parsed.data.targetStage, note: parsed.data.note ?? null },
+            ipAddress: ip,
+          });
+          const updatedUserRow = db.prepare('SELECT * FROM users WHERE id = ?').get(authUser.id) as Record<string, unknown>;
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              user: mapUserRow(updatedUserRow),
+              currentStage: result.currentStage,
+              lifecycleHistory: result.history,
+              hub: buildMyGawazInnHubPayload(db, authUser.id),
+            },
+          });
+          return;
+        }
+
+        // 2. Full 17-Module My Gawaz Inn Command Center Hub
+        if (method === 'GET' && route === '/my/hub') {
+          sendJson(res, 200, { ok: true, data: buildMyGawazInnHubPayload(db, authUser.id) });
+          return;
+        }
+
+        // 3. Module B — Engagement Readiness Planner
+        if (method === 'GET' && route === '/engagement/overview') {
+          sendJson(res, 200, { ok: true, data: buildEngagementOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'PUT' && route === '/engagement/plan') {
+          const body = await readJsonBody(req);
+          const parsed = updateEngagementPlanSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid engagement plan updates', parsed.error.flatten());
+            return;
+          }
+          ensureUserEngagementAndJourney(db, authUser.id);
+          const d = parsed.data;
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE engagement_plans SET
+              engagement_date = CASE WHEN ? IS NOT NULL THEN ? ELSE engagement_date END,
+              target_budget = COALESCE(?, target_budget),
+              shabka_budget = COALESCE(?, shabka_budget),
+              venue_budget = COALESCE(?, venue_budget),
+              attire_budget = COALESCE(?, attire_budget),
+              hospitality_budget = COALESCE(?, hospitality_budget),
+              venue_name = CASE WHEN ? IS NOT NULL THEN ? ELSE venue_name END,
+              venue_status = COALESCE(?, venue_status),
+              ring_notes = CASE WHEN ? IS NOT NULL THEN ? ELSE ring_notes END,
+              family_notes = CASE WHEN ? IS NOT NULL THEN ? ELSE family_notes END,
+              updated_at = ?
+             WHERE user_id = ?`,
+          ).run(
+            d.engagementDate === undefined ? null : 'set',
+            d.engagementDate ?? null,
+            d.targetBudget ?? null,
+            d.shabkaBudget ?? null,
+            d.venueBudget ?? null,
+            d.attireBudget ?? null,
+            d.hospitalityBudget ?? null,
+            d.venueName === undefined ? null : 'set',
+            d.venueName ?? null,
+            d.venueStatus ?? null,
+            d.ringNotes === undefined ? null : 'set',
+            d.ringNotes ?? null,
+            d.familyNotes === undefined ? null : 'set',
+            d.familyNotes ?? null,
+            now,
+            authUser.id,
+          );
+          sendJson(res, 200, { ok: true, data: buildEngagementOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/engagement/items') {
+          const body = await readJsonBody(req);
+          const parsed = createEngagementItemSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid engagement item inputs', parsed.error.flatten());
+            return;
+          }
+          ensureUserEngagementAndJourney(db, authUser.id);
+          const id = `ei-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const maxOrd =
+            (
+              db
+                .prepare('SELECT MAX(sort_order) as max_ord FROM engagement_items WHERE user_id = ?')
+                .get(authUser.id) as { max_ord: number | null }
+            ).max_ord ?? 0;
+
+          db.prepare(
+            `INSERT INTO engagement_items
+               (id, user_id, item_type, title_ar, title_en, owner_side, priority, estimated_cost, actual_cost, guest_count, status, notes, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            parsed.data.itemType,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.ownerSide,
+            parsed.data.priority,
+            parsed.data.estimatedCost,
+            parsed.data.actualCost,
+            parsed.data.guestCount,
+            parsed.data.status,
+            parsed.data.notes ?? null,
+            maxOrd + 1,
+            now,
+            now,
+          );
+          sendJson(res, 201, {
+            ok: true,
+            data: { itemId: id, overview: buildEngagementOverview(db, authUser.id) },
+          });
+          return;
+        }
+
+        const engItemMatch = route.match(/^\/engagement\/items\/([^/]+)$/);
+        if (method === 'PATCH' && engItemMatch) {
+          const itemId = decodeURIComponent(engItemMatch[1]);
+          const existing = db
+            .prepare('SELECT user_id FROM engagement_items WHERE id = ?')
+            .get(itemId) as { user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Engagement item not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchEngagementItemSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid engagement item update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE engagement_items SET
+              title_ar = COALESCE(?, title_ar),
+              title_en = COALESCE(?, title_en),
+              owner_side = COALESCE(?, owner_side),
+              priority = COALESCE(?, priority),
+              estimated_cost = COALESCE(?, estimated_cost),
+              actual_cost = COALESCE(?, actual_cost),
+              guest_count = COALESCE(?, guest_count),
+              status = COALESCE(?, status),
+              notes = CASE WHEN ? IS NOT NULL THEN ? ELSE notes END,
+              updated_at = ?
+             WHERE id = ? AND user_id = ?`,
+          ).run(
+            d.titleAr ?? null,
+            d.titleEn ?? null,
+            d.ownerSide ?? null,
+            d.priority ?? null,
+            d.estimatedCost ?? null,
+            d.actualCost ?? null,
+            d.guestCount ?? null,
+            d.status ?? null,
+            d.notes === undefined ? null : 'set',
+            d.notes ?? null,
+            new Date().toISOString(),
+            itemId,
+            authUser.id,
+          );
+          sendJson(res, 200, { ok: true, data: buildEngagementOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && engItemMatch) {
+          const itemId = decodeURIComponent(engItemMatch[1]);
+          const existing = db
+            .prepare('SELECT user_id FROM engagement_items WHERE id = ?')
+            .get(itemId) as { user_id: string } | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Engagement item not found');
+            return;
+          }
+          db.prepare('DELETE FROM engagement_items WHERE id = ? AND user_id = ?').run(itemId, authUser.id);
+          sendJson(res, 200, { ok: true, data: buildEngagementOverview(db, authUser.id) });
+          return;
+        }
+
+        // 4. Module I — Wedding Journey Planner (Workspace & Owner Scoped + Dependencies + Comments)
+        if (method === 'GET' && route === '/journey/tasks') {
+          sendJson(res, 200, { ok: true, data: buildJourneyOverview(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/journey/tasks') {
+          ensureUserEngagementAndJourney(db, authUser.id);
+          const { workspaceRow, myRole, myPermissions } = resolveActiveWorkspaceForUser(db, authUser.id);
+          if (myRole !== 'owner' && !myPermissions.tasksWrite) {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace role does not permit creating journey tasks');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = createJourneyTaskSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid journey task inputs', parsed.error.flatten());
+            return;
+          }
+          const workspaceId = String(workspaceRow.id);
+          if (parsed.data.dependsOnTaskId) {
+            const dep = db
+              .prepare('SELECT id, workspace_id, user_id FROM journey_tasks WHERE id = ?')
+              .get(parsed.data.dependsOnTaskId) as
+              | { id: string; workspace_id: string | null; user_id: string }
+              | undefined;
+            if (!dep || (dep.workspace_id !== workspaceId && dep.user_id !== authUser.id)) {
+              sendError(res, 400, 'INVALID_DEPENDENCY', 'Dependency task belongs to another workspace');
+              return;
+            }
+          }
+          const id = `jt-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const maxOrd =
+            (
+              db
+                .prepare('SELECT MAX(sort_order) as max_ord FROM journey_tasks WHERE workspace_id = ? OR user_id = ?')
+                .get(workspaceId, authUser.id) as { max_ord: number | null }
+            ).max_ord ?? 0;
+
+          db.prepare(
+            `INSERT INTO journey_tasks
+               (id, user_id, workspace_id, phase, title_ar, title_en, description, owner_side, due_date, reminder_date, depends_on_task_id, status, priority, estimated_cost, attachment_label, sort_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            workspaceId,
+            parsed.data.phase,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.description ?? null,
+            parsed.data.ownerSide,
+            parsed.data.dueDate ?? null,
+            parsed.data.reminderDate ?? null,
+            parsed.data.dependsOnTaskId ?? null,
+            parsed.data.priority,
+            parsed.data.estimatedCost,
+            parsed.data.attachmentLabel ?? null,
+            maxOrd + 1,
+            now,
+            now,
+          );
+          sendJson(res, 201, {
+            ok: true,
+            data: { taskId: id, overview: buildJourneyOverview(db, authUser.id) },
+          });
+          return;
+        }
+
+        const taskMatch = route.match(/^\/journey\/tasks\/([^/]+)$/);
+        if (method === 'PATCH' && taskMatch) {
+          const taskId = decodeURIComponent(taskMatch[1]);
+          const { workspaceRow, myRole, myPermissions } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const workspaceId = String(workspaceRow.id);
+
+          const taskRow = db.prepare('SELECT * FROM journey_tasks WHERE id = ?').get(taskId) as
+            | Record<string, unknown>
+            | undefined;
+          if (!taskRow) {
+            sendError(res, 404, 'NOT_FOUND', 'Journey task not found');
+            return;
+          }
+          const sameOwner = String(taskRow.user_id) === authUser.id;
+          const sameWorkspace = taskRow.workspace_id && String(taskRow.workspace_id) === workspaceId;
+          if (!sameOwner && !sameWorkspace) {
+            sendError(res, 404, 'NOT_FOUND', 'Journey task not found');
+            return;
+          }
+          if (!sameOwner && myRole !== 'owner' && !myPermissions.tasksWrite) {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace role does not have permission to edit tasks');
+            return;
+          }
+
+          const body = await readJsonBody(req);
+          const parsed = patchJourneyTaskSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid task update', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          const now = new Date().toISOString();
+
+          // Check unmet dependency warning metadata
+          let dependencyWarning: string | null = null;
+          const effectiveDepId =
+            d.dependsOnTaskId !== undefined
+              ? d.dependsOnTaskId
+              : taskRow.depends_on_task_id
+                ? String(taskRow.depends_on_task_id)
+                : null;
+          if (d.status === 'done' && effectiveDepId) {
+            const depRow = db.prepare('SELECT status, title_en FROM journey_tasks WHERE id = ?').get(effectiveDepId) as
+              | { status: string; title_en: string }
+              | undefined;
+            if (depRow && depRow.status !== 'done') {
+              dependencyWarning = `Prerequisite "${depRow.title_en}" is still incomplete`;
+            }
+          }
+
+          db.prepare(
+            `UPDATE journey_tasks SET
+              phase = COALESCE(?, phase),
+              title_ar = COALESCE(?, title_ar),
+              title_en = COALESCE(?, title_en),
+              description = CASE WHEN ? IS NOT NULL THEN ? ELSE description END,
+              owner_side = COALESCE(?, owner_side),
+              due_date = CASE WHEN ? IS NOT NULL THEN ? ELSE due_date END,
+              reminder_date = CASE WHEN ? IS NOT NULL THEN ? ELSE reminder_date END,
+              depends_on_task_id = CASE WHEN ? IS NOT NULL THEN ? ELSE depends_on_task_id END,
+              status = COALESCE(?, status),
+              priority = COALESCE(?, priority),
+              estimated_cost = COALESCE(?, estimated_cost),
+              attachment_label = CASE WHEN ? IS NOT NULL THEN ? ELSE attachment_label END,
+              completed_at = CASE WHEN ? = 'done' THEN COALESCE(completed_at, ?) WHEN ? IS NOT NULL THEN NULL ELSE completed_at END,
+              updated_at = ?
+             WHERE id = ?`,
+          ).run(
+            d.phase ?? null,
+            d.titleAr ?? null,
+            d.titleEn ?? null,
+            d.description === undefined ? null : 'set',
+            d.description ?? null,
+            d.ownerSide ?? null,
+            d.dueDate === undefined ? null : 'set',
+            d.dueDate ?? null,
+            d.reminderDate === undefined ? null : 'set',
+            d.reminderDate ?? null,
+            d.dependsOnTaskId === undefined ? null : 'set',
+            d.dependsOnTaskId ?? null,
+            d.status ?? null,
+            d.priority ?? null,
+            d.estimatedCost ?? null,
+            d.attachmentLabel === undefined ? null : 'set',
+            d.attachmentLabel ?? null,
+            d.status ?? null,
+            now,
+            d.status ?? null,
+            now,
+            taskId,
+          );
+
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              dependencyWarning,
+              overview: buildJourneyOverview(db, authUser.id),
+            },
+          });
+          return;
+        }
+
+        if (method === 'DELETE' && taskMatch) {
+          const taskId = decodeURIComponent(taskMatch[1]);
+          const { workspaceRow, myRole, myPermissions } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const workspaceId = String(workspaceRow.id);
+          const taskRow = db.prepare('SELECT user_id, workspace_id FROM journey_tasks WHERE id = ?').get(taskId) as
+            | { user_id: string; workspace_id: string | null }
+            | undefined;
+          if (!taskRow) {
+            sendError(res, 404, 'NOT_FOUND', 'Journey task not found');
+            return;
+          }
+          const sameOwner = taskRow.user_id === authUser.id;
+          const sameWorkspace = taskRow.workspace_id === workspaceId;
+          if (!sameOwner && !sameWorkspace) {
+            sendError(res, 404, 'NOT_FOUND', 'Journey task not found');
+            return;
+          }
+          if (!sameOwner && myRole !== 'owner' && !myPermissions.tasksWrite) {
+            sendError(res, 403, 'FORBIDDEN', 'No permission to delete workspace task');
+            return;
+          }
+          db.prepare('DELETE FROM journey_tasks WHERE id = ?').run(taskId);
+          sendJson(res, 200, { ok: true, data: buildJourneyOverview(db, authUser.id) });
+          return;
+        }
+
+        const commentMatch = route.match(/^\/journey\/tasks\/([^/]+)\/comments$/);
+        if (method === 'POST' && commentMatch) {
+          const taskId = decodeURIComponent(commentMatch[1]);
+          const { workspaceRow, myRole, myPermissions } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const workspaceId = String(workspaceRow.id);
+          const taskRow = db.prepare('SELECT user_id, workspace_id FROM journey_tasks WHERE id = ?').get(taskId) as
+            | { user_id: string; workspace_id: string | null }
+            | undefined;
+          if (!taskRow || (taskRow.user_id !== authUser.id && taskRow.workspace_id !== workspaceId)) {
+            sendError(res, 404, 'NOT_FOUND', 'Journey task not found');
+            return;
+          }
+          if (taskRow.user_id !== authUser.id && myRole !== 'owner' && !myPermissions.tasksRead) {
+            sendError(res, 403, 'FORBIDDEN', 'No permission to comment on workspace tasks');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = createTaskCommentSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Comment body required', parsed.error.flatten());
+            return;
+          }
+          const id = `tc-${crypto.randomUUID().slice(0, 10)}`;
+          db.prepare(
+            `INSERT INTO task_comments (id, task_id, user_id, author_name, body, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          ).run(id, taskId, authUser.id, authUser.name, parsed.data.body, new Date().toISOString());
+          sendJson(res, 201, { ok: true, data: buildJourneyOverview(db, authUser.id) });
+          return;
+        }
+
+        // 5. Shared Couple Workspace (Invites, Consent Accept/Decline, Granular Permissions, Revocation, Approvals)
+        if (method === 'GET' && route === '/workspace') {
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'PATCH' && route === '/workspace') {
+          const { workspaceRow, myRole } = resolveActiveWorkspaceForUser(db, authUser.id);
+          if (myRole !== 'owner') {
+            sendError(res, 403, 'FORBIDDEN', 'Only workspace owner can update workspace settings');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = updateWorkspaceMetaSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid workspace fields', parsed.error.flatten());
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE couple_workspaces SET
+              name_ar = COALESCE(?, name_ar),
+              name_en = COALESCE(?, name_en),
+              engagement_date = CASE WHEN ? IS NOT NULL THEN ? ELSE engagement_date END,
+              wedding_date = CASE WHEN ? IS NOT NULL THEN ? ELSE wedding_date END,
+              updated_at = ?
+             WHERE id = ?`,
+          ).run(
+            d.nameAr ?? null,
+            d.nameEn ?? null,
+            d.engagementDate === undefined ? null : 'set',
+            d.engagementDate ?? null,
+            d.weddingDate === undefined ? null : 'set',
+            d.weddingDate ?? null,
+            new Date().toISOString(),
+            String(workspaceRow.id),
+          );
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/workspace/invite') {
+          const { workspaceRow, myRole } = resolveActiveWorkspaceForUser(db, authUser.id);
+          if (myRole !== 'owner') {
+            sendError(res, 403, 'FORBIDDEN', 'Only the workspace owner can invite partners');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = inviteWorkspacePartnerSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid partner invitation input', parsed.error.flatten());
+            return;
+          }
+          const workspaceId = String(workspaceRow.id);
+          const rawIdent = parsed.data.inviteeIdentifier.trim();
+          const isEmail = rawIdent.includes('@');
+          const inviteeEmail = isEmail ? rawIdent.toLowerCase() : null;
+          const inviteePhone = isEmail ? null : normalizeEgyptianPhone(rawIdent);
+
+          if ((inviteeEmail && inviteeEmail === authUser.email.toLowerCase()) || (inviteePhone && inviteePhone === authUser.phone)) {
+            sendError(res, 400, 'SELF_INVITE', 'Cannot invite your own account');
+            return;
+          }
+
+          const token = `gwi-${crypto.randomBytes(12).toString('hex')}`;
+          const now = new Date().toISOString();
+          const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString();
+          const permissions = { ...DEFAULT_WORKSPACE_PERMISSIONS, ...(parsed.data.permissions || {}) };
+          const invId = `wi-${crypto.randomUUID().slice(0, 10)}`;
+
+          db.prepare(
+            `INSERT INTO workspace_invitations
+               (id, workspace_id, inviter_user_id, invitee_email, invitee_phone, invite_token, proposed_role, proposed_side, permissions_json, status, expires_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+          ).run(
+            invId,
+            workspaceId,
+            authUser.id,
+            inviteeEmail,
+            inviteePhone,
+            token,
+            parsed.data.proposedRole,
+            parsed.data.proposedSide,
+            JSON.stringify(permissions),
+            expiresAt,
+            now,
+          );
+
+          // Notify invitee directly inside app if registered
+          const targetUser = (
+            inviteeEmail
+              ? db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(inviteeEmail)
+              : db.prepare('SELECT id FROM users WHERE phone = ?').get(inviteePhone)
+          ) as { id: string } | undefined;
+
+          if (targetUser) {
+            addUserNotification(db, {
+              userId: targetUser.id,
+              notifType: 'workspace_invite',
+              titleAr: `دعوة لمساحة زوجين مشتركة من ${authUser.name}`,
+              titleEn: `Couple Workspace Invite from ${authUser.name}`,
+              bodyAr: 'تمت دعوتك للانضمام لمساحة التخطيط المشتركة. افتح "مساحة الزوجين" للموافقة أو الرفض.',
+              bodyEn: 'You have an explicit partner invite. Open Shared Workspace in My Gawaz Inn to Accept or Decline.',
+              linkPath: '/my/workspace',
+            });
+          }
+
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'workspace.invite_sent',
+            targetType: 'workspace_invitation',
+            targetId: invId,
+            metadata: { inviteeEmail, inviteePhone, proposedRole: parsed.data.proposedRole },
+            ipAddress: ip,
+          });
+
+          sendJson(res, 201, {
+            ok: true,
+            data: {
+              inviteToken: token,
+              workspace: buildCoupleWorkspacePayload(db, authUser.id),
+            },
+          });
+          return;
+        }
+
+        const acceptMatch = route.match(/^\/workspace\/invitations\/([^/]+)\/accept$/);
+        if (method === 'POST' && acceptMatch) {
+          const token = decodeURIComponent(acceptMatch[1]);
+          const inv = db
+            .prepare("SELECT * FROM workspace_invitations WHERE invite_token = ? AND status = 'pending'")
+            .get(token) as Record<string, unknown> | undefined;
+          if (!inv) {
+            sendError(res, 404, 'NOT_FOUND', 'Pending workspace invitation not found or already used');
+            return;
+          }
+          const matchesEmail =
+            inv.invitee_email && String(inv.invitee_email).toLowerCase() === authUser.email.toLowerCase();
+          const matchesPhone = inv.invitee_phone && String(inv.invitee_phone) === authUser.phone;
+          if (!matchesEmail && !matchesPhone) {
+            sendError(res, 403, 'FORBIDDEN', 'This invitation is addressed to a different user account');
+            return;
+          }
+          if (new Date(String(inv.expires_at)).getTime() < Date.now()) {
+            sendError(res, 410, 'EXPIRED', 'Invitation has expired');
+            return;
+          }
+
+          const now = new Date().toISOString();
+          const wsId = String(inv.workspace_id);
+          db.exec('BEGIN;');
+          try {
+            db.prepare(
+              `UPDATE workspace_invitations SET status = 'accepted', responded_at = ? WHERE id = ?`,
+            ).run(now, String(inv.id));
+
+            const existingMember = db
+              .prepare('SELECT id FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
+              .get(wsId, authUser.id) as { id: string } | undefined;
+
+            if (existingMember) {
+              db.prepare(
+                `UPDATE workspace_members SET
+                  member_role = ?,
+                  side_label = ?,
+                  permissions_json = ?,
+                  status = 'active',
+                  joined_at = ?,
+                  revoked_at = NULL
+                 WHERE id = ?`,
+              ).run(
+                String(inv.proposed_role),
+                String(inv.proposed_side),
+                String(inv.permissions_json),
+                now,
+                existingMember.id,
+              );
+            } else {
+              db.prepare(
+                `INSERT INTO workspace_members
+                   (id, workspace_id, user_id, member_role, side_label, permissions_json, status, joined_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
+              ).run(
+                `wm-${crypto.randomUUID().slice(0, 10)}`,
+                wsId,
+                authUser.id,
+                String(inv.proposed_role),
+                String(inv.proposed_side),
+                String(inv.permissions_json),
+                now,
+              );
+            }
+
+            addUserNotification(db, {
+              userId: String(inv.inviter_user_id),
+              notifType: 'workspace_invite',
+              titleAr: `قبل ${authUser.name} دعوة المساحة المشتركة`,
+              titleEn: `${authUser.name} joined your Couple Workspace`,
+              bodyAr: 'أصبح بإمكانكما الآن تنسيق المهام والموافقات المشتركة.',
+              bodyEn: 'You can now collaborate on journey tasks, comments, and purchase approvals.',
+              linkPath: '/my/workspace',
+            });
+
+            writeAuditLog(db, {
+              actorUserId: authUser.id,
+              actorRole: authUser.role,
+              action: 'workspace.invite_accepted',
+              targetType: 'couple_workspace',
+              targetId: wsId,
+              ipAddress: ip,
+            });
+            db.exec('COMMIT;');
+          } catch (err) {
+            db.exec('ROLLBACK;');
+            throw err;
+          }
+
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        const declineMatch = route.match(/^\/workspace\/invitations\/([^/]+)\/decline$/);
+        if (method === 'POST' && declineMatch) {
+          const token = decodeURIComponent(declineMatch[1]);
+          const inv = db
+            .prepare("SELECT * FROM workspace_invitations WHERE invite_token = ? AND status = 'pending'")
+            .get(token) as Record<string, unknown> | undefined;
+          if (!inv) {
+            sendError(res, 404, 'NOT_FOUND', 'Pending workspace invitation not found');
+            return;
+          }
+          const matchesEmail =
+            inv.invitee_email && String(inv.invitee_email).toLowerCase() === authUser.email.toLowerCase();
+          const matchesPhone = inv.invitee_phone && String(inv.invitee_phone) === authUser.phone;
+          const isInviterRevoking = String(inv.inviter_user_id) === authUser.id;
+          if (!matchesEmail && !matchesPhone && !isInviterRevoking) {
+            sendError(res, 403, 'FORBIDDEN', 'Cannot respond to this invitation');
+            return;
+          }
+          db.prepare("UPDATE workspace_invitations SET status = ?, responded_at = ? WHERE id = ?").run(
+            isInviterRevoking ? 'revoked' : 'declined',
+            new Date().toISOString(),
+            String(inv.id),
+          );
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        const memberMatch = route.match(/^\/workspace\/members\/([^/]+)$/);
+        if (method === 'PATCH' && memberMatch) {
+          const memberId = decodeURIComponent(memberMatch[1]);
+          const { workspaceRow, myRole } = resolveActiveWorkspaceForUser(db, authUser.id);
+          if (myRole !== 'owner') {
+            sendError(res, 403, 'FORBIDDEN', 'Only workspace owner can edit member permissions');
+            return;
+          }
+          const wsId = String(workspaceRow.id);
+          const target = db
+            .prepare('SELECT id, member_role FROM workspace_members WHERE id = ? AND workspace_id = ?')
+            .get(memberId, wsId) as { id: string; member_role: string } | undefined;
+          if (!target) {
+            sendError(res, 404, 'NOT_FOUND', 'Workspace member not found');
+            return;
+          }
+          if (target.member_role === 'owner') {
+            sendError(res, 400, 'CANNOT_DEMOTE_OWNER', 'Owner retains full workspace permissions');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = workspacePermissionsSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid permissions payload', parsed.error.flatten());
+            return;
+          }
+          db.prepare('UPDATE workspace_members SET permissions_json = ? WHERE id = ?').run(
+            JSON.stringify(parsed.data),
+            memberId,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'workspace.permissions_updated',
+            targetType: 'workspace_member',
+            targetId: memberId,
+            metadata: parsed.data,
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'DELETE' && memberMatch) {
+          const memberId = decodeURIComponent(memberMatch[1]);
+          const { workspaceRow, myRole } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const wsId = String(workspaceRow.id);
+          const target = db
+            .prepare('SELECT id, user_id, member_role FROM workspace_members WHERE id = ? AND workspace_id = ?')
+            .get(memberId, wsId) as { id: string; user_id: string; member_role: string } | undefined;
+          if (!target) {
+            sendError(res, 404, 'NOT_FOUND', 'Workspace member not found');
+            return;
+          }
+          if (target.member_role === 'owner') {
+            sendError(res, 400, 'CANNOT_REVOKE_OWNER', 'Workspace owner cannot be revoked');
+            return;
+          }
+          // Owner can revoke anyone; partner can leave voluntarily
+          if (myRole !== 'owner' && target.user_id !== authUser.id) {
+            sendError(res, 403, 'FORBIDDEN', 'Only workspace owner can revoke access for another member');
+            return;
+          }
+          const now = new Date().toISOString();
+          db.prepare("UPDATE workspace_members SET status = 'revoked', revoked_at = ? WHERE id = ?").run(now, memberId);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'workspace.member_revoked',
+            targetType: 'workspace_member',
+            targetId: memberId,
+            metadata: { revokedUserId: target.user_id },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/workspace/approvals') {
+          const { workspaceRow } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const body = await readJsonBody(req);
+          const parsed = createWorkspaceApprovalSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid approval request', parsed.error.flatten());
+            return;
+          }
+          const id = `wa-${crypto.randomUUID().slice(0, 10)}`;
+          db.prepare(
+            `INSERT INTO workspace_approvals (id, workspace_id, requested_by_user_id, title, category, estimated_amount, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
+          ).run(
+            id,
+            String(workspaceRow.id),
+            authUser.id,
+            parsed.data.title,
+            parsed.data.category,
+            parsed.data.estimatedAmount,
+            new Date().toISOString(),
+          );
+          sendJson(res, 201, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        const approvalMatch = route.match(/^\/workspace\/approvals\/([^/]+)$/);
+        if (method === 'PATCH' && approvalMatch) {
+          const approvalId = decodeURIComponent(approvalMatch[1]);
+          const { workspaceRow, myRole, myPermissions } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const wsId = String(workspaceRow.id);
+          const appRow = db
+            .prepare('SELECT id, workspace_id FROM workspace_approvals WHERE id = ?')
+            .get(approvalId) as { id: string; workspace_id: string } | undefined;
+          if (!appRow || appRow.workspace_id !== wsId) {
+            sendError(res, 404, 'NOT_FOUND', 'Workspace approval item not found');
+            return;
+          }
+          if (myRole !== 'owner' && !myPermissions.approvePurchases) {
+            sendError(res, 403, 'FORBIDDEN', 'Your workspace permissions do not allow approving purchases');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = decideWorkspaceApprovalSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid decision', parsed.error.flatten());
+            return;
+          }
+          db.prepare(
+            `UPDATE workspace_approvals SET status = ?, reviewer_user_id = ?, reviewer_note = ?, decided_at = ? WHERE id = ?`,
+          ).run(
+            parsed.data.status,
+            authUser.id,
+            parsed.data.reviewerNote ?? null,
+            new Date().toISOString(),
+            approvalId,
+          );
+          sendJson(res, 200, { ok: true, data: buildCoupleWorkspacePayload(db, authUser.id) });
+          return;
+        }
+
+        // 6. Module J Documents, Warranties, Appointments & Notifications
+        if (method === 'GET' && route === '/my/documents') {
+          sendJson(res, 200, { ok: true, data: listVisibleDocumentsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/my/documents') {
+          const { workspaceRow } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const body = await readJsonBody(req);
+          const parsed = createUserDocumentSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid document metadata', parsed.error.flatten());
+            return;
+          }
+          const id = `doc-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const safeFileName = parsed.data.fileName.replace(/[^\w.\-\u0600-\u06FF ]+/g, '_');
+          db.prepare(
+            `INSERT INTO user_documents
+               (id, user_id, workspace_id, doc_type, title, file_name, mime_type, size_bytes, reference_code, notes, is_shared_with_partner, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            String(workspaceRow.id),
+            parsed.data.docType,
+            parsed.data.title,
+            safeFileName,
+            parsed.data.mimeType,
+            parsed.data.sizeBytes,
+            parsed.data.referenceCode ?? null,
+            parsed.data.notes ?? null,
+            parsed.data.isSharedWithPartner ? 1 : 0,
+            now,
+            now,
+          );
+          const created = db.prepare('SELECT * FROM user_documents WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 201, {
+            ok: true,
+            data: { document: mapDocumentRow(created), documents: listVisibleDocumentsForUser(db, authUser.id) },
+          });
+          return;
+        }
+
+        const docMatch = route.match(/^\/my\/documents\/([^/]+)$/);
+        if (method === 'DELETE' && docMatch) {
+          const docId = decodeURIComponent(docMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM user_documents WHERE id = ?').get(docId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Document not found');
+            return;
+          }
+          db.prepare('DELETE FROM user_documents WHERE id = ? AND user_id = ?').run(docId, authUser.id);
+          sendJson(res, 200, { ok: true, data: listVisibleDocumentsForUser(db, authUser.id) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/my/warranties') {
+          const rows = db
+            .prepare('SELECT * FROM user_warranties WHERE user_id = ? ORDER BY expiry_date ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 200, { ok: true, data: rows.map(mapWarrantyRow) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/my/warranties') {
+          const { workspaceRow } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const body = await readJsonBody(req);
+          const parsed = createUserWarrantySchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid warranty inputs', parsed.error.flatten());
+            return;
+          }
+          const id = `war-${crypto.randomUUID().slice(0, 10)}`;
+          db.prepare(
+            `INSERT INTO user_warranties
+               (id, user_id, workspace_id, item_name, category, provider_name, model_serial, start_date, expiry_date, notes, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            String(workspaceRow.id),
+            parsed.data.itemName,
+            parsed.data.category,
+            parsed.data.providerName,
+            parsed.data.modelSerial ?? null,
+            parsed.data.startDate,
+            parsed.data.expiryDate,
+            parsed.data.notes ?? null,
+            new Date().toISOString(),
+          );
+          const rows = db
+            .prepare('SELECT * FROM user_warranties WHERE user_id = ? ORDER BY expiry_date ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 201, { ok: true, data: rows.map(mapWarrantyRow) });
+          return;
+        }
+
+        const warMatch = route.match(/^\/my\/warranties\/([^/]+)$/);
+        if (method === 'DELETE' && warMatch) {
+          const warId = decodeURIComponent(warMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM user_warranties WHERE id = ?').get(warId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Warranty item not found');
+            return;
+          }
+          db.prepare('DELETE FROM user_warranties WHERE id = ? AND user_id = ?').run(warId, authUser.id);
+          const rows = db
+            .prepare('SELECT * FROM user_warranties WHERE user_id = ? ORDER BY expiry_date ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 200, { ok: true, data: rows.map(mapWarrantyRow) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/my/appointments') {
+          const rows = db
+            .prepare('SELECT * FROM user_appointments WHERE user_id = ? ORDER BY scheduled_at ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 200, { ok: true, data: rows.map(mapAppointmentRow) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/my/appointments') {
+          const { workspaceRow } = resolveActiveWorkspaceForUser(db, authUser.id);
+          const body = await readJsonBody(req);
+          const parsed = createUserAppointmentSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid appointment fields', parsed.error.flatten());
+            return;
+          }
+          const id = `apt-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO user_appointments
+               (id, user_id, workspace_id, title, appointment_type, provider_name, location_text, scheduled_at, status, notes, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?)`,
+          ).run(
+            id,
+            authUser.id,
+            String(workspaceRow.id),
+            parsed.data.title,
+            parsed.data.appointmentType,
+            parsed.data.providerName,
+            parsed.data.locationText,
+            parsed.data.scheduledAt,
+            parsed.data.notes ?? null,
+            now,
+            now,
+          );
+          const rows = db
+            .prepare('SELECT * FROM user_appointments WHERE user_id = ? ORDER BY scheduled_at ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 201, { ok: true, data: rows.map(mapAppointmentRow) });
+          return;
+        }
+
+        const aptMatch = route.match(/^\/my\/appointments\/([^/]+)$/);
+        if (method === 'PATCH' && aptMatch) {
+          const aptId = decodeURIComponent(aptMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM user_appointments WHERE id = ?').get(aptId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Appointment not found');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = patchUserAppointmentSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid appointment update', parsed.error.flatten());
+            return;
+          }
+          db.prepare(
+            `UPDATE user_appointments SET
+              status = COALESCE(?, status),
+              scheduled_at = COALESCE(?, scheduled_at),
+              notes = CASE WHEN ? IS NOT NULL THEN ? ELSE notes END,
+              updated_at = ?
+             WHERE id = ? AND user_id = ?`,
+          ).run(
+            parsed.data.status ?? null,
+            parsed.data.scheduledAt ?? null,
+            parsed.data.notes === undefined ? null : 'set',
+            parsed.data.notes ?? null,
+            new Date().toISOString(),
+            aptId,
+            authUser.id,
+          );
+          const rows = db
+            .prepare('SELECT * FROM user_appointments WHERE user_id = ? ORDER BY scheduled_at ASC')
+            .all(authUser.id) as Record<string, unknown>[];
+          sendJson(res, 200, { ok: true, data: rows.map(mapAppointmentRow) });
+          return;
+        }
+
+        if (method === 'POST' && route === '/my/notifications/read-all') {
+          const now = new Date().toISOString();
+          db.prepare('UPDATE notifications SET is_read = 1, read_at = COALESCE(read_at, ?) WHERE user_id = ?').run(
+            now,
+            authUser.id,
+          );
+          sendJson(res, 200, { ok: true, data: buildMyGawazInnHubPayload(db, authUser.id).notifications });
+          return;
+        }
+
+        const notifReadMatch = route.match(/^\/my\/notifications\/([^/]+)\/read$/);
+        if (method === 'POST' && notifReadMatch) {
+          const notifId = decodeURIComponent(notifReadMatch[1]);
+          const existing = db.prepare('SELECT user_id FROM notifications WHERE id = ?').get(notifId) as
+            | { user_id: string }
+            | undefined;
+          if (!existing || existing.user_id !== authUser.id) {
+            sendError(res, 404, 'NOT_FOUND', 'Notification not found');
+            return;
+          }
+          db.prepare('UPDATE notifications SET is_read = 1, read_at = COALESCE(read_at, ?) WHERE id = ?').run(
+            new Date().toISOString(),
+            notifId,
+          );
+          sendJson(res, 200, { ok: true, data: buildMyGawazInnHubPayload(db, authUser.id).notifications });
           return;
         }
       }

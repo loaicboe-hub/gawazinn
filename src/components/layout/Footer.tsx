@@ -17,6 +17,9 @@ import {
   Calculator,
   Wallet,
   Compass,
+  Layers,
+  Gem,
+  ListTodo,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -172,6 +175,39 @@ export const Footer: React.FC = () => {
             >
               <Compass className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'البداية المبكرة' : 'Early Start'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/onboarding"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'مسار 11 مرحلة' : '11-Stage Onboarding'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/engagement"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Gem className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'مخطط الخطوبة' : 'Engagement'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/journey"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <ListTodo className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'مخطط الرحلة' : 'Journey'}</span>
             </Link>
 
             <span>•</span>
