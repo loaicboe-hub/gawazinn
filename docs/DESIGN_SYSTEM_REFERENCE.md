@@ -80,3 +80,4 @@ Defined in `src/index.css` and active views:
 - Backdrop: `fixed inset-0 z-50 bg-black/60 backdrop-blur-sm`
 - Dialog Container: `bg-white rounded-3xl p-6 sm:p-9 shadow-2xl border-2 border-[#D91B3E]/20` (with accessible `role="dialog"`, `aria-modal="true"`, Escape close)
 - Iconography: `lucide-react` (`strokeWidth` default 2, consistent `w-3.5 h-3.5` to `w-5 h-5` inside pills/buttons).
+

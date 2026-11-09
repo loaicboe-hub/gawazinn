@@ -77,3 +77,4 @@ Execution Policy: Every stage completes **Implement → Lint/Typecheck → Unit 
 - End-to-end regression suite across all user, vendor, expert, moderator, and admin journeys.
 - Database integrity, authorization boundary penetration checks, privacy checks, XSS/SQLi/CSRF review.
 - Desktop + Mobile responsive verification across all routes, SEO audit (`sitemap.xml`, `robots.txt`, JSON-LD, meta tags), performance/bundle audit, build verification, and final technical readiness report.
+

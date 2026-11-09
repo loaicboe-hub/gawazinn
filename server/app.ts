@@ -1,0 +1,1770 @@
+import crypto from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { DatabaseSync } from 'node:sqlite';
+import {
+  ADMIN_PANEL_ROLES,
+  CMS_EDITOR_ROLES,
+  FULL_ADMIN_ROLES,
+  MODERATION_ROLES,
+  hasAnyRole,
+} from '../shared/rbac';
+import { estimateFinishingRange, maskNationalId } from '../shared/catalogMeta';
+import {
+  articleUpsertSchema,
+  createFinancingSchema,
+  createFinishingInquirySchema,
+  createOrderSchema,
+  createSponsorshipSchema,
+  createSupportCaseSchema,
+  createWeddingBookingSchema,
+  loginSchema,
+  normalizeEgyptianPhone,
+  productUpsertSchema,
+  registerSchema,
+  updateProfileSchema,
+  weddingServiceUpsertSchema,
+} from '../shared/schemas';
+import type {
+  Article,
+  AuditLogEntry,
+  ContentCategory,
+  FinancingApplication,
+  FinishingInquiry,
+  FinishingPackage,
+  FinishingService,
+  LocationNode,
+  Order,
+  PlatformSettings,
+  Product,
+  SponsorshipInquiry,
+  SupportCase,
+  User,
+  WeddingBookingRequest,
+  WeddingServiceItem,
+} from '../shared/types';
+import {
+  SlidingWindowRateLimiter,
+  buildClearSessionCookieHeader,
+  buildSessionCookieHeader,
+  generateSessionToken,
+  hashPassword,
+  hashSensitiveField,
+  hashSessionToken,
+  parseCookies,
+  SESSION_COOKIE_NAME,
+  verifyPassword,
+  writeAuditLog,
+} from './security';
+
+export interface AppHandlerOptions {
+  sessionSecret: string;
+  appOrigin: string;
+  sessionTtlSeconds: number;
+  isProduction: boolean;
+}
+
+function mapUserRow(row: Record<string, unknown>): User {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    nameEn: row.name_en ? String(row.name_en) : undefined,
+    email: String(row.email),
+    phone: String(row.phone),
+    role: row.role as User['role'],
+    status: row.status as User['status'],
+    city: row.city ? String(row.city) : undefined,
+    governorateSlug: row.governorate_slug ? String(row.governorate_slug) : undefined,
+    currentStage: row.current_stage as User['currentStage'],
+    language: (row.language as User['language']) || 'ar',
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
+    isDemoData: Boolean(row.is_demo_data),
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapProductRow(row: Record<string, unknown>): Product {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    trousseauType: row.trousseau_type as Product['trousseauType'],
+    category: String(row.category),
+    categoryAr: String(row.category_ar),
+    categoryEn: String(row.category_en),
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    brand: String(row.brand),
+    price: Number(row.price),
+    originalPrice: row.original_price != null ? Number(row.original_price) : undefined,
+    sku: String(row.sku),
+    stock: Number(row.stock),
+    imageUrl: String(row.image_url),
+    galleryUrls: JSON.parse(String(row.gallery_json || '[]')) as string[],
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    specsAr: JSON.parse(String(row.specs_ar_json || '{}')) as Record<string, string>,
+    specsEn: JSON.parse(String(row.specs_en_json || '{}')) as Record<string, string>,
+    priceSource: row.price_source ? String(row.price_source) : undefined,
+    priceUpdatedAt: row.price_updated_at ? String(row.price_updated_at) : undefined,
+    isFeatured: Boolean(row.is_featured),
+    isReadyPackageItem: Boolean(row.is_ready_package_item),
+    isDemoData: Boolean(row.is_demo_data),
+  };
+}
+
+function mapWeddingServiceRow(row: Record<string, unknown>): WeddingServiceItem {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    category: row.category as WeddingServiceItem['category'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    governorateSlug: row.governorate_slug ? String(row.governorate_slug) : undefined,
+    locationAr: String(row.location_ar),
+    locationEn: String(row.location_en),
+    startingPrice: Number(row.starting_price),
+    pricingType: row.pricing_type as WeddingServiceItem['pricingType'],
+    imageUrl: String(row.image_url),
+    galleryUrls: JSON.parse(String(row.gallery_json || '[]')) as string[],
+    rating: Number(row.rating),
+    reviewsCount: Number(row.reviews_count),
+    capacity: row.capacity ? String(row.capacity) : undefined,
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    featuresAr: JSON.parse(String(row.features_ar_json || '[]')) as string[],
+    featuresEn: JSON.parse(String(row.features_en_json || '[]')) as string[],
+    badge: row.badge ? String(row.badge) : undefined,
+    isDemoData: Boolean(row.is_demo_data),
+  };
+}
+
+function mapArticleRow(row: Record<string, unknown>): Article {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    categoryId: String(row.category_id),
+    domain: row.domain as Article['domain'],
+    contentType: row.content_type as Article['contentType'],
+    titleAr: String(row.title_ar),
+    titleEn: String(row.title_en),
+    excerptAr: String(row.excerpt_ar),
+    excerptEn: String(row.excerpt_en),
+    bodyAr: String(row.body_ar),
+    bodyEn: String(row.body_en),
+    featuredImage: String(row.featured_image),
+    authorName: String(row.author_name),
+    tags: JSON.parse(String(row.tags_json || '[]')) as string[],
+    faqs: JSON.parse(String(row.faq_json || '[]')) as Article['faqs'],
+    relatedCalculators: JSON.parse(String(row.related_calculators_json || '[]')) as string[],
+    seoTitleAr: row.seo_title_ar ? String(row.seo_title_ar) : undefined,
+    seoTitleEn: row.seo_title_en ? String(row.seo_title_en) : undefined,
+    metaDescAr: row.meta_desc_ar ? String(row.meta_desc_ar) : undefined,
+    metaDescEn: row.meta_desc_en ? String(row.meta_desc_en) : undefined,
+    status: row.status as Article['status'],
+    readingMinutes: Number(row.reading_minutes),
+    viewCount: Number(row.view_count),
+    isFeatured: Boolean(row.is_featured),
+    publishedAt: String(row.published_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapFinishingPackageRow(row: Record<string, unknown>): FinishingPackage {
+  return {
+    id: String(row.id),
+    tier: row.tier as FinishingPackage['tier'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    pricePerMeter: Number(row.price_per_meter),
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    featuresAr: JSON.parse(String(row.features_ar_json || '[]')) as string[],
+    featuresEn: JSON.parse(String(row.features_en_json || '[]')) as string[],
+    recommendedForAr: String(row.recommended_for_ar),
+    recommendedForEn: String(row.recommended_for_en),
+    badge: row.badge ? String(row.badge) : undefined,
+  };
+}
+
+function mapFinishingServiceRow(row: Record<string, unknown>): FinishingService {
+  return {
+    id: String(row.id),
+    titleAr: String(row.title_ar),
+    titleEn: String(row.title_en),
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    iconName: String(row.icon_name),
+    imageUrl: String(row.image_url),
+    startingPricePerMeter: Number(row.starting_price_per_meter),
+    durationDays: String(row.duration_days),
+    includedItemsAr: JSON.parse(String(row.included_items_ar_json || '[]')) as string[],
+    includedItemsEn: JSON.parse(String(row.included_items_en_json || '[]')) as string[],
+  };
+}
+
+function mapLocationRow(row: Record<string, unknown>): LocationNode {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    level: row.level as LocationNode['level'],
+    parentId: row.parent_id ? String(row.parent_id) : null,
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    summaryAr: String(row.summary_ar),
+    summaryEn: String(row.summary_en),
+    costFactor: Number(row.cost_factor),
+    isFeatured: Boolean(row.is_featured),
+    sortOrder: Number(row.sort_order),
+  };
+}
+
+function mapCategoryRow(row: Record<string, unknown>): ContentCategory {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    domain: row.domain as ContentCategory['domain'],
+    parentId: row.parent_id ? String(row.parent_id) : null,
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    iconName: String(row.icon_name),
+    sortOrder: Number(row.sort_order),
+  };
+}
+
+function mapOrderRows(db: DatabaseSync, orderRows: Record<string, unknown>[]): Order[] {
+  const getItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?');
+  return orderRows.map((row) => {
+    const itemRows = getItems.all(String(row.id)) as Record<string, unknown>[];
+    return {
+      id: String(row.id),
+      userId: row.user_id ? String(row.user_id) : undefined,
+      customerName: String(row.customer_name),
+      phone: String(row.phone),
+      address: String(row.address),
+      city: String(row.city),
+      subtotal: Number(row.subtotal),
+      deliveryFee: Number(row.delivery_fee),
+      total: Number(row.total),
+      paymentMethod: row.payment_method as Order['paymentMethod'],
+      status: row.status as Order['status'],
+      createdAt: String(row.created_at),
+      items: itemRows.map((it) => ({
+        product: JSON.parse(String(it.product_snapshot_json)) as Product,
+        quantity: Number(it.quantity),
+      })),
+    };
+  });
+}
+
+function mapFinishingInquiryRow(row: Record<string, unknown>): FinishingInquiry {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    customerName: String(row.customer_name),
+    phone: String(row.phone),
+    governorate: String(row.governorate),
+    areaSqm: Number(row.area_sqm),
+    roomsCount: Number(row.rooms_count),
+    bathroomsCount: Number(row.bathrooms_count),
+    finishingTier: row.finishing_tier as FinishingInquiry['finishingTier'],
+    budgetEGP: row.budget_egp != null ? Number(row.budget_egp) : undefined,
+    notes: row.notes ? String(row.notes) : undefined,
+    status: row.status as FinishingInquiry['status'],
+    estimatedCostMin: row.estimated_cost_min != null ? Number(row.estimated_cost_min) : undefined,
+    estimatedCostMax: row.estimated_cost_max != null ? Number(row.estimated_cost_max) : undefined,
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapWeddingBookingRow(row: Record<string, unknown>): WeddingBookingRequest {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    serviceId: String(row.service_id),
+    serviceName: String(row.service_name),
+    category: row.category as WeddingBookingRequest['category'],
+    customerName: String(row.customer_name),
+    phone: String(row.phone),
+    weddingDate: String(row.wedding_date),
+    guestCount: row.guest_count != null ? Number(row.guest_count) : undefined,
+    governorate: String(row.governorate),
+    notes: row.notes ? String(row.notes) : undefined,
+    status: row.status as WeddingBookingRequest['status'],
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapFinancingRow(row: Record<string, unknown>): FinancingApplication {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    customerName: String(row.customer_name),
+    phone: String(row.phone),
+    nationalId: String(row.national_id_masked),
+    monthlyIncome: Number(row.monthly_income),
+    employer: String(row.employer),
+    governorate: String(row.governorate),
+    requestedAmount: Number(row.requested_amount),
+    tenureMonths: Number(row.tenure_months),
+    preferredProvider: String(row.preferred_provider),
+    associatedSection: row.associated_section as FinancingApplication['associatedSection'],
+    status: row.status as FinancingApplication['status'],
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapSupportRow(row: Record<string, unknown>): SupportCase {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    applicantName: String(row.applicant_name),
+    nationalId: String(row.national_id_masked),
+    phone: String(row.phone),
+    governorate: String(row.governorate),
+    address: String(row.address),
+    category: row.category as SupportCase['category'],
+    caseDescription: String(row.case_description),
+    urgencyLevel: row.urgency_level as SupportCase['urgencyLevel'],
+    documentsSubmitted: JSON.parse(String(row.documents_submitted_json || '[]')) as string[],
+    status: row.status as SupportCase['status'],
+    supportValueEstimated:
+      row.support_value_estimated != null ? Number(row.support_value_estimated) : undefined,
+    internalNotes: row.internal_notes ? String(row.internal_notes) : undefined,
+    createdAt: String(row.created_at),
+  };
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    const maxBytes = 1024 * 1024;
+    req.on('data', (chunk: Buffer) => {
+      total += chunk.length;
+      if (total > maxBytes) {
+        reject(new Error('PAYLOAD_TOO_LARGE'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (chunks.length === 0) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        reject(new Error('INVALID_JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function sendJson(
+  res: ServerResponse,
+  statusCode: number,
+  payload: unknown,
+  extraHeaders: Record<string, string | string[]> = {},
+): void {
+  const body = JSON.stringify(payload);
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': String(Buffer.byteLength(body)),
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    ...extraHeaders,
+  });
+  res.end(body);
+}
+
+function sendError(
+  res: ServerResponse,
+  statusCode: number,
+  code: string,
+  message: string,
+  details?: unknown,
+): void {
+  sendJson(res, statusCode, { ok: false, error: { code, message, details } });
+}
+
+function resolveClientIp(req: IncomingMessage): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || '127.0.0.1';
+}
+
+export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
+  const authLimiter = new SlidingWindowRateLimiter(5 * 60 * 1000, 30);
+  const submitLimiter = new SlidingWindowRateLimiter(5 * 60 * 1000, 60);
+
+  function resolveSessionUser(req: IncomingMessage): { user: User | null; tokenHash: string | null } {
+    let rawToken = '';
+    const authHeader = req.headers.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      rawToken = authHeader.slice(7).trim();
+    }
+    if (!rawToken) {
+      const cookies = parseCookies(req.headers.cookie);
+      rawToken = cookies[SESSION_COOKIE_NAME] || '';
+    }
+    if (!rawToken) return { user: null, tokenHash: null };
+
+    const tokenHash = hashSessionToken(rawToken);
+    const row = db
+      .prepare(
+        `SELECT s.id as session_id, s.expires_at, u.*
+         FROM sessions s
+         JOIN users u ON u.id = s.user_id
+         WHERE s.token_hash = ? AND u.deleted_at IS NULL`,
+      )
+      .get(tokenHash) as Record<string, unknown> | undefined;
+
+    if (!row) return { user: null, tokenHash: null };
+
+    if (new Date(String(row.expires_at)).getTime() <= Date.now()) {
+      db.prepare('DELETE FROM sessions WHERE id = ?').run(String(row.session_id));
+      return { user: null, tokenHash: null };
+    }
+
+    if (String(row.status) !== 'active') {
+      return { user: null, tokenHash: null };
+    }
+
+    return { user: mapUserRow(row), tokenHash };
+  }
+
+  return async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const reqOrigin = req.headers.origin;
+    const allowedOrigins = [options.appOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000'];
+    if (typeof reqOrigin === 'string' && allowedOrigins.includes(reqOrigin)) {
+      res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    }
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url || '/', 'http://localhost');
+    const pathname = url.pathname;
+    const method = (req.method || 'GET').toUpperCase();
+    const ip = resolveClientIp(req);
+
+    try {
+      // Dynamic XML Sitemap
+      if (method === 'GET' && pathname === '/sitemap.xml') {
+        const baseUrl = options.appOrigin.replace(/\/$/, '');
+        const staticRoutes = [
+          '/',
+          '/finishing',
+          '/groom',
+          '/bride',
+          '/wedding',
+          '/installments',
+          '/social-support',
+          '/encyclopedia',
+          '/discover',
+        ];
+        const articles = db
+          .prepare("SELECT slug, updated_at FROM articles WHERE status = 'published'")
+          .all() as { slug: string; updated_at: string }[];
+        const locations = db
+          .prepare("SELECT slug FROM locations WHERE level IN ('governorate', 'city')")
+          .all() as { slug: string }[];
+
+        const urlsXml = [
+          ...staticRoutes.map(
+            (r) => `<url><loc>${baseUrl}${r}</loc><changefreq>weekly</changefreq></url>`,
+          ),
+          ...articles.map(
+            (a) =>
+              `<url><loc>${baseUrl}/guides/${encodeURIComponent(a.slug)}</loc><lastmod>${a.updated_at.slice(0, 10)}</lastmod><changefreq>monthly</changefreq></url>`,
+          ),
+          ...locations.map(
+            (l) =>
+              `<url><loc>${baseUrl}/locations/${encodeURIComponent(l.slug)}</loc><changefreq>monthly</changefreq></url>`,
+          ),
+        ].join('');
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urlsXml}</urlset>`;
+        res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
+        res.end(xml);
+        return;
+      }
+
+      if (!pathname.startsWith('/api/v1')) {
+        sendError(res, 404, 'NOT_FOUND', 'Route not found');
+        return;
+      }
+
+      const route = pathname.slice('/api/v1'.length) || '/';
+      const { user: authUser, tokenHash } = resolveSessionUser(req);
+
+      // Health check
+      if (method === 'GET' && route === '/health') {
+        const dbCheck = db.prepare('SELECT 1 as ok').get() as { ok: number };
+        sendJson(res, 200, {
+          ok: true,
+          data: { status: 'healthy', sqlite: dbCheck.ok === 1, timestamp: new Date().toISOString() },
+        });
+        return;
+      }
+
+      // Bootstrap (safe public state + nullable authenticated user; returns 200 for zero anonymous console errors)
+      if (method === 'GET' && route === '/bootstrap') {
+        const products = (
+          db.prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC').all() as Record<string, unknown>[]
+        ).map(mapProductRow);
+        const finishingPackages = (
+          db.prepare('SELECT * FROM finishing_packages ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapFinishingPackageRow);
+        const finishingServices = (
+          db.prepare('SELECT * FROM finishing_services ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapFinishingServiceRow);
+        const weddingServices = (
+          db.prepare('SELECT * FROM wedding_services ORDER BY rating DESC, created_at DESC').all() as Record<string, unknown>[]
+        ).map(mapWeddingServiceRow);
+        const categories = (
+          db.prepare('SELECT * FROM content_categories ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapCategoryRow);
+        const locations = (
+          db.prepare('SELECT * FROM locations ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapLocationRow);
+        const articles = (
+          db
+            .prepare("SELECT * FROM articles WHERE status = 'published' ORDER BY is_featured DESC, published_at DESC")
+            .all() as Record<string, unknown>[]
+        ).map(mapArticleRow);
+        const settingsRow = db.prepare("SELECT value_json FROM platform_settings WHERE key = 'main'").get() as
+          | { value_json: string }
+          | undefined;
+        const settings = settingsRow ? (JSON.parse(settingsRow.value_json) as PlatformSettings) : null;
+
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            user: authUser,
+            products,
+            finishingPackages,
+            finishingServices,
+            weddingServices,
+            categories,
+            locations,
+            articles,
+            settings,
+          },
+        });
+        return;
+      }
+
+      // ================= AUTH ROUTES =================
+      if (method === 'POST' && route === '/auth/register') {
+        const rate = authLimiter.check(`reg:${ip}`);
+        if (!rate.allowed) {
+          sendError(res, 429, 'RATE_LIMITED', 'Too many attempts. Please wait a few minutes.');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = registerSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid registration inputs', parsed.error.flatten());
+          return;
+        }
+
+        const existing = db
+          .prepare('SELECT id FROM users WHERE email = ? OR phone = ?')
+          .get(parsed.data.email, parsed.data.phone);
+        if (existing) {
+          sendError(res, 409, 'DUPLICATE_ACCOUNT', 'Email or mobile phone is already registered.');
+          return;
+        }
+
+        const userId = `usr-${crypto.randomUUID().slice(0, 10)}`;
+        const now = new Date().toISOString();
+        const pwHash = hashPassword(parsed.data.password);
+
+        db.prepare(
+          `INSERT INTO users (id, name, email, phone, password_hash, role, status, city, governorate_slug, current_stage, language, is_demo_data, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'customer', 'active', ?, ?, 'thinking', ?, 0, ?, ?)`,
+        ).run(
+          userId,
+          parsed.data.name,
+          parsed.data.email,
+          parsed.data.phone,
+          pwHash,
+          parsed.data.city || null,
+          parsed.data.governorateSlug || null,
+          parsed.data.language || 'ar',
+          now,
+          now,
+        );
+
+        const rawToken = generateSessionToken();
+        const sessionTokenHash = hashSessionToken(rawToken);
+        const expiresAt = new Date(Date.now() + options.sessionTtlSeconds * 1000).toISOString();
+        db.prepare(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          `ses-${crypto.randomUUID().slice(0, 12)}`,
+          userId,
+          sessionTokenHash,
+          expiresAt,
+          ip,
+          String(req.headers['user-agent'] || ''),
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: userId,
+          actorRole: 'customer',
+          action: 'auth.register',
+          targetType: 'user',
+          targetId: userId,
+          ipAddress: ip,
+        });
+
+        const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as Record<string, unknown>;
+        sendJson(
+          res,
+          201,
+          { ok: true, data: { user: mapUserRow(userRow), token: rawToken } },
+          { 'Set-Cookie': buildSessionCookieHeader(rawToken, options.sessionTtlSeconds, options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/login') {
+        const body = await readJsonBody(req);
+        const parsed = loginSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Email/phone and password are required', parsed.error.flatten());
+          return;
+        }
+        const rate = authLimiter.check(`login:${ip}:${parsed.data.identifier.toLowerCase()}`);
+        if (!rate.allowed) {
+          sendError(res, 429, 'RATE_LIMITED', 'Too many login attempts. Try again later.');
+          return;
+        }
+
+        const identifier = parsed.data.identifier.trim();
+        const normalizedPhone = normalizeEgyptianPhone(identifier);
+        const userRow = db
+          .prepare('SELECT * FROM users WHERE (lower(email) = lower(?) OR phone = ?) AND deleted_at IS NULL')
+          .get(identifier, normalizedPhone) as Record<string, unknown> | undefined;
+
+        if (!userRow || !verifyPassword(parsed.data.password, String(userRow.password_hash))) {
+          writeAuditLog(db, {
+            actorRole: 'anonymous',
+            action: 'auth.login_failed',
+            targetType: 'user',
+            metadata: { identifier: identifier.slice(0, 4) + '***' },
+            ipAddress: ip,
+          });
+          sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email/phone or password.');
+          return;
+        }
+
+        if (String(userRow.status) !== 'active') {
+          sendError(res, 403, 'ACCOUNT_SUSPENDED', 'Account is suspended.');
+          return;
+        }
+
+        const user = mapUserRow(userRow);
+        const rawToken = generateSessionToken();
+        const sessionTokenHash = hashSessionToken(rawToken);
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + options.sessionTtlSeconds * 1000).toISOString();
+        db.prepare(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          `ses-${crypto.randomUUID().slice(0, 12)}`,
+          user.id,
+          sessionTokenHash,
+          expiresAt,
+          ip,
+          String(req.headers['user-agent'] || ''),
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: 'auth.login',
+          targetType: 'user',
+          targetId: user.id,
+          ipAddress: ip,
+        });
+
+        sendJson(
+          res,
+          200,
+          { ok: true, data: { user, token: rawToken } },
+          { 'Set-Cookie': buildSessionCookieHeader(rawToken, options.sessionTtlSeconds, options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/logout') {
+        if (tokenHash) {
+          db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+        }
+        sendJson(
+          res,
+          200,
+          { ok: true, data: { loggedOut: true } },
+          { 'Set-Cookie': buildClearSessionCookieHeader(options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'GET' && route === '/auth/me') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: authUser });
+        return;
+      }
+
+      if (method === 'PATCH' && route === '/auth/me') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = updateProfileSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid profile updates', parsed.error.flatten());
+          return;
+        }
+        const now = new Date().toISOString();
+        db.prepare(
+          `UPDATE users SET
+            name = COALESCE(?, name),
+            city = COALESCE(?, city),
+            governorate_slug = COALESCE(?, governorate_slug),
+            language = COALESCE(?, language),
+            current_stage = COALESCE(?, current_stage),
+            updated_at = ?
+           WHERE id = ?`,
+        ).run(
+          parsed.data.name ?? null,
+          parsed.data.city ?? null,
+          parsed.data.governorateSlug ?? null,
+          parsed.data.language ?? null,
+          parsed.data.currentStage ?? null,
+          now,
+          authUser.id,
+        );
+        const row = db.prepare('SELECT * FROM users WHERE id = ?').get(authUser.id) as Record<string, unknown>;
+        sendJson(res, 200, { ok: true, data: mapUserRow(row) });
+        return;
+      }
+
+      // ================= PUBLIC CONTENT & DISCOVERY =================
+      if (method === 'GET' && route === '/categories') {
+        const domain = url.searchParams.get('domain');
+        const rows = domain
+          ? (db
+              .prepare('SELECT * FROM content_categories WHERE domain = ? ORDER BY sort_order ASC')
+              .all(domain) as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM content_categories ORDER BY sort_order ASC')
+              .all() as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapCategoryRow) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/articles') {
+        const domain = url.searchParams.get('domain');
+        const contentType = url.searchParams.get('contentType');
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        const includeDrafts = hasAnyRole(authUser?.role, CMS_EDITOR_ROLES) && url.searchParams.get('includeDrafts') === 'true';
+
+        let sql = 'SELECT * FROM articles WHERE 1=1';
+        const args: string[] = [];
+        if (!includeDrafts) {
+          sql += " AND status = 'published'";
+        }
+        if (domain) {
+          sql += ' AND domain = ?';
+          args.push(domain);
+        }
+        if (contentType) {
+          sql += ' AND content_type = ?';
+          args.push(contentType);
+        }
+        sql += ' ORDER BY is_featured DESC, published_at DESC';
+
+        let list = (db.prepare(sql).all(...args) as Record<string, unknown>[]).map(mapArticleRow);
+        if (q) {
+          list = list.filter((a) =>
+            `${a.titleAr} ${a.titleEn} ${a.excerptAr} ${a.excerptEn} ${a.tags.join(' ')}`.toLowerCase().includes(q),
+          );
+        }
+        sendJson(res, 200, { ok: true, data: list });
+        return;
+      }
+
+      if (method === 'GET' && route.startsWith('/articles/')) {
+        const slug = decodeURIComponent(route.slice('/articles/'.length));
+        const row = db.prepare('SELECT * FROM articles WHERE slug = ? OR id = ?').get(slug, slug) as
+          | Record<string, unknown>
+          | undefined;
+        if (!row) {
+          sendError(res, 404, 'NOT_FOUND', 'Article not found');
+          return;
+        }
+        if (row.status !== 'published' && !hasAnyRole(authUser?.role, CMS_EDITOR_ROLES)) {
+          sendError(res, 404, 'NOT_FOUND', 'Article not found');
+          return;
+        }
+        db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(String(row.id));
+        const article = mapArticleRow(row);
+        article.viewCount += 1;
+        sendJson(res, 200, { ok: true, data: article });
+        return;
+      }
+
+      if (method === 'GET' && route === '/locations') {
+        const rows = db.prepare('SELECT * FROM locations ORDER BY sort_order ASC').all() as Record<string, unknown>[];
+        sendJson(res, 200, { ok: true, data: rows.map(mapLocationRow) });
+        return;
+      }
+
+      if (method === 'GET' && route.startsWith('/locations/')) {
+        const slug = decodeURIComponent(route.slice('/locations/'.length));
+        const locRow = db.prepare('SELECT * FROM locations WHERE slug = ?').get(slug) as
+          | Record<string, unknown>
+          | undefined;
+        if (!locRow) {
+          sendError(res, 404, 'NOT_FOUND', 'Location not found');
+          return;
+        }
+        const location = mapLocationRow(locRow);
+        const children = (
+          db.prepare('SELECT * FROM locations WHERE parent_id = ? ORDER BY sort_order ASC').all(location.id) as Record<
+            string,
+            unknown
+          >[]
+        ).map(mapLocationRow);
+        const services = (
+          db
+            .prepare('SELECT * FROM wedding_services WHERE governorate_slug = ? OR location_ar LIKE ? OR location_en LIKE ?')
+            .all(location.slug, `%${location.nameAr}%`, `%${location.nameEn}%`) as Record<string, unknown>[]
+        ).map(mapWeddingServiceRow);
+
+        sendJson(res, 200, { ok: true, data: { location, children, services } });
+        return;
+      }
+
+      if (method === 'GET' && route === '/products') {
+        const rows = db
+          .prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC')
+          .all() as Record<string, unknown>[];
+        sendJson(res, 200, { ok: true, data: rows.map(mapProductRow) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/wedding-services') {
+        const rows = db
+          .prepare('SELECT * FROM wedding_services ORDER BY rating DESC, created_at DESC')
+          .all() as Record<string, unknown>[];
+        sendJson(res, 200, { ok: true, data: rows.map(mapWeddingServiceRow) });
+        return;
+      }
+
+      // ================= CUSTOMER ORDERS & INQUIRIES (OWNER-SCOPED) =================
+      if (method === 'GET' && route === '/orders') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view your orders');
+          return;
+        }
+        const rows = hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ? (db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all() as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC')
+              .all(authUser.id) as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: mapOrderRows(db, rows) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/orders') {
+        const rate = submitLimiter.check(`order:${ip}`);
+        if (!rate.allowed) {
+          sendError(res, 429, 'RATE_LIMITED', 'Too many order submissions.');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createOrderSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid order fields', parsed.error.flatten());
+          return;
+        }
+
+        const orderId = `ord-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+
+        db.exec('BEGIN;');
+        try {
+          let subtotal = 0;
+          const resolvedItems: { product: Product; quantity: number }[] = [];
+
+          for (const reqItem of parsed.data.items) {
+            const pRow = db.prepare('SELECT * FROM products WHERE id = ?').get(reqItem.productId) as
+              | Record<string, unknown>
+              | undefined;
+            if (!pRow) {
+              throw new Error(`PRODUCT_NOT_FOUND:${reqItem.productId}`);
+            }
+            const product = mapProductRow(pRow);
+            if (product.stock < reqItem.quantity) {
+              throw new Error(`INSUFFICIENT_STOCK:${product.id}`);
+            }
+            subtotal += product.price * reqItem.quantity;
+            resolvedItems.push({ product, quantity: reqItem.quantity });
+          }
+
+          const deliveryFee = 0;
+          const total = subtotal + deliveryFee;
+
+          db.prepare(
+            `INSERT INTO orders (id, user_id, customer_name, phone, address, city, subtotal, delivery_fee, total, payment_method, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'received', ?, ?)`,
+          ).run(
+            orderId,
+            authUser?.id ?? null,
+            parsed.data.customerName,
+            parsed.data.phone,
+            parsed.data.address,
+            parsed.data.city,
+            subtotal,
+            deliveryFee,
+            total,
+            parsed.data.paymentMethod,
+            now,
+            now,
+          );
+
+          const insertItemStmt = db.prepare(
+            `INSERT INTO order_items (id, order_id, product_id, product_snapshot_json, unit_price, quantity)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          );
+          const decrementStockStmt = db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?');
+
+          resolvedItems.forEach((it, idx) => {
+            insertItemStmt.run(
+              `${orderId}-it-${idx + 1}`,
+              orderId,
+              it.product.id,
+              JSON.stringify(it.product),
+              it.product.price,
+              it.quantity,
+            );
+            decrementStockStmt.run(it.quantity, it.product.id);
+          });
+
+          writeAuditLog(db, {
+            actorUserId: authUser?.id ?? null,
+            actorRole: authUser?.role ?? 'guest',
+            action: 'order.created',
+            targetType: 'order',
+            targetId: orderId,
+            metadata: { total, itemCount: resolvedItems.length },
+            ipAddress: ip,
+          });
+
+          db.exec('COMMIT;');
+          const [createdOrder] = mapOrderRows(db, [
+            db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as Record<string, unknown>,
+          ]);
+          sendJson(res, 201, { ok: true, data: createdOrder });
+        } catch (err) {
+          db.exec('ROLLBACK;');
+          const msg = err instanceof Error ? err.message : 'Order creation failed';
+          if (msg.startsWith('PRODUCT_NOT_FOUND') || msg.startsWith('INSUFFICIENT_STOCK')) {
+            sendError(res, 400, 'ORDER_ITEM_ERROR', msg);
+            return;
+          }
+          throw err;
+        }
+        return;
+      }
+
+      if (method === 'GET' && route === '/finishing-inquiries') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view your finishing inquiries');
+          return;
+        }
+        const rows = hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ? (db.prepare('SELECT * FROM finishing_inquiries ORDER BY created_at DESC').all() as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM finishing_inquiries WHERE user_id = ? ORDER BY created_at DESC')
+              .all(authUser.id) as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapFinishingInquiryRow) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/finishing-inquiries') {
+        const body = await readJsonBody(req);
+        const parsed = createFinishingInquirySchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid finishing inquiry fields', parsed.error.flatten());
+          return;
+        }
+        const id = `fin-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+        const estimate = estimateFinishingRange(parsed.data.areaSqm, parsed.data.finishingTier);
+
+        db.prepare(
+          `INSERT INTO finishing_inquiries (id, user_id, customer_name, phone, governorate, area_sqm, rooms_count, bathrooms_count, finishing_tier, budget_egp, notes, status, estimated_cost_min, estimated_cost_max, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+        ).run(
+          id,
+          authUser?.id ?? null,
+          parsed.data.customerName,
+          parsed.data.phone,
+          parsed.data.governorate,
+          parsed.data.areaSqm,
+          parsed.data.roomsCount,
+          parsed.data.bathroomsCount,
+          parsed.data.finishingTier,
+          parsed.data.budgetEGP ?? Math.round((estimate.min + estimate.max) / 2),
+          parsed.data.notes ?? null,
+          estimate.min,
+          estimate.max,
+          now,
+          now,
+        );
+
+        const row = db.prepare('SELECT * FROM finishing_inquiries WHERE id = ?').get(id) as Record<string, unknown>;
+        sendJson(res, 201, { ok: true, data: mapFinishingInquiryRow(row) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/wedding-bookings') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view your wedding bookings');
+          return;
+        }
+        const rows = hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ? (db.prepare('SELECT * FROM wedding_bookings ORDER BY created_at DESC').all() as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM wedding_bookings WHERE user_id = ? ORDER BY created_at DESC')
+              .all(authUser.id) as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapWeddingBookingRow) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/wedding-bookings') {
+        const body = await readJsonBody(req);
+        const parsed = createWeddingBookingSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid booking inquiry fields', parsed.error.flatten());
+          return;
+        }
+
+        const srvRow = db.prepare('SELECT * FROM wedding_services WHERE id = ?').get(parsed.data.serviceId) as
+          | Record<string, unknown>
+          | undefined;
+        if (!srvRow) {
+          sendError(res, 404, 'SERVICE_NOT_FOUND', 'Wedding service does not exist');
+          return;
+        }
+
+        const id = `wed-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+
+        db.prepare(
+          `INSERT INTO wedding_bookings (id, user_id, service_id, service_name, category, customer_name, phone, wedding_date, guest_count, governorate, notes, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_review', ?, ?)`,
+        ).run(
+          id,
+          authUser?.id ?? null,
+          String(srvRow.id),
+          String(srvRow.name_ar),
+          String(srvRow.category),
+          parsed.data.customerName,
+          parsed.data.phone,
+          parsed.data.weddingDate,
+          parsed.data.guestCount ?? null,
+          parsed.data.governorate,
+          parsed.data.notes ?? null,
+          now,
+          now,
+        );
+
+        const row = db.prepare('SELECT * FROM wedding_bookings WHERE id = ?').get(id) as Record<string, unknown>;
+        sendJson(res, 201, { ok: true, data: mapWeddingBookingRow(row) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/financing-applications') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to view financing applications');
+          return;
+        }
+        const rows = hasAnyRole(authUser.role, FULL_ADMIN_ROLES)
+          ? (db
+              .prepare('SELECT * FROM financing_applications ORDER BY created_at DESC')
+              .all() as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM financing_applications WHERE user_id = ? ORDER BY created_at DESC')
+              .all(authUser.id) as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapFinancingRow) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/financing-applications') {
+        const body = await readJsonBody(req);
+        const parsed = createFinancingSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid financing fields', parsed.error.flatten());
+          return;
+        }
+
+        const id = `fnc-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+        const maskedNid = maskNationalId(parsed.data.nationalId);
+        const nidHash = hashSensitiveField(parsed.data.nationalId, options.sessionSecret);
+
+        db.prepare(
+          `INSERT INTO financing_applications (id, user_id, customer_name, phone, national_id_masked, national_id_hash, monthly_income, employer, governorate, requested_amount, tenure_months, preferred_provider, associated_section, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?)`,
+        ).run(
+          id,
+          authUser?.id ?? null,
+          parsed.data.customerName,
+          parsed.data.phone,
+          maskedNid,
+          nidHash,
+          parsed.data.monthlyIncome,
+          parsed.data.employer,
+          parsed.data.governorate,
+          parsed.data.requestedAmount,
+          parsed.data.tenureMonths,
+          parsed.data.preferredProvider,
+          parsed.data.associatedSection,
+          now,
+          now,
+        );
+
+        const row = db.prepare('SELECT * FROM financing_applications WHERE id = ?').get(id) as Record<string, unknown>;
+        sendJson(res, 201, { ok: true, data: mapFinancingRow(row) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/support-cases') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Authentication required to inspect support cases');
+          return;
+        }
+        const canReviewAll = hasAnyRole(authUser.role, MODERATION_ROLES);
+        const rows = canReviewAll
+          ? (db.prepare('SELECT * FROM support_cases ORDER BY created_at DESC').all() as Record<string, unknown>[])
+          : (db
+              .prepare('SELECT * FROM support_cases WHERE user_id = ? ORDER BY created_at DESC')
+              .all(authUser.id) as Record<string, unknown>[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapSupportRow) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/support-cases') {
+        const body = await readJsonBody(req);
+        const parsed = createSupportCaseSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid support case details', parsed.error.flatten());
+          return;
+        }
+
+        const id = `sup-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+        const maskedNid = maskNationalId(parsed.data.nationalId);
+        const nidHash = hashSensitiveField(parsed.data.nationalId, options.sessionSecret);
+
+        db.prepare(
+          `INSERT INTO support_cases (id, user_id, applicant_name, national_id_masked, national_id_hash, phone, governorate, address, category, case_description, urgency_level, documents_submitted_json, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confidential_review', ?, ?)`,
+        ).run(
+          id,
+          authUser?.id ?? null,
+          parsed.data.applicantName,
+          maskedNid,
+          nidHash,
+          parsed.data.phone,
+          parsed.data.governorate,
+          parsed.data.address,
+          parsed.data.category,
+          parsed.data.caseDescription,
+          parsed.data.urgencyLevel,
+          JSON.stringify(parsed.data.documentsSubmitted),
+          now,
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: authUser?.id ?? null,
+          actorRole: authUser?.role ?? 'guest',
+          action: 'support_case.submitted',
+          targetType: 'support_case',
+          targetId: id,
+          ipAddress: ip,
+        });
+
+        const row = db.prepare('SELECT * FROM support_cases WHERE id = ?').get(id) as Record<string, unknown>;
+        sendJson(res, 201, { ok: true, data: mapSupportRow(row) });
+        return;
+      }
+
+      if (method === 'POST' && route === '/sponsorship-inquiries') {
+        const body = await readJsonBody(req);
+        const parsed = createSponsorshipSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid sponsorship fields', parsed.error.flatten());
+          return;
+        }
+        const id = `spn-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+        const now = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO sponsorship_inquiries (id, sponsor_name, company_name, phone, email, contribution_type, pledge_amount, message, status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', ?)`,
+        ).run(
+          id,
+          parsed.data.sponsorName,
+          parsed.data.companyName ?? null,
+          parsed.data.phone,
+          parsed.data.email,
+          parsed.data.contributionType,
+          parsed.data.pledgeAmount ?? null,
+          parsed.data.message,
+          now,
+        );
+        const row = db.prepare('SELECT * FROM sponsorship_inquiries WHERE id = ?').get(id) as Record<string, unknown>;
+        const out: SponsorshipInquiry = {
+          id: String(row.id),
+          sponsorName: String(row.sponsor_name),
+          companyName: row.company_name ? String(row.company_name) : undefined,
+          phone: String(row.phone),
+          email: String(row.email),
+          contributionType: row.contribution_type as SponsorshipInquiry['contributionType'],
+          pledgeAmount: row.pledge_amount != null ? Number(row.pledge_amount) : undefined,
+          message: String(row.message),
+          status: row.status as SponsorshipInquiry['status'],
+          createdAt: String(row.created_at),
+        };
+        sendJson(res, 201, { ok: true, data: out });
+        return;
+      }
+
+      // ================= ADMIN / STAFF RBAC ROUTES =================
+      if (route.startsWith('/admin/')) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Staff authentication required');
+          return;
+        }
+        if (!hasAnyRole(authUser.role, ADMIN_PANEL_ROLES)) {
+          sendError(res, 403, 'FORBIDDEN', 'Insufficient privileges to access Admin OS');
+          return;
+        }
+
+        if (method === 'GET' && route === '/admin/overview') {
+          const users = (
+            db.prepare('SELECT * FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC').all() as Record<
+              string,
+              unknown
+            >[]
+          ).map(mapUserRow);
+
+          const isFullAdmin = hasAnyRole(authUser.role, FULL_ADMIN_ROLES);
+          const canModerate = hasAnyRole(authUser.role, MODERATION_ROLES);
+
+          const orders = isFullAdmin
+            ? mapOrderRows(
+                db,
+                db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all() as Record<string, unknown>[],
+              )
+            : [];
+          const finishingInquiries = isFullAdmin
+            ? (db
+                .prepare('SELECT * FROM finishing_inquiries ORDER BY created_at DESC')
+                .all() as Record<string, unknown>[]).map(mapFinishingInquiryRow)
+            : [];
+          const weddingBookings = isFullAdmin
+            ? (db
+                .prepare('SELECT * FROM wedding_bookings ORDER BY created_at DESC')
+                .all() as Record<string, unknown>[]).map(mapWeddingBookingRow)
+            : [];
+          const financingApplications = isFullAdmin
+            ? (db
+                .prepare('SELECT * FROM financing_applications ORDER BY created_at DESC')
+                .all() as Record<string, unknown>[]).map(mapFinancingRow)
+            : [];
+          const supportCases = canModerate
+            ? (db
+                .prepare('SELECT * FROM support_cases ORDER BY created_at DESC')
+                .all() as Record<string, unknown>[]).map(mapSupportRow)
+            : [];
+          const sponsorships = isFullAdmin
+            ? (db
+                .prepare('SELECT * FROM sponsorship_inquiries ORDER BY created_at DESC')
+                .all() as Record<string, unknown>[]).map((r) => ({
+                id: String(r.id),
+                sponsorName: String(r.sponsor_name),
+                companyName: r.company_name ? String(r.company_name) : undefined,
+                phone: String(r.phone),
+                email: String(r.email),
+                contributionType: r.contribution_type as SponsorshipInquiry['contributionType'],
+                pledgeAmount: r.pledge_amount != null ? Number(r.pledge_amount) : undefined,
+                message: String(r.message),
+                status: r.status as SponsorshipInquiry['status'],
+                createdAt: String(r.created_at),
+              }))
+            : [];
+
+          const articles = (
+            db.prepare('SELECT * FROM articles ORDER BY updated_at DESC').all() as Record<string, unknown>[]
+          ).map(mapArticleRow);
+
+          const auditLogs = isFullAdmin
+            ? (
+                db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100').all() as Record<
+                  string,
+                  unknown
+                >[]
+              ).map(
+                (r): AuditLogEntry => ({
+                  id: String(r.id),
+                  actorUserId: r.actor_user_id ? String(r.actor_user_id) : null,
+                  actorRole: String(r.actor_role),
+                  action: String(r.action),
+                  targetType: String(r.target_type),
+                  targetId: r.target_id ? String(r.target_id) : null,
+                  metadata: JSON.parse(String(r.metadata_json || '{}')) as Record<string, unknown>,
+                  ipAddress: r.ip_address ? String(r.ip_address) : null,
+                  createdAt: String(r.created_at),
+                }),
+              )
+            : [];
+
+          const counts = {
+            totalUsers: users.length,
+            activeCustomers: users.filter((u) => u.role === 'customer' && u.status === 'active').length,
+            totalOrders: orders.length,
+            totalFinishing: finishingInquiries.length,
+            totalBookings: weddingBookings.length,
+            totalFinancing: financingApplications.length,
+            totalSupport: supportCases.length,
+            totalArticles: articles.length,
+          };
+
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              counts,
+              users: isFullAdmin ? users : [],
+              orders,
+              finishingInquiries,
+              weddingBookings,
+              financingApplications,
+              supportCases,
+              sponsorships,
+              articles,
+              auditLogs,
+            },
+          });
+          return;
+        }
+
+        // Products Admin CRUD
+        if (method === 'POST' && route === '/admin/products') {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = productUpsertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid product inputs', parsed.error.flatten());
+            return;
+          }
+          const id = parsed.data.id || `${parsed.data.trousseauType}-p-${Date.now().toString().slice(-5)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO products (id, slug, sku, trousseau_type, category, category_ar, category_en, name_ar, name_en, brand, price, original_price, stock, image_url, gallery_json, description_ar, description_en, specs_ar_json, specs_en_json, price_source, price_updated_at, is_featured, is_ready_package_item, is_demo_data, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, 'Admin Entry', ?, ?, ?, 0, ?, ?)`,
+          ).run(
+            id,
+            id,
+            parsed.data.sku,
+            parsed.data.trousseauType,
+            parsed.data.category,
+            parsed.data.categoryAr,
+            parsed.data.categoryEn,
+            parsed.data.nameAr,
+            parsed.data.nameEn,
+            parsed.data.brand,
+            parsed.data.price,
+            parsed.data.originalPrice ?? null,
+            parsed.data.stock,
+            parsed.data.imageUrl,
+            parsed.data.descriptionAr,
+            parsed.data.descriptionEn,
+            JSON.stringify(parsed.data.specsAr),
+            JSON.stringify(parsed.data.specsEn),
+            now,
+            parsed.data.isFeatured ? 1 : 0,
+            parsed.data.isReadyPackageItem ? 1 : 0,
+            now,
+            now,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.product_created',
+            targetType: 'product',
+            targetId: id,
+            ipAddress: ip,
+          });
+          const row = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 201, { ok: true, data: mapProductRow(row) });
+          return;
+        }
+
+        if (method === 'PATCH' && route.startsWith('/admin/products/')) {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const id = decodeURIComponent(route.slice('/admin/products/'.length));
+          const body = await readJsonBody(req);
+          const parsed = productUpsertSchema.partial().safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid product update', parsed.error.flatten());
+            return;
+          }
+          const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as
+            | Record<string, unknown>
+            | undefined;
+          if (!existing) {
+            sendError(res, 404, 'NOT_FOUND', 'Product not found');
+            return;
+          }
+          const d = parsed.data;
+          const now = new Date().toISOString();
+          db.prepare(
+            `UPDATE products SET
+              name_ar = COALESCE(?, name_ar),
+              name_en = COALESCE(?, name_en),
+              brand = COALESCE(?, brand),
+              category = COALESCE(?, category),
+              category_ar = COALESCE(?, category_ar),
+              category_en = COALESCE(?, category_en),
+              price = COALESCE(?, price),
+              stock = COALESCE(?, stock),
+              image_url = COALESCE(?, image_url),
+              description_ar = COALESCE(?, description_ar),
+              description_en = COALESCE(?, description_en),
+              updated_at = ?
+             WHERE id = ?`,
+          ).run(
+            d.nameAr ?? null,
+            d.nameEn ?? null,
+            d.brand ?? null,
+            d.category ?? null,
+            d.categoryAr ?? null,
+            d.categoryEn ?? null,
+            d.price ?? null,
+            d.stock ?? null,
+            d.imageUrl ?? null,
+            d.descriptionAr ?? null,
+            d.descriptionEn ?? null,
+            now,
+            id,
+          );
+          const row = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 200, { ok: true, data: mapProductRow(row) });
+          return;
+        }
+
+        if (method === 'DELETE' && route.startsWith('/admin/products/')) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const id = decodeURIComponent(route.slice('/admin/products/'.length));
+          db.prepare('DELETE FROM products WHERE id = ?').run(id);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.product_deleted',
+            targetType: 'product',
+            targetId: id,
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: { deleted: true } });
+          return;
+        }
+
+        // Wedding Services Admin CRUD
+        if (method === 'POST' && route === '/admin/wedding-services') {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = weddingServiceUpsertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid wedding service data', parsed.error.flatten());
+            return;
+          }
+          const id = parsed.data.id || `wed-${Date.now().toString().slice(-6)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO wedding_services (id, slug, category, name_ar, name_en, governorate_slug, location_ar, location_en, starting_price, pricing_type, image_url, gallery_json, rating, reviews_count, capacity, description_ar, description_en, features_ar_json, features_en_json, badge, is_demo_data, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 4.8, 0, ?, ?, ?, ?, ?, ?, 0, ?)`,
+          ).run(
+            id,
+            id,
+            parsed.data.category,
+            parsed.data.nameAr,
+            parsed.data.nameEn,
+            parsed.data.governorateSlug ?? null,
+            parsed.data.locationAr,
+            parsed.data.locationEn,
+            parsed.data.startingPrice,
+            parsed.data.pricingType,
+            parsed.data.imageUrl,
+            JSON.stringify(parsed.data.galleryUrls),
+            parsed.data.capacity ?? null,
+            parsed.data.descriptionAr,
+            parsed.data.descriptionEn,
+            JSON.stringify(parsed.data.featuresAr),
+            JSON.stringify(parsed.data.featuresEn),
+            parsed.data.badge ?? null,
+            now,
+          );
+          const row = db.prepare('SELECT * FROM wedding_services WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 201, { ok: true, data: mapWeddingServiceRow(row) });
+          return;
+        }
+
+        if (method === 'PATCH' && route.startsWith('/admin/wedding-services/')) {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const id = decodeURIComponent(route.slice('/admin/wedding-services/'.length));
+          const body = await readJsonBody(req);
+          const parsed = weddingServiceUpsertSchema.partial().safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid wedding service update', parsed.error.flatten());
+            return;
+          }
+          const existing = db.prepare('SELECT * FROM wedding_services WHERE id = ?').get(id) as
+            | Record<string, unknown>
+            | undefined;
+          if (!existing) {
+            sendError(res, 404, 'NOT_FOUND', 'Wedding service not found');
+            return;
+          }
+          const d = parsed.data;
+          db.prepare(
+            `UPDATE wedding_services SET
+              category = COALESCE(?, category),
+              name_ar = COALESCE(?, name_ar),
+              name_en = COALESCE(?, name_en),
+              governorate_slug = COALESCE(?, governorate_slug),
+              location_ar = COALESCE(?, location_ar),
+              location_en = COALESCE(?, location_en),
+              starting_price = COALESCE(?, starting_price),
+              pricing_type = COALESCE(?, pricing_type),
+              image_url = COALESCE(?, image_url),
+              capacity = COALESCE(?, capacity),
+              description_ar = COALESCE(?, description_ar),
+              description_en = COALESCE(?, description_en),
+              badge = COALESCE(?, badge)
+             WHERE id = ?`,
+          ).run(
+            d.category ?? null,
+            d.nameAr ?? null,
+            d.nameEn ?? null,
+            d.governorateSlug ?? null,
+            d.locationAr ?? null,
+            d.locationEn ?? null,
+            d.startingPrice ?? null,
+            d.pricingType ?? null,
+            d.imageUrl ?? null,
+            d.capacity ?? null,
+            d.descriptionAr ?? null,
+            d.descriptionEn ?? null,
+            d.badge ?? null,
+            id,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.wedding_service_updated',
+            targetType: 'wedding_service',
+            targetId: id,
+            ipAddress: ip,
+          });
+          const row = db.prepare('SELECT * FROM wedding_services WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 200, { ok: true, data: mapWeddingServiceRow(row) });
+          return;
+        }
+
+        if (method === 'DELETE' && route.startsWith('/admin/wedding-services/')) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const id = decodeURIComponent(route.slice('/admin/wedding-services/'.length));
+          db.prepare('DELETE FROM wedding_services WHERE id = ?').run(id);
+          sendJson(res, 200, { ok: true, data: { deleted: true } });
+          return;
+        }
+
+        // CMS Articles CRUD
+        if (method === 'POST' && route === '/admin/articles') {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const parsed = articleUpsertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid article fields', parsed.error.flatten());
+            return;
+          }
+          const id = parsed.data.id || `art-${Date.now().toString().slice(-6)}`;
+          const now = new Date().toISOString();
+          db.prepare(
+            `INSERT INTO articles (id, slug, category_id, domain, content_type, title_ar, title_en, excerpt_ar, excerpt_en, body_ar, body_en, featured_image, author_id, author_name, tags_json, faq_json, related_calculators_json, status, reading_minutes, view_count, is_featured, published_at, updated_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, 0, ?, ?, ?, ?)`,
+          ).run(
+            id,
+            parsed.data.slug,
+            parsed.data.categoryId,
+            parsed.data.domain,
+            parsed.data.contentType,
+            parsed.data.titleAr,
+            parsed.data.titleEn,
+            parsed.data.excerptAr,
+            parsed.data.excerptEn,
+            parsed.data.bodyAr,
+            parsed.data.bodyEn,
+            parsed.data.featuredImage,
+            authUser.id,
+            authUser.name,
+            JSON.stringify(parsed.data.tags),
+            JSON.stringify(parsed.data.relatedCalculators),
+            parsed.data.status,
+            parsed.data.readingMinutes,
+            parsed.data.isFeatured ? 1 : 0,
+            now,
+            now,
+            now,
+          );
+          const row = db.prepare('SELECT * FROM articles WHERE id = ?').get(id) as Record<string, unknown>;
+          sendJson(res, 201, { ok: true, data: mapArticleRow(row) });
+          return;
+        }
+
+        // Status updates
+        const statusMatch = route.match(
+          /^\/admin\/(orders|finishing-inquiries|wedding-bookings|financing-applications|support-cases)\/([^/]+)\/status$/,
+        );
+        if (method === 'PATCH' && statusMatch) {
+          const resource = statusMatch[1];
+          const id = decodeURIComponent(statusMatch[2]);
+          if (resource === 'support-cases' && !hasAnyRole(authUser.role, MODERATION_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires moderator or admin role');
+            return;
+          }
+          if (resource !== 'support-cases' && !hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const body = (await readJsonBody(req)) as { status?: string };
+          if (!body.status) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'status field is required');
+            return;
+          }
+          const tableMap: Record<string, string> = {
+            orders: 'orders',
+            'finishing-inquiries': 'finishing_inquiries',
+            'wedding-bookings': 'wedding_bookings',
+            'financing-applications': 'financing_applications',
+            'support-cases': 'support_cases',
+          };
+          const table = tableMap[resource];
+          db.prepare(`UPDATE ${table} SET status = ?, updated_at = ? WHERE id = ?`).run(
+            body.status,
+            new Date().toISOString(),
+            id,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: `admin.${resource}_status_updated`,
+            targetType: resource,
+            targetId: id,
+            metadata: { status: body.status },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: { id, status: body.status } });
+          return;
+        }
+
+        if (method === 'PATCH' && route === '/admin/settings') {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires admin role');
+            return;
+          }
+          const body = await readJsonBody(req);
+          const now = new Date().toISOString();
+          db.prepare("UPDATE platform_settings SET value_json = ?, updated_at = ? WHERE key = 'main'").run(
+            JSON.stringify(body),
+            now,
+          );
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.settings_updated',
+            targetType: 'platform_settings',
+            targetId: 'main',
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: body });
+          return;
+        }
+      }
+
+      sendError(res, 404, 'API_ROUTE_NOT_FOUND', `No handler for ${method} ${pathname}`);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'INVALID_JSON') {
+        sendError(res, 400, 'INVALID_JSON', 'Malformed JSON body');
+        return;
+      }
+      if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
+        sendError(res, 413, 'PAYLOAD_TOO_LARGE', 'Request payload exceeds 1MB limit');
+        return;
+      }
+      console.error('[GAWAZ INN API Error]', err);
+      sendError(res, 500, 'INTERNAL_ERROR', 'Internal server error');
+    }
+  };
+}

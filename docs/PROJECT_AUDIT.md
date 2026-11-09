@@ -81,3 +81,4 @@ Executed on clean baseline `9c2fd04`:
 - Interactive cards (`SplashHome`, `FinishingView` tiers, `GroomView` budget items, `BrideView` checklist items) use clickable `<div>` tags without `role="button"`, `tabIndex={0}`, or keyboard activation handlers.
 - Modals lack `role="dialog"`, `aria-modal="true"`, Escape-to-close, and backdrop click handling.
 - Missing `robots.txt`, `sitemap.xml`, per-route `<title>`/`<meta description>`/canonical tags, and JSON-LD structured data (`Organization`, `Product`, `LocalBusiness`, `Article`, `BreadcrumbList`).
+

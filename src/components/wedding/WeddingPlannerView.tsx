@@ -1,38 +1,34 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { 
-  Heart, 
-  MapPin, 
-  Star, 
-  Calendar, 
-  Users, 
-  AlertCircle, 
-  CheckCircle2, 
-  ArrowLeft, 
-  ArrowRight, 
-  Camera, 
-  Car, 
-  Sparkles, 
-  Music, 
-  Utensils, 
-  Building2, 
+import {
+  Heart,
+  MapPin,
+  Star,
+  Calendar,
+  Users,
+  AlertCircle,
+  CheckCircle2,
+  Camera,
+  Car,
+  Sparkles,
+  Music,
+  Utensils,
+  Building2,
   PackageCheck,
   Search,
-  Filter
 } from 'lucide-react';
-import { WeddingCategory, WeddingServiceItem } from '../../types';
+import type { WeddingCategory, WeddingServiceItem } from '../../types';
+import { SmartImage } from '../common/SmartImage';
 
 export const WeddingPlannerView: React.FC = () => {
-  const { 
-    language, 
-    t, 
-    dir, 
-    weddingServices, 
-    setSelectedWeddingService, 
-    setWeddingBookingModalOpen 
+  const {
+    language,
+    t,
+    weddingServices,
+    setSelectedWeddingService,
+    setWeddingBookingModalOpen,
   } = useApp();
-
-  const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
   const [activeCategory, setActiveCategory] = useState<WeddingCategory | 'all'>('all');
   const [selectedGovernorate, setSelectedGovernorate] = useState<string>('all');
@@ -52,10 +48,14 @@ export const WeddingPlannerView: React.FC = () => {
     { key: 'catering', label: t.wedding.categories.catering, icon: <Utensils className="w-4 h-4" /> },
   ];
 
-  const filteredServices = weddingServices.filter(s => {
+  const filteredServices = weddingServices.filter((s) => {
     const matchesCat = activeCategory === 'all' || s.category === activeCategory;
-    const matchesGov = selectedGovernorate === 'all' || s.locationAr.includes(selectedGovernorate) || s.locationEn.includes(selectedGovernorate);
-    const matchesSearch = !searchQuery || 
+    const matchesGov =
+      selectedGovernorate === 'all' ||
+      s.locationAr.includes(selectedGovernorate) ||
+      s.locationEn.includes(selectedGovernorate);
+    const matchesSearch =
+      !searchQuery ||
       (s.nameAr + s.nameEn + s.descriptionAr).toLowerCase().includes(searchQuery.toLowerCase());
     const matchesBudget = s.startingPrice <= maxBudget;
     return matchesCat && matchesGov && matchesSearch && matchesBudget;
@@ -68,48 +68,55 @@ export const WeddingPlannerView: React.FC = () => {
 
   return (
     <div className="space-y-16 pb-24">
-      
       {/* 1. Header Hero Banner */}
       <div className="relative bg-gradient-to-br from-[#800C22] via-[#9E122C] to-[#590717] text-white py-14 lg:py-20 border-b border-white/10 overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 blur-3xl pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 blur-3xl pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          
           <div className="max-w-3xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 text-rose-100 text-xs font-bold border border-white/20 backdrop-blur-md">
               <Heart className="w-4 h-4 text-white" />
-              <span>{language === 'ar' ? 'القسم الرابع — فرحي | Wedding Planner' : 'Section 04 — Farahi Wedding Planner'}</span>
+              <span>
+                {language === 'ar'
+                  ? 'القسم الرابع — فرحي | Wedding Planner'
+                  : 'Section 04 — Farahi Wedding Planner'}
+              </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
               {t.wedding.title}
             </h1>
 
-            <p className="text-base sm:text-lg text-rose-100 leading-relaxed">
-              {t.wedding.subtitle}
-            </p>
+            <p className="text-base sm:text-lg text-rose-100 leading-relaxed">{t.wedding.subtitle}</p>
 
-            {/* Crucial Required Business Notice */}
             <div className="p-4 rounded-2xl bg-white/10 border border-white/20 flex items-start gap-3 text-xs text-rose-100 backdrop-blur-sm">
               <AlertCircle className="w-5 h-5 text-rose-200 shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                {t.wedding.importantNotice}
-              </p>
+              <p className="leading-relaxed">{t.wedding.importantNotice}</p>
+            </div>
+
+            <div className="pt-1">
+              <Link
+                to="/discover"
+                className="inline-flex items-center gap-2 text-xs font-bold bg-white/15 hover:bg-white/25 text-white px-4 py-2 rounded-xl border border-white/20 transition"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>
+                  {language === 'ar'
+                    ? 'استعرض القاعات والخدمات حسب محافظات مصر'
+                    : 'Explore Venues & Services by Egypt Governorate'}
+                </span>
+              </Link>
             </div>
           </div>
-
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        
         {/* 2. Filter & Search Controls */}
         <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-md space-y-6">
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            {/* Search */}
             <div className="relative">
               <Search className="w-4 h-4 text-gray-400 absolute top-3.5 start-3.5" />
-              <input 
+              <input
                 type="text"
                 placeholder={t.common.search}
                 value={searchQuery}
@@ -118,25 +125,35 @@ export const WeddingPlannerView: React.FC = () => {
               />
             </div>
 
-            {/* Governorate Filter */}
             <div>
               <select
                 value={selectedGovernorate}
                 onChange={(e) => setSelectedGovernorate(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-gray-300 text-xs focus:border-[#D91B3E] outline-none font-semibold text-gray-700"
               >
-                <option value="all">{language === 'ar' ? 'كافة المحافظات والمناطق' : 'All Locations'}</option>
-                <option value="القاهرة">{language === 'ar' ? 'القاهرة الجديدة والتجمع' : 'New Cairo'}</option>
-                <option value="الشيخ زايد">{language === 'ar' ? 'الشيخ زايد وأكتوبر' : 'Sheikh Zayed & 6th Oct'}</option>
-                <option value="الجيزة">{language === 'ar' ? 'الجيزة والمهندسين' : 'Giza & Mohandessin'}</option>
-                <option value="الإسكندرية">{language === 'ar' ? 'الإسكندرية والساحل' : 'Alexandria'}</option>
+                <option value="all">
+                  {language === 'ar' ? 'كافة المحافظات والمناطق' : 'All Locations'}
+                </option>
+                <option value="القاهرة">
+                  {language === 'ar' ? 'القاهرة الجديدة والتجمع' : 'New Cairo'}
+                </option>
+                <option value="الشيخ زايد">
+                  {language === 'ar' ? 'الشيخ زايد وأكتوبر' : 'Sheikh Zayed & 6th Oct'}
+                </option>
+                <option value="الجيزة">
+                  {language === 'ar' ? 'الجيزة والمهندسين' : 'Giza & Mohandessin'}
+                </option>
+                <option value="الإسكندرية">
+                  {language === 'ar' ? 'الإسكندرية والساحل' : 'Alexandria'}
+                </option>
               </select>
             </div>
 
-            {/* Budget Filter */}
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 shrink-0 font-bold">{language === 'ar' ? 'الميزانية حتى:' : 'Budget up to:'}</span>
-              <input 
+              <span className="text-xs text-gray-500 shrink-0 font-bold">
+                {language === 'ar' ? 'الميزانية حتى:' : 'Budget up to:'}
+              </span>
+              <input
                 type="range"
                 min={5000}
                 max={200000}
@@ -151,13 +168,13 @@ export const WeddingPlannerView: React.FC = () => {
             </div>
           </div>
 
-          {/* Category Tabs */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
             {categories.map((cat) => (
               <button
                 key={cat.key}
+                type="button"
                 onClick={() => setActiveCategory(cat.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeCategory === cat.key
                     ? 'bg-[#D91B3E] text-white shadow-md'
                     : 'bg-[#FAF7F2] text-gray-700 hover:bg-rose-50'
@@ -168,105 +185,130 @@ export const WeddingPlannerView: React.FC = () => {
               </button>
             ))}
           </div>
-
         </div>
 
-        {/* 3. Wedding Services Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredServices.map((srv) => (
-            <div 
-              key={srv.id}
-              className="bg-white rounded-3xl overflow-hidden border-2 border-rose-100 hover:border-red-300 shadow-lg hover:shadow-2xl transition flex flex-col justify-between group"
+        {/* 3. Wedding Services Cards Grid or Empty State */}
+        {filteredServices.length === 0 ? (
+          <div className="bg-[#FAF7F2] rounded-3xl p-12 text-center border border-rose-100 space-y-3">
+            <Heart className="w-10 h-10 text-[#D91B3E]/40 mx-auto" />
+            <p className="text-sm font-bold text-gray-800">
+              {language === 'ar'
+                ? 'لا توجد خدمات فرح تطابق معايير البحث الحالية'
+                : 'No wedding services match your current filters'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory('all');
+                setSelectedGovernorate('all');
+                setSearchQuery('');
+                setMaxBudget(200000);
+              }}
+              className="text-xs font-bold text-[#D91B3E] underline cursor-pointer"
             >
-              {/* Image & Badges */}
-              <div className="relative h-64 w-full overflow-hidden bg-gray-100">
-                <img 
-                  src={srv.imageUrl} 
-                  alt={srv.nameAr}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                />
-                
-                {/* Category Badge */}
-                <div className="absolute top-3 start-3 bg-[#1C1819]/85 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold text-rose-200">
-                  {t.wedding.categories[srv.category] || srv.category}
-                </div>
+              {language === 'ar' ? 'إعادة عرض جميع الخدمات' : 'Reset Filters'}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredServices.map((srv) => (
+              <div
+                key={srv.id}
+                className="bg-white rounded-3xl overflow-hidden border-2 border-rose-100 hover:border-red-300 shadow-lg hover:shadow-2xl transition flex flex-col justify-between group"
+              >
+                <div className="relative h-64 w-full overflow-hidden bg-gray-100">
+                  <SmartImage
+                    src={srv.imageUrl}
+                    alt={language === 'ar' ? srv.nameAr : srv.nameEn}
+                    fallbackTitle={language === 'ar' ? srv.nameAr : srv.nameEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                  />
 
-                {srv.badge && (
-                  <div className="absolute top-3 end-3 bg-red-gradient text-white px-2.5 py-1 rounded-lg text-[10px] font-black shadow-md">
-                    {srv.badge}
-                  </div>
-                )}
-
-                {/* Rating overlay */}
-                <div className="absolute bottom-3 start-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-bold text-gray-800 flex items-center gap-1 shadow-sm">
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
-                  <span>{srv.rating}</span>
-                  <span className="text-[10px] text-gray-400">({srv.reviewsCount})</span>
-                </div>
-              </div>
-
-              {/* Service Details Body */}
-              <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-gray-900 leading-snug">
-                    {language === 'ar' ? srv.nameAr : srv.nameEn}
-                  </h3>
-
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <MapPin className="w-3.5 h-3.5 text-[#D91B3E] shrink-0" />
-                    <span>{language === 'ar' ? srv.locationAr : srv.locationEn}</span>
+                  <div className="absolute top-3 start-3 bg-[#1C1819]/85 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold text-rose-200">
+                    {t.wedding.categories[srv.category] || srv.category}
                   </div>
 
-                  {srv.capacity && (
-                    <div className="flex items-center gap-1.5 text-xs text-[#D91B3E] font-semibold bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
-                      <Users className="w-3.5 h-3.5 text-[#D91B3E] shrink-0" />
-                      <span>{t.wedding.capacity} {srv.capacity}</span>
+                  {srv.badge && (
+                    <div className="absolute top-3 end-3 bg-red-gradient text-white px-2.5 py-1 rounded-lg text-[10px] font-black shadow-md">
+                      {srv.badge}
                     </div>
                   )}
 
-                  <p className="text-xs text-gray-600 line-clamp-2 pt-1">
-                    {language === 'ar' ? srv.descriptionAr : srv.descriptionEn}
-                  </p>
+                  <div className="absolute bottom-3 start-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-bold text-gray-800 flex items-center gap-1 shadow-sm">
+                    <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
+                    <span>{srv.rating}</span>
+                    <span className="text-[10px] text-gray-400">({srv.reviewsCount})</span>
+                  </div>
                 </div>
 
-                {/* Features Pill */}
-                <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                  {(language === 'ar' ? srv.featuresAr : srv.featuresEn).slice(0, 3).map((feat, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                      <CheckCircle2 className="w-3 h-3 text-[#D91B3E] shrink-0" />
-                      <span className="truncate">{feat}</span>
-                    </div>
-                  ))}
-                </div>
+                <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-gray-900 leading-snug">
+                      {language === 'ar' ? srv.nameAr : srv.nameEn}
+                    </h3>
 
-                {/* Price & Action Button */}
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] text-gray-400 block">
-                      {srv.pricingType === 'per_person' ? (language === 'ar' ? 'سعر الفرد يبدأ من:' : 'Per Person from:') : (language === 'ar' ? 'يبدأ من:' : 'Starting at:')}
-                    </span>
-                    <div className="text-lg font-black text-[#D91B3E]">
-                      {srv.startingPrice.toLocaleString()} <span className="text-xs font-bold text-[#D91B3E]">{t.groom.egp}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <MapPin className="w-3.5 h-3.5 text-[#D91B3E] shrink-0" />
+                      <span>{language === 'ar' ? srv.locationAr : srv.locationEn}</span>
                     </div>
+
+                    {srv.capacity && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#D91B3E] font-semibold bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
+                        <Users className="w-3.5 h-3.5 text-[#D91B3E] shrink-0" />
+                        <span>
+                          {t.wedding.capacity} {srv.capacity}
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-600 line-clamp-2 pt-1">
+                      {language === 'ar' ? srv.descriptionAr : srv.descriptionEn}
+                    </p>
                   </div>
 
-                  <button
-                    onClick={() => handleBookingClick(srv)}
-                    className="bg-red-gradient hover:opacity-95 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md transition flex items-center gap-1.5 shrink-0"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-white" />
-                    <span>{t.wedding.bookInquiryBtn}</span>
-                  </button>
+                  <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                    {(language === 'ar' ? srv.featuresAr : srv.featuresEn)
+                      .slice(0, 3)
+                      .map((feat, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                          <CheckCircle2 className="w-3 h-3 text-[#D91B3E] shrink-0" />
+                          <span className="truncate">{feat}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] text-gray-400 block">
+                        {srv.pricingType === 'per_person'
+                          ? language === 'ar'
+                            ? 'سعر الفرد يبدأ من:'
+                            : 'Per Person from:'
+                          : language === 'ar'
+                          ? 'يبدأ من:'
+                          : 'Starting at:'}
+                      </span>
+                      <div className="text-lg font-black text-[#D91B3E]">
+                        {srv.startingPrice.toLocaleString()}{' '}
+                        <span className="text-xs font-bold text-[#D91B3E]">{t.groom.egp}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleBookingClick(srv)}
+                      className="bg-red-gradient hover:opacity-95 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-white" />
+                      <span>{t.wedding.bookInquiryBtn}</span>
+                    </button>
+                  </div>
                 </div>
-
               </div>
-
-            </div>
-          ))}
-        </div>
-
+            ))}
+          </div>
+        )}
       </div>
-
     </div>
   );
 };

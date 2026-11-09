@@ -48,3 +48,4 @@ Preserving the single-row crisp Red/White header (`Header.tsx`) with clean dropd
 - **السوق والموردين (Marketplace):** Products & Comparisons · Vendors Directory · Wedding Services (`فرحي`) · Installments · Request a Quote (RFQ).
 - **اكتشف والمحلي (Discover & Local):** Articles & Guides · My Wedding Story · Community Q&A · Experts · Local Governorate Guides · Home Care.
 - **جواز إن الخاص بي (My Gawaz Inn):** Personal 17-tab workspace + Shared Couple Workspace + Vendor Portal (for vendor accounts) + Admin OS (for admin/moderator/editor accounts).
+

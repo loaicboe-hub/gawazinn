@@ -28,3 +28,4 @@
 1. After wedding date, user transitions stage to **Newly Married**.
 2. Transfers purchased appliances & finishing details into **Digital Home File** and **Home Inventory** (serial numbers, paint codes, invoices).
 3. Sets **Warranty Tracker** expiration dates and **Maintenance Reminders** (AC service every 6 months), and discovers trusted technicians in the **Home Care Directory**.
+

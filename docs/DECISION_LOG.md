@@ -34,3 +34,4 @@ Every major technical, architectural, and product decision is recorded here with
 - **Date:** 2026-11-09 (Stage 0)
 - **Context:** Unconstrained LLM prompts risk hallucinating non-existent prices, vendor reviews, or financial guarantees.
 - **Decision:** Design the AI Assistant (Stage 10) around mandatory tool execution over real platform SQL queries and `shared/calculators/`. Every recommendation links directly to real DB entities, cites price timestamps/estimate labels, never accesses another user's private savings, and defaults gracefully to a deterministic grounded planner when external LLM API keys are unconfigured.
+

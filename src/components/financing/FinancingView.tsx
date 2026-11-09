@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  CreditCard, 
-  Calculator, 
-  ShieldCheck, 
-  Clock, 
-  CheckCircle2, 
-  ArrowLeft, 
-  ArrowRight, 
-  FileText,
+import {
+  CreditCard,
+  ArrowLeft,
+  ArrowRight,
   BadgeCheck,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 
 export const FinancingView: React.FC = () => {
@@ -104,8 +99,8 @@ export const FinancingView: React.FC = () => {
                     className="w-full accent-[#D91B3E] cursor-pointer"
                   />
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>10,000 ج.م</span>
-                    <span>500,000 ج.م</span>
+                    <span>10,000 {t.groom.egp}</span>
+                    <span>500,000 {t.groom.egp}</span>
                   </div>
                 </div>
 
@@ -166,15 +161,15 @@ export const FinancingView: React.FC = () => {
 
                 <div className="space-y-2 text-xs text-gray-300">
                   <div className="flex justify-between">
-                    <span>المبلغ الممول:</span>
-                    <strong className="text-white">{financedAmount.toLocaleString()} ج.م</strong>
+                    <span>{language === 'ar' ? 'المبلغ الممول:' : 'Financed Amount:'}</span>
+                    <strong className="text-white">{financedAmount.toLocaleString()} {t.groom.egp}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span>المدة:</span>
-                    <strong className="text-white">{tenure} شهراً</strong>
+                    <span>{language === 'ar' ? 'المدة:' : 'Tenure:'}</span>
+                    <strong className="text-white">{tenure} {language === 'ar' ? 'شهراً' : 'Months'}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span>الفائدة التقديرية السنوية:</span>
+                    <span>{language === 'ar' ? 'الفائدة التقديرية السنوية:' : 'Estimated Annual Rate:'}</span>
                     <strong className="text-emerald-400">{settings.interestRateAnnual}%</strong>
                   </div>
                 </div>

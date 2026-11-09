@@ -42,3 +42,4 @@ To be initialized in Stage 1 without committing secrets:
 
 ### Option B — Node Container / VPS (SQLite WAL or PostgreSQL)
 1. Run `npm run build` and launch `node server/index.ts` serving both `/api/v1/*` and static `dist/` with persistent disk mounted to `.data/gawazinn.db` + scheduled SQLite `.backup()` snapshots.
+

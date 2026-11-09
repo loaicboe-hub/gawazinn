@@ -1,18 +1,13 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { Toast } from './components/layout/Toast';
+import { SeoHead } from './components/common/SeoHead';
 import { IntroSplashScreen } from './components/intro/IntroSplashScreen';
 import { SplashHome } from './components/home/SplashHome';
-import { FinishingView } from './components/finishing/FinishingView';
-import { GroomView } from './components/groom/GroomView';
-import { BrideView } from './components/bride/BrideView';
-import { WeddingPlannerView } from './components/wedding/WeddingPlannerView';
-import { FinancingView } from './components/financing/FinancingView';
-import { SocialSupportView } from './components/social/SocialSupportView';
-import { CustomerPortalView } from './components/customer/CustomerPortalView';
-import { AdminDashboardView } from './components/admin/AdminDashboardView';
+import { NotFoundView } from './components/common/NotFoundView';
 import { AuthModal } from './components/modals/AuthModal';
 import { FinishingQuoteModal } from './components/modals/FinishingQuoteModal';
 import { WeddingBookingModal } from './components/modals/WeddingBookingModal';
@@ -22,10 +17,67 @@ import { SupportModal } from './components/modals/SupportModal';
 import { SponsorModal } from './components/modals/SponsorModal';
 import { ProductCompareModal } from './components/modals/ProductCompareModal';
 import { CartDrawer } from './components/cart/CartDrawer';
-import { Product } from './types';
+import type { Product } from './types';
+
+const FinishingView = lazy(() =>
+  import('./components/finishing/FinishingView').then((m) => ({ default: m.FinishingView })),
+);
+const GroomView = lazy(() =>
+  import('./components/groom/GroomView').then((m) => ({ default: m.GroomView })),
+);
+const BrideView = lazy(() =>
+  import('./components/bride/BrideView').then((m) => ({ default: m.BrideView })),
+);
+const WeddingPlannerView = lazy(() =>
+  import('./components/wedding/WeddingPlannerView').then((m) => ({
+    default: m.WeddingPlannerView,
+  })),
+);
+const FinancingView = lazy(() =>
+  import('./components/financing/FinancingView').then((m) => ({ default: m.FinancingView })),
+);
+const SocialSupportView = lazy(() =>
+  import('./components/social/SocialSupportView').then((m) => ({ default: m.SocialSupportView })),
+);
+const EncyclopediaHubView = lazy(() =>
+  import('./components/encyclopedia/EncyclopediaHubView').then((m) => ({
+    default: m.EncyclopediaHubView,
+  })),
+);
+const ArticleDetailView = lazy(() =>
+  import('./components/encyclopedia/ArticleDetailView').then((m) => ({
+    default: m.ArticleDetailView,
+  })),
+);
+const LocalDiscoveryView = lazy(() =>
+  import('./components/discovery/LocalDiscoveryView').then((m) => ({
+    default: m.LocalDiscoveryView,
+  })),
+);
+const CustomerPortalView = lazy(() =>
+  import('./components/customer/CustomerPortalView').then((m) => ({
+    default: m.CustomerPortalView,
+  })),
+);
+const AdminDashboardView = lazy(() =>
+  import('./components/admin/AdminDashboardView').then((m) => ({
+    default: m.AdminDashboardView,
+  })),
+);
+
+const RouteLoadingFallback: React.FC = () => {
+  const { language } = useApp();
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 px-4 py-16">
+      <div className="w-10 h-10 rounded-full border-4 border-[#FDE8ED] border-t-[#D91B3E] animate-spin" />
+      <p className="text-xs font-bold text-[#B31331]">
+        {language === 'ar' ? 'جاري تحميل القسم...' : 'Loading section...'}
+      </p>
+    </div>
+  );
+};
 
 const MainContent: React.FC = () => {
-  const { activeSection } = useApp();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [productsToCompare, setProductsToCompare] = useState<Product[]>([]);
@@ -37,24 +89,38 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-white text-[#2A1D20] selection:bg-[#D91B3E]/20 selection:text-[#D91B3E]">
-      
+      <SeoHead />
+
       {/* 5-Second Wedding Intro Splash Screen */}
       <IntroSplashScreen />
 
       {/* Universal Wedding Header */}
       <Header onOpenCart={() => setIsCartOpen(true)} />
 
-      {/* Main Content Area */}
+      {/* Main Content Area with React Router Routes */}
       <main className="flex-1">
-        {activeSection === 'home' && <SplashHome />}
-        {activeSection === 'finishing' && <FinishingView />}
-        {activeSection === 'groom' && <GroomView onOpenCompare={handleOpenCompare} />}
-        {activeSection === 'bride' && <BrideView />}
-        {activeSection === 'wedding' && <WeddingPlannerView />}
-        {activeSection === 'installments' && <FinancingView />}
-        {activeSection === 'socialSupport' && <SocialSupportView />}
-        {activeSection === 'customerPortal' && <CustomerPortalView onOpenCart={() => setIsCartOpen(true)} />}
-        {activeSection === 'admin' && <AdminDashboardView />}
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<SplashHome />} />
+            <Route path="/finishing" element={<FinishingView />} />
+            <Route path="/groom" element={<GroomView onOpenCompare={handleOpenCompare} />} />
+            <Route path="/bride" element={<BrideView />} />
+            <Route path="/wedding" element={<WeddingPlannerView />} />
+            <Route path="/installments" element={<FinancingView />} />
+            <Route path="/social-support" element={<SocialSupportView />} />
+            <Route path="/encyclopedia" element={<EncyclopediaHubView />} />
+            <Route path="/encyclopedia/:domain" element={<EncyclopediaHubView />} />
+            <Route path="/guides/:slug" element={<ArticleDetailView />} />
+            <Route path="/discover" element={<LocalDiscoveryView />} />
+            <Route path="/locations/:govSlug" element={<LocalDiscoveryView />} />
+            <Route
+              path="/portal"
+              element={<CustomerPortalView onOpenCart={() => setIsCartOpen(true)} />}
+            />
+            <Route path="/admin" element={<AdminDashboardView />} />
+            <Route path="*" element={<NotFoundView />} />
+          </Routes>
+        </Suspense>
       </main>
 
       {/* Universal Wedding Footer */}
@@ -68,16 +134,15 @@ const MainContent: React.FC = () => {
       <InstallmentModal />
       <SupportModal />
       <SponsorModal />
-      <ProductCompareModal 
-        isOpen={compareModalOpen} 
-        onClose={() => setCompareModalOpen(false)} 
-        productsToCompare={productsToCompare} 
+      <ProductCompareModal
+        isOpen={compareModalOpen}
+        onClose={() => setCompareModalOpen(false)}
+        productsToCompare={productsToCompare}
       />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
 
       {/* Floating Animated Toast */}
       <Toast />
-
     </div>
   );
 };

@@ -24,3 +24,4 @@ Baseline 1.0 had critical exposure: auto-logged demo user, unauthenticated phone
 - **National ID & Social Support Confidentiality:** National IDs submitted in Financing or Social Support applications are masked (`298********678`) in API responses and protected from unauthenticated reads. Support cases are restricted to owner + authorized case reviewers.
 - **XSS / SQLi / Upload Safety:** All SQL queries use bound parameters (`?` / `$1`) — zero string interpolation. All inputs validated with `zod`. File upload metadata validates MIME type allowlist, size limits, and sanitized filenames.
 - **Audit Logging:** All logins, role changes, vendor verifications, moderation actions, and workspace permission changes emit immutable `audit_logs` records.
+

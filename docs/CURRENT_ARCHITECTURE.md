@@ -72,3 +72,4 @@ gawazinn/
 2. **No Router:** Needs URL-based routing (`/`, `/early-start`, `/encyclopedia/...`, `/calculators/...`, `/marketplace/...`, `/my/...`, `/vendor/...`, `/admin/...`, `/locations/...`) with deep links, SEO metadata, and fallback compatibility.
 3. **Scattered Calculation Logic:** Finishing, groom budget, and installment formulas live inside UI components rather than a pure, tested, shared calculation engine.
 4. **Bundle Size:** Current single JS chunk already exceeds `500 kB` (`524.79 kB`). Needs route-level `React.lazy` code splitting as the ecosystem expands.
+

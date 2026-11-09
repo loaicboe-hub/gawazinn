@@ -29,3 +29,4 @@ No stage may transition to the next stage or receive a Stage completion commit u
 - Never mock out a test assertion solely to make a broken integration appear green.
 - Seeded demo records carry `is_demo_data = true` so QA can distinguish sample data from real transactions.
 - Any external gateway without live credentials (e.g., Paymob card checkout, WhatsApp Cloud API webhook, live LLM API) is explicitly tested via its adapter boundary (`unconfigured` honest fallback vs. valid contract) and logged accurately in `INTEGRATION_STATUS.md`.
+

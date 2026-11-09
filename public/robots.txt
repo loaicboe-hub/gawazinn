@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Allow: /finishing
+Allow: /groom
+Allow: /bride
+Allow: /wedding
+Allow: /installments
+Allow: /social-support
+Allow: /encyclopedia
+Allow: /guides/
+Allow: /discover
+Allow: /locations/
+
+Disallow: /portal
+Disallow: /my/
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://gawazinn.vercel.app/sitemap.xml
+

@@ -1,19 +1,17 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  HeartHandshake, 
-  Lock, 
-  ShieldCheck, 
-  Users, 
-  Gift, 
-  FileCheck, 
-  CheckCircle2, 
-  ArrowLeft, 
-  ArrowRight, 
+import {
+  HeartHandshake,
+  Lock,
+  Users,
+  Gift,
+  FileCheck,
+  CheckCircle2,
+  ArrowLeft,
+  ArrowRight,
   Sparkles,
-  Building,
   Home,
-  Heart
+  Heart,
 } from 'lucide-react';
 
 export const SocialSupportView: React.FC = () => {

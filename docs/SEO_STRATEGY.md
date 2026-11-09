@@ -46,3 +46,4 @@ To prevent thin or spammy doorway pages on `/locations/:governorate/:category`:
 - **`public/robots.txt`:** Explicitly allows public encyclopedia, products, vendors, calculators, guides, and location hubs; disallows `/my/`, `/vendor-portal/`, `/admin/`, `/api/`. Points to `https://gawazinn.vercel.app/sitemap.xml`.
 - **Dynamic Sitemap Generation (`GET /sitemap.xml` + static `public/sitemap.xml` fallback):** Generated from published CMS articles, products, approved vendor slugs, calculators, and seeded governorate routes, excluding `noindex` private/admin pages.
 - **Internal Linking Graph:** Every Article links to relevant Calculators, Products, and Vendor Categories (`content_relations`); every Calculator links to related Finishing/Groom/Bride guides and Vendor RFQ entry points.
+

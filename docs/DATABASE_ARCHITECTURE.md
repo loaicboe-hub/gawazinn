@@ -58,3 +58,4 @@
 36. `wedding_invitations`, `wedding_guests`, `seating_tables`, `wedding_schedule_items`, `gift_registry_items`.
 37. `home_inventory_items`, `home_warranties`, `maintenance_reminders`, `home_documents`.
 38. `notifications`, `audit_logs`, `analytics_events`, `platform_settings`.
+

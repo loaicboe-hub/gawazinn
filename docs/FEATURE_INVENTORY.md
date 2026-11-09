@@ -47,3 +47,4 @@ Status legend:
 - **Module T:** Beyond Wedding / Married Life (Home Care Directory, Newlyweds Guide, Digital Home File, Warranty Tracker, Home Inventory)
 - **Module U:** Local Discovery & SEO (Governorates/Cities/Districts pages, sitemap, robots, JSON-LD)
 - **Admin OS:** Full CMS, Marketplace/Vendor verification & plans, User/Privacy controls, Commercial/Billing, Analytics Center
+
