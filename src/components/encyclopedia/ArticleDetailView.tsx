@@ -222,6 +222,18 @@ export const ArticleDetailView: React.FC = () => {
               <ArrowIcon className="w-3.5 h-3.5" />
             </Link>
             <Link
+              to="/glossary"
+              className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
+            >
+              {language === 'ar' ? 'قاموس المصطلحات' : 'Glossary'}
+            </Link>
+            <Link
+              to="/faqs"
+              className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
+            >
+              {language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}
+            </Link>
+            <Link
               to="/installments"
               className="px-4 py-3 rounded-xl bg-white text-[#2A1D20] border border-gray-200 text-xs font-bold hover:border-[#D91B3E]/40 transition"
             >

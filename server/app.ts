@@ -22,16 +22,28 @@ import {
   productUpsertSchema,
   registerSchema,
   updateProfileSchema,
+  userBridePlanSchema,
+  userGroomPlanSchema,
   weddingServiceUpsertSchema,
 } from '../shared/schemas';
 import type {
   Article,
   AuditLogEntry,
+  BeforeAfterProject,
+  BrideCategoryGuide,
+  BrideChecklistTemplateItem,
   ContentCategory,
+  FaqEntry,
   FinancingApplication,
+  FinishingContractorListing,
+  FinishingEncyclopediaCategory,
   FinishingInquiry,
+  FinishingMaterialItem,
   FinishingPackage,
   FinishingService,
+  GlossaryTerm,
+  GroomConfigurablePackage,
+  GroomSubcategoryGuide,
   LocationNode,
   Order,
   PlatformSettings,
@@ -39,6 +51,8 @@ import type {
   SponsorshipInquiry,
   SupportCase,
   User,
+  UserBridePlanState,
+  UserGroomPlanState,
   WeddingBookingRequest,
   WeddingServiceItem,
 } from '../shared/types';
@@ -335,6 +349,239 @@ function mapSupportRow(row: Record<string, unknown>): SupportCase {
   };
 }
 
+function mapFinishingCategoryRow(row: Record<string, unknown>): FinishingEncyclopediaCategory {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    stepOrder: Number(row.step_order),
+    phaseKey: row.phase_key as FinishingEncyclopediaCategory['phaseKey'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    summaryAr: String(row.summary_ar),
+    summaryEn: String(row.summary_en),
+    budgetSharePercent: Number(row.budget_share_percent),
+    typicalDurationAr: String(row.typical_duration_ar),
+    typicalDurationEn: String(row.typical_duration_en),
+    technicalSpecsAr: JSON.parse(String(row.technical_specs_ar_json || '[]')) as string[],
+    technicalSpecsEn: JSON.parse(String(row.technical_specs_en_json || '[]')) as string[],
+    commonMistakesAr: JSON.parse(String(row.common_mistakes_ar_json || '[]')) as string[],
+    commonMistakesEn: JSON.parse(String(row.common_mistakes_en_json || '[]')) as string[],
+    inspectionChecklistAr: JSON.parse(String(row.inspection_checklist_ar_json || '[]')) as string[],
+    inspectionChecklistEn: JSON.parse(String(row.inspection_checklist_en_json || '[]')) as string[],
+    recommendedMaterialsAr: JSON.parse(String(row.recommended_materials_ar_json || '[]')) as string[],
+    recommendedMaterialsEn: JSON.parse(String(row.recommended_materials_en_json || '[]')) as string[],
+    imageUrl: String(row.image_url),
+  };
+}
+
+function mapFinishingMaterialRow(row: Record<string, unknown>): FinishingMaterialItem {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    categorySlug: String(row.category_slug),
+    materialGroup: row.material_group as FinishingMaterialItem['materialGroup'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    summaryAr: String(row.summary_ar),
+    summaryEn: String(row.summary_en),
+    originAr: String(row.origin_ar),
+    originEn: String(row.origin_en),
+    unitAr: String(row.unit_ar),
+    unitEn: String(row.unit_en),
+    priceMinEgp: Number(row.price_min_egp),
+    priceMaxEgp: Number(row.price_max_egp),
+    priceSource: String(row.price_source),
+    priceUpdatedAt: String(row.price_updated_at),
+    prosAr: JSON.parse(String(row.pros_ar_json || '[]')) as string[],
+    prosEn: JSON.parse(String(row.pros_en_json || '[]')) as string[],
+    consAr: JSON.parse(String(row.cons_ar_json || '[]')) as string[],
+    consEn: JSON.parse(String(row.cons_en_json || '[]')) as string[],
+    alternativesAr: JSON.parse(String(row.alternatives_ar_json || '[]')) as string[],
+    alternativesEn: JSON.parse(String(row.alternatives_en_json || '[]')) as string[],
+    specsAr: JSON.parse(String(row.specs_ar_json || '{}')) as Record<string, string>,
+    specsEn: JSON.parse(String(row.specs_en_json || '{}')) as Record<string, string>,
+    bestUseAr: String(row.best_use_ar),
+    bestUseEn: String(row.best_use_en),
+    imageUrl: String(row.image_url),
+  };
+}
+
+function mapBeforeAfterProjectRow(row: Record<string, unknown>): BeforeAfterProject {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    titleAr: String(row.title_ar),
+    titleEn: String(row.title_en),
+    governorateSlug: String(row.governorate_slug),
+    governorateAr: String(row.governorate_ar),
+    governorateEn: String(row.governorate_en),
+    areaSqm: Number(row.area_sqm),
+    tier: row.tier as BeforeAfterProject['tier'],
+    tierAr: String(row.tier_ar),
+    tierEn: String(row.tier_en),
+    durationDays: Number(row.duration_days),
+    durationAr: String(row.duration_ar),
+    durationEn: String(row.duration_en),
+    estimatedBandAr: String(row.estimated_band_ar),
+    estimatedBandEn: String(row.estimated_band_en),
+    beforeImage: String(row.before_image),
+    afterImage: String(row.after_image),
+    descriptionAr: String(row.description_ar),
+    descriptionEn: String(row.description_en),
+    scopeHighlightsAr: JSON.parse(String(row.scope_highlights_ar_json || '[]')) as string[],
+    scopeHighlightsEn: JSON.parse(String(row.scope_highlights_en_json || '[]')) as string[],
+    isSampleListing: Boolean(row.is_sample_listing),
+  };
+}
+
+function mapContractorRow(row: Record<string, unknown>): FinishingContractorListing {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    roleTitleAr: String(row.role_title_ar),
+    roleTitleEn: String(row.role_title_en),
+    specialtyGroup: row.specialty_group as FinishingContractorListing['specialtyGroup'],
+    specialtyAr: String(row.specialty_ar),
+    specialtyEn: String(row.specialty_en),
+    governoratesCovered: JSON.parse(String(row.governorates_json || '[]')) as string[],
+    experienceYears: Number(row.experience_years),
+    verificationBadge: row.verification_badge as FinishingContractorListing['verificationBadge'],
+    pricingModelAr: String(row.pricing_model_ar),
+    pricingModelEn: String(row.pricing_model_en),
+    portfolioHighlightsAr: JSON.parse(String(row.portfolio_highlights_ar_json || '[]')) as string[],
+    portfolioHighlightsEn: JSON.parse(String(row.portfolio_highlights_en_json || '[]')) as string[],
+    warrantyOfferedAr: String(row.warranty_offered_ar),
+    warrantyOfferedEn: String(row.warranty_offered_en),
+    reviewsCount: Number(row.reviews_count ?? 0),
+    ratingNoteAr: String(row.rating_note_ar),
+    ratingNoteEn: String(row.rating_note_en),
+    isSampleListing: Boolean(row.is_sample_listing),
+  };
+}
+
+function mapGroomSubcategoryRow(row: Record<string, unknown>): GroomSubcategoryGuide {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    groupKey: row.group_key as GroomSubcategoryGuide['groupKey'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    summaryAr: String(row.summary_ar),
+    summaryEn: String(row.summary_en),
+    priority: row.priority as GroomSubcategoryGuide['priority'],
+    budgetSharePercent: Number(row.budget_share_percent),
+    estimatedMinEgp: Number(row.estimated_min_egp),
+    estimatedMaxEgp: Number(row.estimated_max_egp),
+    buyingChecklistAr: JSON.parse(String(row.buying_checklist_ar_json || '[]')) as string[],
+    buyingChecklistEn: JSON.parse(String(row.buying_checklist_en_json || '[]')) as string[],
+    warrantyTipsAr: String(row.warranty_tips_ar),
+    warrantyTipsEn: String(row.warranty_tips_en),
+  };
+}
+
+function mapGroomPackageRow(row: Record<string, unknown>): GroomConfigurablePackage {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    tierKey: row.tier_key as GroomConfigurablePackage['tierKey'],
+    targetBudgetEgp: Number(row.target_budget_egp),
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    taglineAr: String(row.tagline_ar),
+    taglineEn: String(row.tagline_en),
+    warrantyNoteAr: String(row.warranty_note_ar),
+    warrantyNoteEn: String(row.warranty_note_en),
+    priceUpdatedAt: String(row.price_updated_at),
+    slots: JSON.parse(String(row.slots_json || '[]')) as GroomConfigurablePackage['slots'],
+  };
+}
+
+function mapBrideCategoryRow(row: Record<string, unknown>): BrideCategoryGuide {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    sortOrder: Number(row.sort_order),
+    groupKey: row.group_key as BrideCategoryGuide['groupKey'],
+    nameAr: String(row.name_ar),
+    nameEn: String(row.name_en),
+    summaryAr: String(row.summary_ar),
+    summaryEn: String(row.summary_en),
+    budgetWeightPercent: Number(row.budget_weight_percent),
+    antiWasteTipAr: String(row.anti_waste_tip_ar),
+    antiWasteTipEn: String(row.anti_waste_tip_en),
+    recommendedCountLabelAr: String(row.recommended_count_label_ar),
+    recommendedCountLabelEn: String(row.recommended_count_label_en),
+  };
+}
+
+function mapBrideChecklistTemplateRow(row: Record<string, unknown>): BrideChecklistTemplateItem {
+  return {
+    id: String(row.id),
+    categoryId: String(row.category_id),
+    labelAr: String(row.label_ar),
+    labelEn: String(row.label_en),
+    recommendedQty: Number(row.recommended_qty),
+    unitLabelAr: String(row.unit_label_ar),
+    unitLabelEn: String(row.unit_label_en),
+    priority: row.priority as BrideChecklistTemplateItem['priority'],
+    estimatedUnitPriceEgp: Number(row.estimated_unit_price_egp),
+    presets: JSON.parse(String(row.presets_json || '[]')) as BrideChecklistTemplateItem['presets'],
+    noteAr: String(row.note_ar),
+    noteEn: String(row.note_en),
+  };
+}
+
+function mapGlossaryTermRow(row: Record<string, unknown>): GlossaryTerm {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    domain: row.domain as GlossaryTerm['domain'],
+    termAr: String(row.term_ar),
+    termEn: String(row.term_en),
+    definitionAr: String(row.definition_ar),
+    definitionEn: String(row.definition_en),
+    exampleAr: String(row.example_ar),
+    exampleEn: String(row.example_en),
+    relatedCalculatorSlug: row.related_calculator_slug ? String(row.related_calculator_slug) : undefined,
+  };
+}
+
+function mapFaqRow(row: Record<string, unknown>): FaqEntry {
+  return {
+    id: String(row.id),
+    domain: row.domain as FaqEntry['domain'],
+    questionAr: String(row.question_ar),
+    questionEn: String(row.question_en),
+    answerAr: String(row.answer_ar),
+    answerEn: String(row.answer_en),
+    sortOrder: Number(row.sort_order),
+  };
+}
+
+function mapUserGroomPlanRow(row: Record<string, unknown>): UserGroomPlanState {
+  return {
+    selectedTierKey: row.selected_tier_key as UserGroomPlanState['selectedTierKey'],
+    targetBudgetEgp: Number(row.target_budget_egp),
+    slotSelections: JSON.parse(String(row.slot_selections_json || '{}')) as Record<string, string>,
+    excludedSlots: JSON.parse(String(row.excluded_slots_json || '[]')) as string[],
+    customItems: JSON.parse(String(row.custom_items_json || '[]')) as string[],
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapUserBridePlanRow(row: Record<string, unknown>): UserBridePlanState {
+  return {
+    presetMode: row.preset_mode as UserBridePlanState['presetMode'],
+    targetBudgetEgp: Number(row.target_budget_egp),
+    checkedItemIds: JSON.parse(String(row.checked_item_ids_json || '[]')) as string[],
+    qtyOverrides: JSON.parse(String(row.qty_overrides_json || '{}')) as Record<string, number>,
+    customItems: JSON.parse(String(row.custom_items_json || '[]')) as UserBridePlanState['customItems'],
+    updatedAt: String(row.updated_at),
+  };
+}
+
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -468,12 +715,19 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         const staticRoutes = [
           '/',
           '/finishing',
+          '/finishing/encyclopedia',
+          '/finishing/materials',
+          '/finishing/contractors',
           '/groom',
+          '/groom/encyclopedia',
           '/bride',
+          '/bride/encyclopedia',
           '/wedding',
           '/installments',
           '/social-support',
           '/encyclopedia',
+          '/glossary',
+          '/faqs',
           '/discover',
         ];
         const articles = db
@@ -884,6 +1138,339 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           .prepare('SELECT * FROM wedding_services ORDER BY rating DESC, created_at DESC')
           .all() as Record<string, unknown>[];
         sendJson(res, 200, { ok: true, data: rows.map(mapWeddingServiceRow) });
+        return;
+      }
+
+      // ================= STAGE 2: COMPLETE ENCYCLOPEDIA & KNOWLEDGE HUB PUBLIC ROUTES =================
+      if (method === 'GET' && route === '/encyclopedia/bundle') {
+        const finishingCategories = (
+          db.prepare('SELECT * FROM finishing_categories ORDER BY step_order ASC').all() as Record<string, unknown>[]
+        ).map(mapFinishingCategoryRow);
+        const finishingMaterials = (
+          db.prepare('SELECT * FROM finishing_materials ORDER BY material_group ASC, name_en ASC').all() as Record<
+            string,
+            unknown
+          >[]
+        ).map(mapFinishingMaterialRow);
+        const beforeAfterProjects = (
+          db.prepare('SELECT * FROM before_after_projects ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapBeforeAfterProjectRow);
+        const contractors = (
+          db.prepare('SELECT * FROM finishing_contractors ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapContractorRow);
+        const groomSubcategories = (
+          db.prepare('SELECT * FROM groom_subcategories ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapGroomSubcategoryRow);
+        const groomConfigurablePackages = (
+          db.prepare('SELECT * FROM groom_package_templates ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapGroomPackageRow);
+        const brideCategories = (
+          db.prepare('SELECT * FROM bride_categories ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapBrideCategoryRow);
+        const brideChecklistTemplates = (
+          db.prepare('SELECT * FROM bride_checklist_templates ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapBrideChecklistTemplateRow);
+        const glossaryTerms = (
+          db.prepare('SELECT * FROM glossary_terms ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapGlossaryTermRow);
+        const faqItems = (
+          db.prepare('SELECT * FROM faq_items ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapFaqRow);
+
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            finishingCategories,
+            finishingMaterials,
+            beforeAfterProjects,
+            contractors,
+            groomSubcategories,
+            groomConfigurablePackages,
+            brideCategories,
+            brideChecklistTemplates,
+            glossaryTerms,
+            faqItems,
+          },
+        });
+        return;
+      }
+
+      if (method === 'GET' && route === '/finishing/categories') {
+        const phase = url.searchParams.get('phase');
+        const rows = phase
+          ? (db
+              .prepare('SELECT * FROM finishing_categories WHERE phase_key = ? ORDER BY step_order ASC')
+              .all(phase) as Record<string, unknown>[])
+          : (db.prepare('SELECT * FROM finishing_categories ORDER BY step_order ASC').all() as Record<
+              string,
+              unknown
+            >[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapFinishingCategoryRow) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/finishing/materials') {
+        const group = url.searchParams.get('group');
+        const rows = group
+          ? (db
+              .prepare('SELECT * FROM finishing_materials WHERE material_group = ? ORDER BY name_en ASC')
+              .all(group) as Record<string, unknown>[])
+          : (db.prepare('SELECT * FROM finishing_materials ORDER BY material_group ASC, name_en ASC').all() as Record<
+              string,
+              unknown
+            >[]);
+        sendJson(res, 200, { ok: true, data: rows.map(mapFinishingMaterialRow) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/finishing/projects') {
+        const governorate = url.searchParams.get('governorate');
+        const tier = url.searchParams.get('tier');
+        let list = (
+          db.prepare('SELECT * FROM before_after_projects ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapBeforeAfterProjectRow);
+        if (governorate) {
+          list = list.filter((p) => p.governorateSlug === governorate);
+        }
+        if (tier) {
+          list = list.filter((p) => p.tier === tier);
+        }
+        sendJson(res, 200, { ok: true, data: list });
+        return;
+      }
+
+      if (method === 'GET' && route === '/contractors') {
+        const governorate = url.searchParams.get('governorate');
+        const specialty = url.searchParams.get('specialty');
+        let list = (
+          db.prepare('SELECT * FROM finishing_contractors ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapContractorRow);
+        if (governorate) {
+          list = list.filter((c) => c.governoratesCovered.includes(governorate));
+        }
+        if (specialty) {
+          list = list.filter((c) => c.specialtyGroup === specialty);
+        }
+        sendJson(res, 200, { ok: true, data: list });
+        return;
+      }
+
+      if (method === 'GET' && route === '/groom/encyclopedia') {
+        const group = url.searchParams.get('group');
+        const subcategories = (
+          group
+            ? (db
+                .prepare('SELECT * FROM groom_subcategories WHERE group_key = ? ORDER BY sort_order ASC')
+                .all(group) as Record<string, unknown>[])
+            : (db.prepare('SELECT * FROM groom_subcategories ORDER BY sort_order ASC').all() as Record<
+                string,
+                unknown
+              >[])
+        ).map(mapGroomSubcategoryRow);
+        const configurablePackages = (
+          db.prepare('SELECT * FROM groom_package_templates ORDER BY sort_order ASC').all() as Record<string, unknown>[]
+        ).map(mapGroomPackageRow);
+        sendJson(res, 200, { ok: true, data: { subcategories, configurablePackages } });
+        return;
+      }
+
+      if (method === 'GET' && route === '/bride/encyclopedia') {
+        const group = url.searchParams.get('group');
+        const categories = (
+          group
+            ? (db
+                .prepare('SELECT * FROM bride_categories WHERE group_key = ? ORDER BY sort_order ASC')
+                .all(group) as Record<string, unknown>[])
+            : (db.prepare('SELECT * FROM bride_categories ORDER BY sort_order ASC').all() as Record<string, unknown>[])
+        ).map(mapBrideCategoryRow);
+        const checklistTemplates = (
+          db.prepare('SELECT * FROM bride_checklist_templates ORDER BY sort_order ASC').all() as Record<
+            string,
+            unknown
+          >[]
+        ).map(mapBrideChecklistTemplateRow);
+        sendJson(res, 200, { ok: true, data: { categories, checklistTemplates } });
+        return;
+      }
+
+      if (method === 'GET' && route === '/glossary') {
+        const domain = url.searchParams.get('domain');
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        let terms = (
+          domain
+            ? (db
+                .prepare('SELECT * FROM glossary_terms WHERE domain = ? ORDER BY sort_order ASC')
+                .all(domain) as Record<string, unknown>[])
+            : (db.prepare('SELECT * FROM glossary_terms ORDER BY sort_order ASC').all() as Record<string, unknown>[])
+        ).map(mapGlossaryTermRow);
+        if (q) {
+          terms = terms.filter((item) =>
+            `${item.termAr} ${item.termEn} ${item.definitionAr} ${item.definitionEn}`.toLowerCase().includes(q),
+          );
+        }
+        sendJson(res, 200, { ok: true, data: terms });
+        return;
+      }
+
+      if (method === 'GET' && route === '/faqs') {
+        const domain = url.searchParams.get('domain');
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        let faqs = (
+          domain
+            ? (db
+                .prepare('SELECT * FROM faq_items WHERE domain = ? ORDER BY sort_order ASC')
+                .all(domain) as Record<string, unknown>[])
+            : (db.prepare('SELECT * FROM faq_items ORDER BY sort_order ASC').all() as Record<string, unknown>[])
+        ).map(mapFaqRow);
+        if (q) {
+          faqs = faqs.filter((item) =>
+            `${item.questionAr} ${item.questionEn} ${item.answerAr} ${item.answerEn}`.toLowerCase().includes(q),
+          );
+        }
+        sendJson(res, 200, { ok: true, data: faqs });
+        return;
+      }
+
+      // ================= STAGE 2: OWNER-SCOPED GROOM & BRIDE PLANNER ROUTES =================
+      if (method === 'GET' && route === '/my/groom-plan') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to load your saved groom plan');
+          return;
+        }
+        const row = db.prepare('SELECT * FROM user_groom_plans WHERE user_id = ?').get(authUser.id) as
+          | Record<string, unknown>
+          | undefined;
+        const plan: UserGroomPlanState = row
+          ? mapUserGroomPlanRow(row)
+          : {
+              selectedTierKey: 'tier_200k',
+              targetBudgetEgp: 200000,
+              slotSelections: {},
+              excludedSlots: [],
+              customItems: [],
+            };
+        sendJson(res, 200, { ok: true, data: plan });
+        return;
+      }
+
+      if (method === 'PUT' && route === '/my/groom-plan') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to save your groom plan');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = userGroomPlanSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid groom plan inputs', parsed.error.flatten());
+          return;
+        }
+        const now = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO user_groom_plans (user_id, selected_tier_key, target_budget_egp, slot_selections_json, excluded_slots_json, custom_items_json, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             selected_tier_key = excluded.selected_tier_key,
+             target_budget_egp = excluded.target_budget_egp,
+             slot_selections_json = excluded.slot_selections_json,
+             excluded_slots_json = excluded.excluded_slots_json,
+             custom_items_json = excluded.custom_items_json,
+             updated_at = excluded.updated_at`,
+        ).run(
+          authUser.id,
+          parsed.data.selectedTierKey,
+          parsed.data.targetBudgetEgp,
+          JSON.stringify(parsed.data.slotSelections),
+          JSON.stringify(parsed.data.excludedSlots),
+          JSON.stringify(parsed.data.customItems),
+          now,
+        );
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'planner.groom_updated',
+          targetType: 'user_groom_plan',
+          targetId: authUser.id,
+          metadata: { selectedTierKey: parsed.data.selectedTierKey, targetBudgetEgp: parsed.data.targetBudgetEgp },
+          ipAddress: ip,
+        });
+        const row = db.prepare('SELECT * FROM user_groom_plans WHERE user_id = ?').get(authUser.id) as Record<
+          string,
+          unknown
+        >;
+        sendJson(res, 200, { ok: true, data: mapUserGroomPlanRow(row) });
+        return;
+      }
+
+      if (method === 'GET' && route === '/my/bride-plan') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to load your saved bridal plan');
+          return;
+        }
+        const row = db.prepare('SELECT * FROM user_bride_plans WHERE user_id = ?').get(authUser.id) as
+          | Record<string, unknown>
+          | undefined;
+        const plan: UserBridePlanState = row
+          ? mapUserBridePlanRow(row)
+          : {
+              presetMode: 'balanced',
+              targetBudgetEgp: 90000,
+              checkedItemIds: ['chk-1', 'chk-4'],
+              qtyOverrides: {},
+              customItems: [],
+            };
+        sendJson(res, 200, { ok: true, data: plan });
+        return;
+      }
+
+      if (method === 'PUT' && route === '/my/bride-plan') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to save your bridal plan');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = userBridePlanSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid bridal plan inputs', parsed.error.flatten());
+          return;
+        }
+        const now = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO user_bride_plans (user_id, preset_mode, target_budget_egp, checked_item_ids_json, qty_overrides_json, custom_items_json, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             preset_mode = excluded.preset_mode,
+             target_budget_egp = excluded.target_budget_egp,
+             checked_item_ids_json = excluded.checked_item_ids_json,
+             qty_overrides_json = excluded.qty_overrides_json,
+             custom_items_json = excluded.custom_items_json,
+             updated_at = excluded.updated_at`,
+        ).run(
+          authUser.id,
+          parsed.data.presetMode,
+          parsed.data.targetBudgetEgp,
+          JSON.stringify(parsed.data.checkedItemIds),
+          JSON.stringify(parsed.data.qtyOverrides),
+          JSON.stringify(parsed.data.customItems),
+          now,
+        );
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'planner.bride_updated',
+          targetType: 'user_bride_plan',
+          targetId: authUser.id,
+          metadata: {
+            presetMode: parsed.data.presetMode,
+            checkedCount: parsed.data.checkedItemIds.length,
+            customCount: parsed.data.customItems.length,
+          },
+          ipAddress: ip,
+        });
+        const row = db.prepare('SELECT * FROM user_bride_plans WHERE user_id = ?').get(authUser.id) as Record<
+          string,
+          unknown
+        >;
+        sendJson(res, 200, { ok: true, data: mapUserBridePlanRow(row) });
         return;
       }
 

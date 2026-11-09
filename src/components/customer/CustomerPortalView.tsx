@@ -182,11 +182,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'orders'
-                ? 'bg-[#D91B3E] text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'orders'
+              ? 'bg-[#D91B3E] text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
+              }`}
           >
             <ShoppingBag className="w-4 h-4" />
             <span>
@@ -197,11 +196,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
           <button
             type="button"
             onClick={() => setActiveTab('finishing')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'finishing'
-                ? 'bg-[#D91B3E] text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'finishing'
+              ? 'bg-[#D91B3E] text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
+              }`}
           >
             <Building2 className="w-4 h-4" />
             <span>
@@ -212,11 +210,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
           <button
             type="button"
             onClick={() => setActiveTab('wedding')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'wedding'
-                ? 'bg-[#D91B3E] text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'wedding'
+              ? 'bg-[#D91B3E] text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
+              }`}
           >
             <Heart className="w-4 h-4" />
             <span>
@@ -227,11 +224,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
           <button
             type="button"
             onClick={() => setActiveTab('financing')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'financing'
-                ? 'bg-[#D91B3E] text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'financing'
+              ? 'bg-[#D91B3E] text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
+              }`}
           >
             <CreditCard className="w-4 h-4" />
             <span>
@@ -242,11 +238,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-[#D91B3E] text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'profile'
+              ? 'bg-[#D91B3E] text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
+              }`}
           >
             <UserIcon className="w-4 h-4" />
             <span>{t.customerPortal.tabs.profile}</span>
@@ -345,10 +340,10 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
                           ? 'طلب تقسيط'
                           : 'Installments'
                         : ord.paymentMethod === 'cash_on_delivery'
-                        ? language === 'ar'
-                          ? 'الدفع عند الاستلام'
-                          : 'Cash on Delivery'
-                        : ord.paymentMethod}
+                          ? language === 'ar'
+                            ? 'الدفع عند الاستلام'
+                            : 'Cash on Delivery'
+                          : ord.paymentMethod}
                     </span>
                   </div>
                 </div>

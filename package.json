@@ -14,7 +14,7 @@
     "db:seed": "tsx server/cli-seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "tsx tests/e2e/stage1.e2e.ts",
+    "test:e2e": "tsx tests/e2e/stage1.e2e.ts && tsx tests/e2e/stage2.e2e.ts",
     "preview": "vite preview"
   },
   "dependencies": {

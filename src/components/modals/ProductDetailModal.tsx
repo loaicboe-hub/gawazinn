@@ -61,9 +61,8 @@ export const ProductDetailModal: React.FC = () => {
             type="button"
             onClick={() => toggleWishlist(selectedProduct)}
             aria-label={language === 'ar' ? 'حفظ في المفضلة' : 'Toggle wishlist'}
-            className={`absolute top-3 end-3 p-2.5 rounded-full shadow-md backdrop-blur-md transition cursor-pointer ${
-              inWishlist ? 'bg-rose-500 text-white' : 'bg-white/85 text-gray-600 hover:text-rose-500'
-            }`}
+            className={`absolute top-3 end-3 p-2.5 rounded-full shadow-md backdrop-blur-md transition cursor-pointer ${inWishlist ? 'bg-rose-500 text-white' : 'bg-white/85 text-gray-600 hover:text-rose-500'
+              }`}
           >
             <Heart className="w-4 h-4 fill-current" />
           </button>

@@ -27,13 +27,19 @@
 13. `budget_expenses`: `id`, `budget_category_id` (FK), `user_id` (FK), `title`, `amount`, `payment_type` (`deposit|installment|full|emergency`), `status` (`planned|paid|upcoming`), `due_date`, `paid_at`, `source_type` (`manual|order|rfq_quote|booking`), `source_id` (unique index on `(source_type, source_id)` prevents duplicate transactions!)
 14. `calculator_runs`: `id`, `user_id` (nullable FK), `calculator_slug`, `inputs_json`, `outputs_json`, `created_at`
 
-### Knowledge, CMS & Encyclopedia (Modules C, D, E, O)
+### Knowledge, CMS & Encyclopedia (Modules C, D, E, O — **Stage 2 Implemented in `002_stage2_encyclopedias.sql`**)
 15. `content_categories`: `id`, `slug` (unique), `parent_id`, `domain` (`finishing|groom|bride|wedding|married_life|early_start|editorial`), `name_ar`, `name_en`, `description_ar`, `description_en`, `icon_name`, `sort_order`
 16. `articles`: `id`, `slug` (unique), `category_id` (FK), `content_type` (`article|guide|tutorial|review|comparison|case_study|video|faq|glossary|local_guide`), `title_ar`, `title_en`, `excerpt_ar`, `excerpt_en`, `body_ar`, `body_en`, `featured_image`, `author_id` (FK), `tags_json`, `faq_json`, `seo_title`, `meta_description`, `canonical_url`, `status` (`draft|in_review|published|archived`), `published_at`, `updated_at`
-17. `materials_encyclopedia`: `id`, `slug` (unique), `category_slug`, `name_ar`, `name_en`, `description_ar`, `description_en`, `specs_json`, `uses_json`, `pros_json`, `cons_json`, `alternatives_json`, `price_min`, `price_max`, `price_unit`, `price_source`, `last_updated_at`, `image_url`
-18. `finishing_packages` & `finishing_projects`: packages (Economic, Medium, Luxury, Ultra Luxury with `cost_per_sqm`, exclusions, duration) and real before/after portfolio entries.
-19. `content_relations`: polymorphic join linking `article <-> product <-> vendor <-> calculator_slug <-> category_slug`.
-20. `wedding_stories`: `id`, `user_id` (FK), `title_ar`, `title_en`, `total_budget`, `finishing_cost`, `appliances_cost`, `trousseau_cost`, `wedding_cost`, `governorate_id`, `story_text`, `lessons_json`, `photos_json`, `moderation_status` (`pending|approved|rejected`), `created_at`
+17. `finishing_categories` *(Implemented `002`)*: 22 sequential stages (`step_order`, `phase_key`: `planning|rough_in|surfaces|fit_out|handover`, `budget_share_percent`, specs, common mistakes, inspection checklist, recommended materials).
+18. `finishing_materials` *(Implemented `002`)*: `id`, `slug`, `category_slug`, `material_group` (`flooring|plumbing|electrical|paint|gypsum|countertop|windows|waterproofing`), `origin_ar/en`, `unit_ar/en`, `price_min_egp`, `price_max_egp`, `price_source`, `price_updated_at`, `pros/cons/alternatives/specs_json`, `best_use_ar/en`.
+19. `before_after_projects` *(Implemented `002`)*: showcase projects by `governorate_slug`, `area_sqm`, `tier`, `duration_days`, `estimated_band_ar/en`, `before_image`, `after_image`, `scope_highlights_json`, `is_sample_listing`.
+20. `finishing_contractors` *(Implemented `002`)*: `specialty_group` (`turnkey|architect_3d|mep|carpentry_kitchens`), `governorates_json`, `verification_badge` (`registered|verified`), `reviews_count` (`0` strictly for sample listings), `is_sample_listing`.
+21. `groom_subcategories` & `groom_package_templates` *(Implemented `002`)*: 26 subcategories (`appliances|furniture|household`) + configurable `tier_100k`, `tier_200k`, `tier_300k`, `tier_500k`, `custom` slots JSON + `price_updated_at`.
+22. `bride_categories` & `bride_checklist_templates` *(Implemented `002`)*: 19 bridal categories across 5 groups + 24 template items (`recommended_qty`, `priority`, `estimated_unit_price_egp`, `presets_json`).
+23. `glossary_terms` & `faq_items` *(Implemented `002`)*: 28 bilingual terms & 12 categorized FAQs linked via `domain` & `related_calculator_slug`.
+24. `user_groom_plans` & `user_bride_plans` *(Implemented `002`)*: owner-keyed (`user_id` PK/FK -> `users.id` ON DELETE CASCADE) saved configurator choices, excluded slots, preset mode, checked item IDs, quantity overrides, and custom items JSON.
+25. `finishing_packages` *(Implemented `001`)*: packages (`economic|medium|luxury|ultra_luxury` with `price_per_meter`).
+26. *(Planned Stage 6/9)* `content_relations`, `wedding_stories`: polymorphic joins and moderated customer stories.
 
 ### Commerce, Products & Vendors (Modules K, L, F)
 21. `locations`: `id`, `slug` (unique), `level` (`country|governorate|city|district|area`), `parent_id` (FK), `name_ar`, `name_en`, `is_featured`

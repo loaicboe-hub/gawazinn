@@ -37,10 +37,12 @@ export const FinishingQuoteModal: React.FC = () => {
     if (finishingModalOpen) {
       setCustomerName(currentUser?.name || '');
       setPhone(currentUser?.phone || '');
+      setGovernorate(finishingPrefill.governorate || 'القاهرة');
       setAreaSqm(finishingPrefill.areaSqm);
       setRoomsCount(finishingPrefill.roomsCount);
       setBathroomsCount(finishingPrefill.bathroomsCount);
       setFinishingTier(finishingPrefill.finishingTier);
+      setNotes(finishingPrefill.notes || '');
       setErrorMsg(null);
     }
   }, [finishingModalOpen, currentUser, finishingPrefill]);

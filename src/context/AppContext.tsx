@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   Language,
@@ -20,6 +20,18 @@ import type {
   ContentCategory,
   LocationNode,
   AuditLogEntry,
+  FinishingEncyclopediaCategory,
+  FinishingMaterialItem,
+  BeforeAfterProject,
+  FinishingContractorListing,
+  GroomSubcategoryGuide,
+  GroomConfigurablePackage,
+  BrideCategoryGuide,
+  BrideChecklistTemplateItem,
+  GlossaryTerm,
+  FaqEntry,
+  UserGroomPlanState,
+  UserBridePlanState,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -36,6 +48,19 @@ import {
   sampleSupportCases,
 } from '../data/initialData';
 import { SEED_ARTICLES, SEED_CATEGORIES, SEED_LOCATIONS } from '../../shared/cmsSeedData';
+import {
+  FINISHING_ENCYCLOPEDIA_CATEGORIES,
+  FINISHING_MATERIALS_DB,
+  STAGE2_BEFORE_AFTER_PROJECTS,
+  FINISHING_CONTRACTORS_DIRECTORY,
+} from '../../shared/finishingEncyclopediaData';
+import {
+  GROOM_SUBCATEGORIES,
+  GROOM_CONFIGURABLE_PACKAGES,
+  BRIDE_ENCYCLOPEDIA_CATEGORIES,
+  BRIDE_CHECKLIST_TEMPLATES,
+} from '../../shared/trousseauEncyclopediaData';
+import { STAGE2_GLOSSARY_TERMS, STAGE2_FAQ_ITEMS } from '../../shared/knowledgeGlossaryData';
 import { ADMIN_PANEL_ROLES, hasAnyRole } from '../../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../../shared/catalogMeta';
 import { apiRequest, ApiClientError } from '../services/api';
@@ -72,6 +97,21 @@ export interface FinishingPrefill {
   roomsCount: number;
   bathroomsCount: number;
   finishingTier: FinishingTier;
+  governorate?: string;
+  notes?: string;
+}
+
+interface EncyclopediaBundlePayload {
+  finishingCategories: FinishingEncyclopediaCategory[];
+  finishingMaterials: FinishingMaterialItem[];
+  beforeAfterProjects: BeforeAfterProject[];
+  contractors: FinishingContractorListing[];
+  groomSubcategories: GroomSubcategoryGuide[];
+  groomConfigurablePackages: GroomConfigurablePackage[];
+  brideCategories: BrideCategoryGuide[];
+  brideChecklistTemplates: BrideChecklistTemplateItem[];
+  glossaryTerms: GlossaryTerm[];
+  faqItems: FaqEntry[];
 }
 
 export interface AdminOverviewStats {
@@ -160,6 +200,28 @@ interface AppContextType {
   setGroomBudgetTarget: (target: number) => void;
   groomBudgetItems: string[];
   toggleGroomBudgetItem: (productId: string) => void;
+
+  // Stage 2 Interactive Plans (Guest localStorage + Signed-in SQLite)
+  userGroomPlan: UserGroomPlanState;
+  saveUserGroomPlan: (
+    updater: UserGroomPlanState | ((prev: UserGroomPlanState) => UserGroomPlanState),
+  ) => void;
+  userBridePlan: UserBridePlanState;
+  saveUserBridePlan: (
+    updater: UserBridePlanState | ((prev: UserBridePlanState) => UserBridePlanState),
+  ) => void;
+
+  // Stage 2 Encyclopedia & Knowledge Hub Collections
+  finishingCategories: FinishingEncyclopediaCategory[];
+  finishingMaterials: FinishingMaterialItem[];
+  beforeAfterProjects: BeforeAfterProject[];
+  contractors: FinishingContractorListing[];
+  groomSubcategories: GroomSubcategoryGuide[];
+  groomConfigurablePackages: GroomConfigurablePackage[];
+  brideCategories: BrideCategoryGuide[];
+  brideChecklistTemplates: BrideChecklistTemplateItem[];
+  glossaryTerms: GlossaryTerm[];
+  faqItems: FaqEntry[];
 
   // Customer & Admin Data
   finishingInquiries: FinishingInquiry[];
@@ -276,11 +338,37 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/wedding')) return 'wedding';
   if (pathname.startsWith('/installments')) return 'installments';
   if (pathname.startsWith('/social-support')) return 'socialSupport';
-  if (pathname.startsWith('/encyclopedia') || pathname.startsWith('/guides')) return 'encyclopedia';
+  if (
+    pathname.startsWith('/encyclopedia') ||
+    pathname.startsWith('/guides') ||
+    pathname.startsWith('/glossary') ||
+    pathname.startsWith('/faqs')
+  ) {
+    return 'encyclopedia';
+  }
   if (pathname.startsWith('/discover') || pathname.startsWith('/locations')) return 'discover';
   if (pathname.startsWith('/portal') || pathname.startsWith('/my')) return 'customerPortal';
   if (pathname.startsWith('/admin')) return 'admin';
   return 'home';
+}
+
+const DEFAULT_GUEST_GROOM_PLAN: UserGroomPlanState = {
+  selectedTierKey: 'tier_200k',
+  targetBudgetEgp: 200000,
+  slotSelections: {},
+  excludedSlots: [],
+  customItems: [],
+};
+
+function createDefaultGuestBridePlan(): UserBridePlanState {
+  const legacyChecked = getStoredItem<string[]>('bride_checklist_v2', ['chk-1', 'chk-4']);
+  return {
+    presetMode: 'balanced',
+    targetBudgetEgp: 90000,
+    checkedItemIds: legacyChecked,
+    qtyOverrides: {},
+    customItems: [],
+  };
 }
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -346,6 +434,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [locations, setLocations] = useState<LocationNode[]>(SEED_LOCATIONS);
   const [settings, setSettings] = useState<PlatformSettings>(initialSettings);
 
+  // Stage 2 Encyclopedia Catalog State
+  const [finishingCategories, setFinishingCategories] = useState<FinishingEncyclopediaCategory[]>(
+    FINISHING_ENCYCLOPEDIA_CATEGORIES,
+  );
+  const [finishingMaterials, setFinishingMaterials] = useState<FinishingMaterialItem[]>(
+    FINISHING_MATERIALS_DB,
+  );
+  const [beforeAfterProjects, setBeforeAfterProjects] = useState<BeforeAfterProject[]>(
+    STAGE2_BEFORE_AFTER_PROJECTS,
+  );
+  const [contractors, setContractors] = useState<FinishingContractorListing[]>(
+    FINISHING_CONTRACTORS_DIRECTORY,
+  );
+  const [groomSubcategories, setGroomSubcategories] = useState<GroomSubcategoryGuide[]>(
+    GROOM_SUBCATEGORIES,
+  );
+  const [groomConfigurablePackages, setGroomConfigurablePackages] = useState<
+    GroomConfigurablePackage[]
+  >(GROOM_CONFIGURABLE_PACKAGES);
+  const [brideCategories, setBrideCategories] = useState<BrideCategoryGuide[]>(
+    BRIDE_ENCYCLOPEDIA_CATEGORIES,
+  );
+  const [brideChecklistTemplates, setBrideChecklistTemplates] = useState<
+    BrideChecklistTemplateItem[]
+  >(BRIDE_CHECKLIST_TEMPLATES);
+  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>(STAGE2_GLOSSARY_TERMS);
+  const [faqItems, setFaqItems] = useState<FaqEntry[]>(STAGE2_FAQ_ITEMS);
+
   // Scoped Transaction State
   const [finishingInquiries, setFinishingInquiries] = useState<FinishingInquiry[]>([]);
   const [weddingBookings, setWeddingBookings] = useState<WeddingBookingRequest[]>([]);
@@ -353,6 +469,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [financingApplications, setFinancingApplications] = useState<FinancingApplication[]>([]);
   const [supportCases, setSupportCases] = useState<SupportCase[]>([]);
   const [sponsorshipInquiries, setSponsorshipInquiries] = useState<SponsorshipInquiry[]>([]);
+
+  // Stage 2 Interactive Plan State
+  const [userGroomPlan, setUserGroomPlan] = useState<UserGroomPlanState>(() =>
+    getStoredItem<UserGroomPlanState>('user_groom_plan_v2', DEFAULT_GUEST_GROOM_PLAN),
+  );
+  const [userBridePlan, setUserBridePlan] = useState<UserBridePlanState>(() =>
+    getStoredItem<UserBridePlanState>('user_bride_plan_v2', createDefaultGuestBridePlan()),
+  );
+  const userGroomPlanRef = useRef(userGroomPlan);
+  const userBridePlanRef = useRef(userBridePlan);
+  useEffect(() => {
+    userGroomPlanRef.current = userGroomPlan;
+  }, [userGroomPlan]);
+  useEffect(() => {
+    userBridePlanRef.current = userBridePlan;
+  }, [userBridePlan]);
 
   // Admin Overview State
   const [adminStats, setAdminStats] = useState<AdminOverviewStats | null>(null);
@@ -369,6 +501,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAdminStats(null);
       setAdminUsers([]);
       setAuditLogs([]);
+      setUserGroomPlan(getStoredItem<UserGroomPlanState>('user_groom_plan_v2', DEFAULT_GUEST_GROOM_PLAN));
+      setUserBridePlan(
+        getStoredItem<UserBridePlanState>('user_bride_plan_v2', createDefaultGuestBridePlan()),
+      );
       return;
     }
 
@@ -399,18 +535,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const [uOrders, uFin, uWed, uFnc, uSup] = await Promise.all([
+      const [uOrders, uFin, uWed, uFnc, uSup, uGroomPlan, uBridePlan] = await Promise.all([
         apiRequest<Order[]>('/orders'),
         apiRequest<FinishingInquiry[]>('/finishing-inquiries'),
         apiRequest<WeddingBookingRequest[]>('/wedding-bookings'),
         apiRequest<FinancingApplication[]>('/financing-applications'),
         apiRequest<SupportCase[]>('/support-cases'),
+        apiRequest<UserGroomPlanState>('/my/groom-plan').catch(() => DEFAULT_GUEST_GROOM_PLAN),
+        apiRequest<UserBridePlanState>('/my/bride-plan').catch(() => createDefaultGuestBridePlan()),
       ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
       setWeddingBookings(uWed);
       setFinancingApplications(uFnc);
       setSupportCases(uSup);
+      userGroomPlanRef.current = uGroomPlan;
+      userBridePlanRef.current = uBridePlan;
+      setUserGroomPlan(uGroomPlan);
+      setUserBridePlan(uBridePlan);
     } catch {
       // Non-fatal fallback
     }
@@ -442,7 +584,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let active = true;
     (async () => {
       try {
-        const payload = await apiRequest<BootstrapPayload>('/bootstrap');
+        const [payload, encBundle] = await Promise.all([
+          apiRequest<BootstrapPayload>('/bootstrap'),
+          apiRequest<EncyclopediaBundlePayload>('/encyclopedia/bundle').catch(() => null),
+        ]);
         if (!active) return;
         setApiConnected(true);
         if (payload.products.length > 0) setProducts(payload.products);
@@ -453,6 +598,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (payload.articles.length > 0) setArticles(payload.articles);
         if (payload.locations.length > 0) setLocations(payload.locations);
         if (payload.settings) setSettings(payload.settings);
+        if (encBundle) {
+          if (encBundle.finishingCategories.length > 0) {
+            setFinishingCategories(encBundle.finishingCategories);
+          }
+          if (encBundle.finishingMaterials.length > 0) {
+            setFinishingMaterials(encBundle.finishingMaterials);
+          }
+          if (encBundle.beforeAfterProjects.length > 0) {
+            setBeforeAfterProjects(encBundle.beforeAfterProjects);
+          }
+          if (encBundle.contractors.length > 0) setContractors(encBundle.contractors);
+          if (encBundle.groomSubcategories.length > 0) {
+            setGroomSubcategories(encBundle.groomSubcategories);
+          }
+          if (encBundle.groomConfigurablePackages.length > 0) {
+            setGroomConfigurablePackages(encBundle.groomConfigurablePackages);
+          }
+          if (encBundle.brideCategories.length > 0) setBrideCategories(encBundle.brideCategories);
+          if (encBundle.brideChecklistTemplates.length > 0) {
+            setBrideChecklistTemplates(encBundle.brideChecklistTemplates);
+          }
+          if (encBundle.glossaryTerms.length > 0) setGlossaryTerms(encBundle.glossaryTerms);
+          if (encBundle.faqItems.length > 0) setFaqItems(encBundle.faqItems);
+        }
         setCurrentUser(payload.user);
         if (payload.user) {
           await loadUserScopedData(payload.user, true);
@@ -500,8 +669,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     });
-    setCurrentUser(res.user);
     await loadUserScopedData(res.user, true);
+    setCurrentUser(res.user);
     if (hasAnyRole(res.user.role, ADMIN_PANEL_ROLES)) {
       const ov = await apiRequest<AdminOverviewPayload>('/admin/overview');
       setAdminStats(ov.counts);
@@ -639,19 +808,71 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const isWishlisted = (productId: string) => wishlist.some((p) => p.id === productId);
 
-  // Persisted Bridal Checklist & Groom Budget
-  const [brideChecklist, setBrideChecklist] = useState<string[]>(() =>
-    getStoredItem<string[]>('bride_checklist_v2', ['chk-1', 'chk-4']),
+  // Persisted Bridal Checklist, Groom Configurable Plan & Groom Budget
+  const saveUserGroomPlan = useCallback(
+    (updater: UserGroomPlanState | ((prev: UserGroomPlanState) => UserGroomPlanState)) => {
+      const next =
+        typeof updater === 'function' ? updater(userGroomPlanRef.current) : updater;
+      userGroomPlanRef.current = next;
+      setUserGroomPlan(next);
+      if (!currentUser) {
+        setStoredItem('user_groom_plan_v2', next);
+      }
+      if (apiConnected && currentUser) {
+        void apiRequest<UserGroomPlanState>('/my/groom-plan', {
+          method: 'PUT',
+          body: JSON.stringify({
+            selectedTierKey: next.selectedTierKey,
+            targetBudgetEgp: next.targetBudgetEgp,
+            slotSelections: next.slotSelections,
+            excludedSlots: next.excludedSlots,
+            customItems: next.customItems,
+          }),
+        }).catch(() => {});
+      }
+    },
+    [apiConnected, currentUser],
   );
-  useEffect(() => {
-    setStoredItem('bride_checklist_v2', brideChecklist);
-  }, [brideChecklist]);
 
-  const toggleBrideChecklistItem = (itemId: string) => {
-    setBrideChecklist((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
-    );
-  };
+  const saveUserBridePlan = useCallback(
+    (updater: UserBridePlanState | ((prev: UserBridePlanState) => UserBridePlanState)) => {
+      const next =
+        typeof updater === 'function' ? updater(userBridePlanRef.current) : updater;
+      userBridePlanRef.current = next;
+      setUserBridePlan(next);
+      if (!currentUser) {
+        setStoredItem('bride_checklist_v2', next.checkedItemIds);
+        setStoredItem('user_bride_plan_v2', next);
+      }
+      if (apiConnected && currentUser) {
+        void apiRequest<UserBridePlanState>('/my/bride-plan', {
+          method: 'PUT',
+          body: JSON.stringify({
+            presetMode: next.presetMode,
+            targetBudgetEgp: next.targetBudgetEgp,
+            checkedItemIds: next.checkedItemIds,
+            qtyOverrides: next.qtyOverrides,
+            customItems: next.customItems,
+          }),
+        }).catch(() => {});
+      }
+    },
+    [apiConnected, currentUser],
+  );
+
+  const brideChecklist = userBridePlan.checkedItemIds;
+
+  const toggleBrideChecklistItem = useCallback(
+    (itemId: string) => {
+      saveUserBridePlan((prev) => ({
+        ...prev,
+        checkedItemIds: prev.checkedItemIds.includes(itemId)
+          ? prev.checkedItemIds.filter((id) => id !== itemId)
+          : [...prev.checkedItemIds, itemId],
+      }));
+    },
+    [saveUserBridePlan],
+  );
 
   const [groomBudgetTarget, setGroomBudgetTargetState] = useState<number>(() =>
     getStoredItem<number>('groom_budget_target_v2', 150000),
@@ -1120,6 +1341,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setGroomBudgetTarget,
         groomBudgetItems,
         toggleGroomBudgetItem,
+        userGroomPlan,
+        saveUserGroomPlan,
+        userBridePlan,
+        saveUserBridePlan,
+        finishingCategories,
+        finishingMaterials,
+        beforeAfterProjects,
+        contractors,
+        groomSubcategories,
+        groomConfigurablePackages,
+        brideCategories,
+        brideChecklistTemplates,
+        glossaryTerms,
+        faqItems,
         finishingInquiries,
         addFinishingInquiry,
         updateFinishingStatus,

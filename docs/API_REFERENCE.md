@@ -13,10 +13,15 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `PATCH /api/v1/auth/me` — Update profile, language, or onboarding journey stage.
 
 ## Core Content, Encyclopedias & Local SEO
-- `GET /api/v1/categories` — Filter by `domain` (`finishing|groom|bride|wedding|married_life|editorial`).
-- `GET /api/v1/articles` & `GET /api/v1/articles/:slug` — Published CMS articles, guides, FAQs, glossary, with related calculators/products/vendors.
-- `GET /api/v1/materials` & `GET /api/v1/materials/:slug` — Finishing material encyclopedia.
-- `GET /api/v1/locations` & `GET /api/v1/locations/:govSlug` — Egyptian location hierarchy + local providers/articles.
+- `GET /api/v1/bootstrap` — Initial app hydration (`user` nullable, products, packages, services, categories, locations, published articles, settings).
+- `GET /api/v1/categories` — Filter by `domain` (`finishing|groom|bride|wedding|married_life|early_start|editorial`).
+- `GET /api/v1/articles` & `GET /api/v1/articles/:slug` — Published CMS articles, guides, and reviews (`domain`, `contentType`, `q` search, atomic `view_count` increment).
+- `GET /api/v1/locations` & `GET /api/v1/locations/:govSlug` — Egyptian location hierarchy + local providers.
+- `GET /api/v1/encyclopedia/bundle` *(Stage 2)* — Combined hydration payload returning finishing categories, materials, before/after projects, contractors, groom subcategories & configurable packages, bride categories & checklist templates, glossary terms, and FAQs.
+- `GET /api/v1/finishing/categories`, `GET /api/v1/finishing/materials`, `GET /api/v1/finishing/projects`, `GET /api/v1/contractors` *(Stage 2)* — Granular finishing encyclopedia endpoints (`?phase=`, `?group=`, `?governorate=`, `?tier=`, `?specialty=` filters).
+- `GET /api/v1/groom/encyclopedia`, `GET /api/v1/bride/encyclopedia` *(Stage 2)* — Groom (`?group=`) & Bride (`?group=`) subcategories, templates & checklists.
+- `GET /api/v1/glossary`, `GET /api/v1/faqs` *(Stage 2)* — Bilingual glossary & FAQ directory (`?domain=`, `?q=` search).
+- `GET/PUT /api/v1/my/groom-plan`, `GET/PUT /api/v1/my/bride-plan` *(Stage 2, Auth-Required)* — Strict owner-scoped SQLite persistence with Zod validation & audit logs.
 
 ## Calculators & Financial Planning
 - `POST /api/v1/calculators/:slug/calculate` — Server-validated execution of shared calculation engine (`shared/calculators/`) + optional saved run for authenticated users.

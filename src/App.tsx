@@ -22,11 +22,26 @@ import type { Product } from './types';
 const FinishingView = lazy(() =>
   import('./components/finishing/FinishingView').then((m) => ({ default: m.FinishingView })),
 );
+const FinishingEncyclopediaView = lazy(() =>
+  import('./components/finishing/FinishingEncyclopediaView').then((m) => ({
+    default: m.FinishingEncyclopediaView,
+  })),
+);
 const GroomView = lazy(() =>
   import('./components/groom/GroomView').then((m) => ({ default: m.GroomView })),
 );
+const GroomEncyclopediaView = lazy(() =>
+  import('./components/groom/GroomEncyclopediaView').then((m) => ({
+    default: m.GroomEncyclopediaView,
+  })),
+);
 const BrideView = lazy(() =>
   import('./components/bride/BrideView').then((m) => ({ default: m.BrideView })),
+);
+const BrideEncyclopediaView = lazy(() =>
+  import('./components/bride/BrideEncyclopediaView').then((m) => ({
+    default: m.BrideEncyclopediaView,
+  })),
 );
 const WeddingPlannerView = lazy(() =>
   import('./components/wedding/WeddingPlannerView').then((m) => ({
@@ -42,6 +57,11 @@ const SocialSupportView = lazy(() =>
 const EncyclopediaHubView = lazy(() =>
   import('./components/encyclopedia/EncyclopediaHubView').then((m) => ({
     default: m.EncyclopediaHubView,
+  })),
+);
+const GlossaryFaqView = lazy(() =>
+  import('./components/encyclopedia/GlossaryFaqView').then((m) => ({
+    default: m.GlossaryFaqView,
   })),
 );
 const ArticleDetailView = lazy(() =>
@@ -103,13 +123,20 @@ const MainContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<SplashHome />} />
             <Route path="/finishing" element={<FinishingView />} />
+            <Route path="/finishing/encyclopedia" element={<FinishingEncyclopediaView />} />
+            <Route path="/finishing/materials" element={<FinishingEncyclopediaView />} />
+            <Route path="/finishing/contractors" element={<FinishingEncyclopediaView />} />
             <Route path="/groom" element={<GroomView onOpenCompare={handleOpenCompare} />} />
+            <Route path="/groom/encyclopedia" element={<GroomEncyclopediaView />} />
             <Route path="/bride" element={<BrideView />} />
+            <Route path="/bride/encyclopedia" element={<BrideEncyclopediaView />} />
             <Route path="/wedding" element={<WeddingPlannerView />} />
             <Route path="/installments" element={<FinancingView />} />
             <Route path="/social-support" element={<SocialSupportView />} />
             <Route path="/encyclopedia" element={<EncyclopediaHubView />} />
             <Route path="/encyclopedia/:domain" element={<EncyclopediaHubView />} />
+            <Route path="/glossary" element={<GlossaryFaqView />} />
+            <Route path="/faqs" element={<GlossaryFaqView />} />
             <Route path="/guides/:slug" element={<ArticleDetailView />} />
             <Route path="/discover" element={<LocalDiscoveryView />} />
             <Route path="/locations/:govSlug" element={<LocalDiscoveryView />} />

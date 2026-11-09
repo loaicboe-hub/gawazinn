@@ -288,8 +288,8 @@ export const InstallmentModal: React.FC = () => {
                     ? 'جاري التقديم...'
                     : 'Submitting...'
                   : language === 'ar'
-                  ? 'إرسال طلب التمويل للمراجعة'
-                  : 'Submit Application'}
+                    ? 'إرسال طلب التمويل للمراجعة'
+                    : 'Submit Application'}
               </span>
               <ArrowIcon className="w-4 h-4" />
             </button>

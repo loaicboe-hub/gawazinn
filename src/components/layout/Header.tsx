@@ -17,6 +17,8 @@ import {
   MapPin,
   CreditCard,
   HeartHandshake,
+  Wrench,
+  HelpCircle,
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
@@ -315,6 +317,30 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
               </div>
             </Link>
           ))}
+          <Link
+            to="/finishing/materials"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <Wrench className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'دليل الخامات والمقاولين' : 'Materials & Contractors'}</span>
+          </Link>
+          <Link
+            to="/glossary"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <BookOpen className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'قاموس المصطلحات' : 'Glossary'}</span>
+          </Link>
+          <Link
+            to="/faqs"
+            onClick={closeMenus}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
+          >
+            <HelpCircle className="w-4 h-4 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}</span>
+          </Link>
           <Link
             to="/installments"
             onClick={closeMenus}

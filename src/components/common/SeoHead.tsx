@@ -48,12 +48,31 @@ export const SeoHead: React.FC = () => {
     if (pathname === '/finishing') {
       titleAr = 'تشطيب الشقة والباقات الهندسية | جواز إن';
       titleEn = 'Apartment Finishing Packages & Cost Guide | GAWAZ INN';
+    } else if (pathname === '/finishing/encyclopedia') {
+      titleAr = 'موسوعة تشطيب الشقق — 22 مرحلة هندسية | جواز إن';
+      titleEn = '22-Step Apartment Finishing Encyclopedia | GAWAZ INN';
+      descAr = 'الدليل الهندسي الشامل لتشطيب الشقق في مصر على 22 بنداً من الرفع المساحي وحتى التسليم النهائي.';
+      descEn = 'Step-by-step Egyptian apartment finishing guide across all 22 stages, inspections & materials.';
+    } else if (pathname === '/finishing/materials') {
+      titleAr = 'دليل ومواصفات وأسعار خامات التشطيب في مصر | جواز إن';
+      titleEn = 'Finishing Materials Encyclopedia & EGP Cost Guide | GAWAZ INN';
+      descAr = 'مقارنة البورسلين والسيراميك ومواسير السباكة وأسلاك السويدي والدهانات والعزل في السوق المصري.';
+      descEn = 'Compare Egyptian finishing materials: porcelain vs. ceramic, PP-R pipes, copper wiring, paints & waterproofing.';
+    } else if (pathname === '/finishing/contractors') {
+      titleAr = 'دليل المقاولين والمهندسين المعتمدين | جواز إن';
+      titleEn = 'Verified Finishing Contractors & Engineers Directory | GAWAZ INN';
     } else if (pathname === '/groom') {
       titleAr = 'جهاز العريس والأجهزة والأثاث | جواز إن';
       titleEn = "Groom's Essentials, Appliances & Furniture | GAWAZ INN";
+    } else if (pathname === '/groom/encyclopedia') {
+      titleAr = 'موسوعة جهاز العريس — 26 دليلاً للأجهزة والأثاث | جواز إن';
+      titleEn = "Groom's 26-Category Appliances & Furniture Encyclopedia | GAWAZ INN";
     } else if (pathname === '/bride') {
       titleAr = 'جهاز العروسة وقائمة التجهيز | جواز إن';
       titleEn = "Bride's Trousseau & Cookware Checklist | GAWAZ INN";
+    } else if (pathname === '/bride/encyclopedia') {
+      titleAr = 'موسوعة جهاز العروسة — 19 قسماً وتوزيع الميزانية | جواز إن';
+      titleEn = "Bride's 19-Category Zero-Waste Trousseau Encyclopedia | GAWAZ INN";
     } else if (pathname === '/wedding') {
       titleAr = 'فرحي — قاعات وخدمات الزفاف | جواز إن';
       titleEn = 'Farahi — Wedding Venues & Services Planner | GAWAZ INN';
@@ -63,6 +82,12 @@ export const SeoHead: React.FC = () => {
     } else if (pathname === '/social-support') {
       titleAr = 'مبادرة جواز إن للدعم المجتمعي | جواز إن';
       titleEn = 'GAWAZ INN Community Support Initiative';
+    } else if (pathname === '/glossary') {
+      titleAr = 'قاموس مصطلحات التشطيب والزواج | جواز إن';
+      titleEn = 'Egyptian Marriage & Home Glossary | GAWAZ INN';
+    } else if (pathname === '/faqs') {
+      titleAr = 'الأسئلة الشائعة حول التشطيب والتجهيز والفرح | جواز إن';
+      titleEn = 'Frequently Asked Questions — Home Finishing & Marriage | GAWAZ INN';
     } else if (pathname.startsWith('/encyclopedia')) {
       titleAr = 'موسوعة جواز إن للتشطيب والزواج | جواز إن';
       titleEn = 'GAWAZ INN Marriage & Home Encyclopedia';

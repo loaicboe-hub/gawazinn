@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
@@ -13,8 +13,9 @@ import {
   Sliders,
   Sparkles,
   BookOpen,
+  Wrench,
+  Briefcase,
 } from 'lucide-react';
-import { liveFinishingProjects } from '../../data/initialData';
 import type { FinishingTier } from '../../types';
 import { SmartImage } from '../common/SmartImage';
 
@@ -25,6 +26,7 @@ export const FinishingView: React.FC = () => {
     dir,
     finishingPackages,
     finishingServices,
+    beforeAfterProjects,
     setFinishingModalOpen,
     setFinishingPrefill,
   } = useApp();
@@ -37,9 +39,18 @@ export const FinishingView: React.FC = () => {
   const [calcBaths, setCalcBaths] = useState(2);
   const [selectedTier, setSelectedTier] = useState<FinishingTier>('luxury');
 
-  // Before & After Project Toggle State
+  // Before & After Project Filter & Toggle State
+  const [projectGovFilter, setProjectGovFilter] = useState<string>('all');
   const [activeProjectIdx, setActiveProjectIdx] = useState(0);
   const [showAfterView, setShowAfterView] = useState(true);
+
+  const visibleProjects = useMemo(
+    () =>
+      beforeAfterProjects.filter(
+        (p) => projectGovFilter === 'all' || p.governorateSlug === projectGovFilter,
+      ),
+    [beforeAfterProjects, projectGovFilter],
+  );
 
   const activePackage =
     finishingPackages.find((p) => p.tier === selectedTier) || finishingPackages[0];
@@ -58,7 +69,7 @@ export const FinishingView: React.FC = () => {
     setFinishingModalOpen(true);
   };
 
-  const currentProject = liveFinishingProjects[activeProjectIdx];
+  const currentProject = visibleProjects[activeProjectIdx] || visibleProjects[0];
 
   return (
     <div className="space-y-20 pb-24">
@@ -111,12 +122,12 @@ export const FinishingView: React.FC = () => {
               </button>
 
               <Link
-                to="/encyclopedia/finishing"
+                to="/finishing/encyclopedia"
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-5 py-3.5 rounded-xl border border-white/20 transition flex items-center gap-2"
               >
                 <BookOpen className="w-4 h-4 text-rose-200" />
                 <span>
-                  {language === 'ar' ? 'دليل خطوات التشطيب' : 'Finishing Guides'}
+                  {language === 'ar' ? 'موسوعة الـ 22 مرحلة' : '22-Step Finishing Encyclopedia'}
                 </span>
               </Link>
             </div>
@@ -456,6 +467,66 @@ export const FinishingView: React.FC = () => {
           </div>
         </div>
 
+        {/* 3B. Stage 2 Knowledge Hub Navigation Strip (22 Steps, Materials, Contractors) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <Link
+            to="/finishing/encyclopedia"
+            className="bg-[#FAF7F2] hover:bg-[#FFF5F7] rounded-3xl p-6 border border-[#D91B3E]/15 hover:border-[#D91B3E]/40 transition flex items-start gap-4 group"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-[#FDE8ED] text-[#D91B3E] flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-[#2A1D20] group-hover:text-[#D91B3E] transition">
+                {language === 'ar' ? 'موسوعة مراحل التشطيب (22 بنداً)' : '22-Step Finishing Playbook'}
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {language === 'ar'
+                  ? 'المواصفات الهندسية وأخطاء التأسيس وقوائم الاستلام لكل مرحلة.'
+                  : 'Detailed specs, mistakes to avoid, and inspection checklists.'}
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            to="/finishing/materials"
+            className="bg-[#FAF7F2] hover:bg-[#FFF5F7] rounded-3xl p-6 border border-[#D91B3E]/15 hover:border-[#D91B3E]/40 transition flex items-start gap-4 group"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-[#FDE8ED] text-[#D91B3E] flex items-center justify-center shrink-0">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-[#2A1D20] group-hover:text-[#D91B3E] transition">
+                {language === 'ar' ? 'دليل الخامات وأسعار السوق' : 'Materials & Cost Guide'}
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {language === 'ar'
+                  ? 'مقارنة البورسلين، السباكة الألمانية، الأسلاك والدهانات بالأسعار المحدثة.'
+                  : 'Porcelain, PP-R plumbing, copper cable & paint specs with EGP bands.'}
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            to="/finishing/contractors"
+            className="bg-[#FAF7F2] hover:bg-[#FFF5F7] rounded-3xl p-6 border border-[#D91B3E]/15 hover:border-[#D91B3E]/40 transition flex items-start gap-4 group"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-[#FDE8ED] text-[#D91B3E] flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-[#2A1D20] group-hover:text-[#D91B3E] transition">
+                {language === 'ar' ? 'دليل المقاولين والمهندسين' : 'Contractors & Architects'}
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {language === 'ar'
+                  ? 'مكاتب تسليم مفتاح ومصممو 3D بشارات توثيق حقيقية وضمانات مكتوبة.'
+                  : 'Verified turnkey contractors, 3D interior designers & kitchen ateliers.'}
+              </p>
+            </div>
+          </Link>
+        </div>
+
         {/* 4. Live Projects Before & After Showcase */}
         <div className="bg-gradient-to-br from-[#1C1819] to-[#2B181A] text-white rounded-3xl p-8 sm:p-12 shadow-2xl border border-rose-900/30 space-y-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
@@ -473,27 +544,56 @@ export const FinishingView: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {liveFinishingProjects.map((p, idx) => (
+              {[
+                { slug: 'all', ar: 'كل المحافظات', en: 'All Regions' },
+                { slug: 'cairo', ar: 'القاهرة', en: 'Cairo' },
+                { slug: 'giza', ar: 'الجيزة', en: 'Giza' },
+                { slug: 'alexandria', ar: 'الإسكندرية', en: 'Alexandria' },
+              ].map((g) => (
                 <button
-                  key={p.id}
+                  key={g.slug}
                   type="button"
-                  onClick={() => setActiveProjectIdx(idx)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    activeProjectIdx === idx
-                      ? 'bg-[#D91B3E] text-white shadow-md'
-                      : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                  data-testid={`ba-filter-${g.slug}`}
+                  onClick={() => {
+                    setProjectGovFilter(g.slug);
+                    setActiveProjectIdx(0);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                    projectGovFilter === g.slug
+                      ? 'bg-white text-[#9E122C] border-white'
+                      : 'bg-white/5 text-rose-100 border-white/15 hover:bg-white/15'
                   }`}
                 >
-                  {language === 'ar'
-                    ? p.titleAr.split('—')[1] || p.titleAr
-                    : p.titleEn.split('—')[0]}
+                  {language === 'ar' ? g.ar : g.en}
                 </button>
               ))}
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            {visibleProjects.map((p, idx) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setActiveProjectIdx(idx)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  currentProject?.id === p.id
+                    ? 'bg-[#D91B3E] text-white shadow-md'
+                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                }`}
+              >
+                {language === 'ar'
+                  ? p.titleAr.split('—')[1] || p.titleAr
+                  : p.titleEn.split('—')[0]}
+              </button>
+            ))}
+          </div>
+
           {currentProject && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div
+              data-testid={`ba-project-${currentProject.id}`}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"
+            >
               <div className="lg:col-span-8 space-y-3">
                 <div className="relative h-80 sm:h-96 rounded-2xl overflow-hidden border border-white/20 shadow-lg">
                   <SmartImage
@@ -515,6 +615,12 @@ export const FinishingView: React.FC = () => {
                         : 'Before Finishing (Raw Brick)'}
                     </span>
                   </div>
+
+                  {currentProject.isSampleListing && (
+                    <div className="absolute top-4 end-4 bg-white/90 text-[#2A1D20] px-2.5 py-1 rounded-lg text-[10px] font-bold">
+                      {language === 'ar' ? 'نموذج مرجعي' : 'Sample Case'}
+                    </div>
+                  )}
 
                   <div className="absolute bottom-4 start-4 end-4 flex justify-center">
                     <div className="bg-[#1C1819]/95 p-1 rounded-xl border border-white/20 shadow-xl flex items-center gap-1">
@@ -546,22 +652,25 @@ export const FinishingView: React.FC = () => {
               </div>
 
               <div className="lg:col-span-4 space-y-5">
-                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-3">
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3.5">
+                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-2.5">
                     <span className="text-gray-400">
-                      {language === 'ar' ? 'المساحة الإجمالية:' : 'Total Area:'}
+                      {language === 'ar' ? 'الموقع والمساحة:' : 'Location & Area:'}
                     </span>
-                    <strong className="text-white text-sm">{currentProject.area}</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-3">
-                    <span className="text-gray-400">
-                      {language === 'ar' ? 'المستوى المنفذ:' : 'Finishing Tier:'}
-                    </span>
-                    <strong className="text-rose-300">
-                      {language === 'ar' ? currentProject.tierAr : currentProject.tierEn}
+                    <strong className="text-white text-sm">
+                      {currentProject.areaSqm} {language === 'ar' ? 'م²' : 'sqm'} •{' '}
+                      {language === 'ar' ? currentProject.governorateAr : currentProject.governorateEn}
                     </strong>
                   </div>
-                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-3">
+                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-2.5">
+                    <span className="text-gray-400">
+                      {language === 'ar' ? 'المستوى والنطاق التقديري:' : 'Tier & Band:'}
+                    </span>
+                    <strong className="text-rose-300 text-end">
+                      {language === 'ar' ? currentProject.estimatedBandAr : currentProject.estimatedBandEn}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-b border-white/10 pb-2.5">
                     <span className="text-gray-400">
                       {language === 'ar' ? 'مدة التنفيذ القياسية:' : 'Duration:'}
                     </span>
@@ -572,11 +681,25 @@ export const FinishingView: React.FC = () => {
                   <p className="text-xs text-gray-300 leading-relaxed pt-1">
                     {language === 'ar' ? currentProject.descriptionAr : currentProject.descriptionEn}
                   </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {(language === 'ar'
+                      ? currentProject.scopeHighlightsAr
+                      : currentProject.scopeHighlightsEn
+                    ).map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 text-rose-200 text-[10px] font-bold"
+                      >
+                        ✓ {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => handleOpenQuotation()}
+                  onClick={() => handleOpenQuotation(currentProject.tier)}
                   className="w-full bg-red-gradient text-white font-bold text-xs py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>

@@ -231,3 +231,32 @@ export const articleUpsertSchema = z.object({
   isFeatured: z.boolean().default(false),
 });
 
+export const userGroomPlanSchema = z.object({
+  selectedTierKey: z.enum(['tier_100k', 'tier_200k', 'tier_300k', 'tier_500k', 'custom']),
+  targetBudgetEgp: z.number().int().min(25000).max(3000000),
+  slotSelections: z.record(z.string(), z.string()).default({}),
+  excludedSlots: z.array(z.string()).default([]),
+  customItems: z.array(z.string().trim().min(1).max(160)).max(40).default([]),
+});
+
+export const userBridePlanSchema = z.object({
+  presetMode: z.enum(['compact', 'balanced', 'extended']),
+  targetBudgetEgp: z.number().int().min(10000).max(2000000),
+  checkedItemIds: z.array(z.string().min(1).max(100)).max(300).default([]),
+  qtyOverrides: z.record(z.string(), z.number().int().min(1).max(100)).default({}),
+  customItems: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        categoryId: z.string().min(1).max(64),
+        labelAr: z.string().trim().min(1).max(160),
+        labelEn: z.string().trim().min(1).max(160),
+        qty: z.number().int().min(1).max(100),
+        estimatedUnitPriceEgp: z.number().int().min(0).max(1000000),
+        checked: z.boolean(),
+      }),
+    )
+    .max(100)
+    .default([]),
+});
+

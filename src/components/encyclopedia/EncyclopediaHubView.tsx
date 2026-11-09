@@ -16,6 +16,8 @@ import {
   Heart,
   Compass,
   Home,
+  Wrench,
+  HelpCircle,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
 
@@ -164,34 +166,120 @@ export const EncyclopediaHubView: React.FC = () => {
           </div>
         </div>
 
-        {/* Category Overview Strip (shown when viewing 'all' and empty search) */}
+        {/* Category Overview Strip & Specialized Tool Hubs (shown when viewing 'all' and empty search) */}
         {activeDomain === 'all' && !searchQuery.trim() && (
-          <div className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-black text-[#2A1D20]">
-              {language === 'ar' ? 'أقسام المعرفة الرئيسية' : 'Encyclopedia Knowledge Domains'}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  to={`/encyclopedia/${cat.domain}`}
-                  className="bg-white rounded-2xl p-5 border border-rose-100 hover:border-[#D91B3E]/40 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3 group"
-                >
-                  <div className="flex items-start gap-3">
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <h2 className="text-xl sm:text-2xl font-black text-[#2A1D20]">
+                {language === 'ar'
+                  ? 'الموسوعات المتخصصة والأدلة التفاعلية'
+                  : 'Specialized Playbooks & Reference Hubs'}
+              </h2>
+              <div
+                data-testid="specialized-hub-links"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {[
+                  {
+                    to: '/finishing/encyclopedia',
+                    titleAr: 'موسوعة تشطيب الشقة (22 مرحلة)',
+                    titleEn: '22-Step Finishing Encyclopedia',
+                    descAr: 'المواصفات الفنية، الأخطاء الشائعة، وقوائم الاستلام الهندسي.',
+                    descEn: 'Technical standards, snagging checks & material tolerances.',
+                    icon: <Building2 className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/finishing/materials',
+                    titleAr: 'دليل خامات التشطيب وأسعارها',
+                    titleEn: 'Finishing Materials & Price Index',
+                    descAr: 'مقارنة السيراميك، البورسلين، الدهانات، ومواسير PP-R.',
+                    descEn: 'Compare porcelain, waterproofing, wiring & market EGP ranges.',
+                    icon: <Wrench className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/finishing/contractors',
+                    titleAr: 'دليل المقاولين والمهندسين',
+                    titleEn: 'Contractors & Architects Directory',
+                    descAr: 'شركاء التشطيب والتأسيس والنجارة المعتمدين بالمحافظات.',
+                    descEn: 'Verified general contractors, MEP pros & kitchen joiners.',
+                    icon: <Building2 className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/groom/encyclopedia',
+                    titleAr: 'موسوعة تجهيز العريس (26 بنداً)',
+                    titleEn: 'Groom Buying Playbook (26 Guides)',
+                    descAr: 'دليل شراء الأجهزة والأثاث والمراتب ونصائح الضمان.',
+                    descEn: 'Appliance capacities, beech joinery & 10-year warranty checks.',
+                    icon: <Briefcase className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/bride/encyclopedia',
+                    titleAr: 'موسوعة جهاز العروسة (19 فئة)',
+                    titleEn: 'Bride Trousseau Playbook (19 Categories)',
+                    descAr: 'الأعداد الذهبية المقترحة ومنع التكديس والهدر المالي.',
+                    descEn: 'Anti-waste item quantities & balanced kitchen/linen weights.',
+                    icon: <Sparkles className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/glossary',
+                    titleAr: 'قاموس المصطلحات والأسئلة الشائعة',
+                    titleEn: 'Egyptian Glossary & FAQs',
+                    descAr: 'شرح الشرب، البؤج، الجبس، وضوابط الفرح والتقسيط.',
+                    descEn: 'Construction idioms, legal FAQs & calculator shortcuts.',
+                    icon: <HelpCircle className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                ].map((hub) => (
+                  <Link
+                    key={hub.to}
+                    to={hub.to}
+                    className="bg-[#FAF7F2] hover:bg-white rounded-2xl p-5 border border-[#D91B3E]/15 hover:border-[#D91B3E]/45 shadow-sm hover:shadow-md transition flex items-start gap-3 group"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-[#FDE8ED] flex items-center justify-center shrink-0">
-                      {renderCategoryIcon(cat.iconName)}
+                      {hub.icon}
                     </div>
                     <div className="space-y-1 min-w-0">
                       <h3 className="text-sm font-black text-[#2A1D20] group-hover:text-[#D91B3E] transition">
-                        {language === 'ar' ? cat.nameAr : cat.nameEn}
+                        {language === 'ar' ? hub.titleAr : hub.titleEn}
                       </h3>
-                      <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
-                        {language === 'ar' ? cat.descriptionAr : cat.descriptionEn}
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        {language === 'ar' ? hub.descAr : hub.descEn}
                       </p>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xl sm:text-2xl font-black text-[#2A1D20]">
+                {language === 'ar'
+                  ? `أقسام المعرفة الرئيسية (${categories.length})`
+                  : `Encyclopedia Knowledge Domains (${categories.length})`}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/encyclopedia/${cat.domain}`}
+                    data-testid={`cms-category-${cat.slug}`}
+                    className="bg-white rounded-2xl p-5 border border-rose-100 hover:border-[#D91B3E]/40 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3 group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#FDE8ED] flex items-center justify-center shrink-0">
+                        {renderCategoryIcon(cat.iconName)}
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <h3 className="text-sm font-black text-[#2A1D20] group-hover:text-[#D91B3E] transition">
+                          {language === 'ar' ? cat.nameAr : cat.nameEn}
+                        </h3>
+                        <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
+                          {language === 'ar' ? cat.descriptionAr : cat.descriptionEn}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         )}

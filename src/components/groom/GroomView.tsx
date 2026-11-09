@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
@@ -14,8 +14,12 @@ import {
   CreditCard,
   Check,
   BookOpen,
+  Plus,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { initialGroomPackages } from '../../data/initialData';
+import { calculateConfigurableGroomPackage } from '../../../shared/trousseauEncyclopediaData';
 import type { Product } from '../../types';
 import { SmartImage } from '../common/SmartImage';
 
@@ -36,6 +40,11 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
     setGroomBudgetTarget,
     groomBudgetItems,
     toggleGroomBudgetItem,
+    groomConfigurablePackages,
+    userGroomPlan,
+    saveUserGroomPlan,
+    currentUser,
+    showToast,
   } = useApp();
 
   const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
@@ -44,6 +53,111 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [compareList, setCompareList] = useState<Product[]>([]);
+  const [customItemInput, setCustomItemInput] = useState('');
+
+  const sortedPackages = useMemo(
+    () =>
+      [...groomConfigurablePackages].sort((a, b) => a.targetBudgetEgp - b.targetBudgetEgp),
+    [groomConfigurablePackages],
+  );
+
+  const activeConfigurablePkg = useMemo(() => {
+    return (
+      sortedPackages.find((pkg) => pkg.tierKey === userGroomPlan.selectedTierKey) ||
+      sortedPackages[1] ||
+      sortedPackages[0]
+    );
+  }, [sortedPackages, userGroomPlan.selectedTierKey]);
+
+  const packageCalc = useMemo(() => {
+    if (!activeConfigurablePkg) return null;
+    return calculateConfigurableGroomPackage(
+      activeConfigurablePkg,
+      userGroomPlan.slotSelections,
+      userGroomPlan.excludedSlots,
+    );
+  }, [activeConfigurablePkg, userGroomPlan.slotSelections, userGroomPlan.excludedSlots]);
+
+  const handleSelectTier = (tierKey: (typeof sortedPackages)[number]['tierKey'], targetBudgetEgp: number) => {
+    saveUserGroomPlan((prev) => ({
+      ...prev,
+      selectedTierKey: tierKey,
+      targetBudgetEgp,
+      slotSelections: {},
+      excludedSlots: [],
+    }));
+  };
+
+  const handleSelectSlotOption = (slotKey: string, optionId: string) => {
+    saveUserGroomPlan((prev) => ({
+      ...prev,
+      slotSelections: {
+        ...prev.slotSelections,
+        [slotKey]: optionId,
+      },
+      excludedSlots: prev.excludedSlots.filter((k) => k !== slotKey),
+    }));
+  };
+
+  const handleToggleExcludeSlot = (slotKey: string) => {
+    saveUserGroomPlan((prev) => {
+      const exists = prev.excludedSlots.includes(slotKey);
+      return {
+        ...prev,
+        excludedSlots: exists
+          ? prev.excludedSlots.filter((k) => k !== slotKey)
+          : [...prev.excludedSlots, slotKey],
+      };
+    });
+  };
+
+  const handleAddCustomGroomItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = customItemInput.trim();
+    if (!cleaned) return;
+    saveUserGroomPlan((prev) => ({
+      ...prev,
+      customItems: prev.customItems.includes(cleaned)
+        ? prev.customItems
+        : [...prev.customItems, cleaned],
+    }));
+    setCustomItemInput('');
+  };
+
+  const handleRemoveCustomGroomItem = (label: string) => {
+    saveUserGroomPlan((prev) => ({
+      ...prev,
+      customItems: prev.customItems.filter((item) => item !== label),
+    }));
+  };
+
+  const handleAddConfiguredPackageToCart = () => {
+    if (!activeConfigurablePkg || !packageCalc) return;
+    const bundleProduct: Product = {
+      id: `${activeConfigurablePkg.id}-custom`,
+      trousseauType: 'groom',
+      category: 'packages',
+      categoryAr: 'باقة عريس مخصصة',
+      categoryEn: 'Configured Groom Package',
+      nameAr: `${activeConfigurablePkg.nameAr} (مخصصة)`,
+      nameEn: `${activeConfigurablePkg.nameEn} (Custom)`,
+      brand: 'Gawaz Inn Configurator',
+      price: packageCalc.totalEgp,
+      sku: activeConfigurablePkg.id,
+      stock: 5,
+      imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=900&q=80',
+      descriptionAr: activeConfigurablePkg.taglineAr,
+      descriptionEn: activeConfigurablePkg.taglineEn,
+      specsAr: { 'الأبواب المختارة': `${packageCalc.selectedCount} بنود` },
+      specsEn: { 'Selected Slots': `${packageCalc.selectedCount} items` },
+    };
+    addToCart(bundleProduct, 1);
+    showToast(
+      language === 'ar'
+        ? 'تمت إضافة باقتك المخصصة إلى سلة المشتريات ✓'
+        : 'Added your configured groom package to cart ✓',
+    );
+  };
 
   const categories = [
     { key: 'all', label: t.groom.allCategories },
@@ -119,22 +233,26 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
               <button
                 type="button"
                 onClick={() => {
-                  const el = document.getElementById('budget-builder');
+                  const el = document.getElementById('groom-configurable');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl border border-white/20 transition flex items-center gap-2 cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4 text-rose-200" />
-                <span>{t.groom.customBudgetTitle}</span>
+                <span>
+                  {language === 'ar'
+                    ? 'مصمم الباقات (100–500 ألف)'
+                    : 'Package Configurator (100k–500k)'}
+                </span>
               </button>
 
               <Link
-                to="/encyclopedia/groom"
+                to="/groom/encyclopedia"
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl border border-white/20 transition flex items-center gap-2"
               >
                 <BookOpen className="w-4 h-4 text-rose-200" />
                 <span>
-                  {language === 'ar' ? 'دليل اختيار الأجهزة' : 'Appliance Buying Guides'}
+                  {language === 'ar' ? 'موسوعة العريس (26 دليل)' : 'Groom Encyclopedia (26)'}
                 </span>
               </Link>
             </div>
@@ -253,6 +371,342 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
             ))}
           </div>
         </div>
+
+        {/* 2.5 Interactive Tiered Groom Package Configurator (100k / 200k / 300k / 500k + Swapping) */}
+        {activeConfigurablePkg && packageCalc && (
+          <section id="groom-configurable" className="scroll-mt-24 space-y-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-10 border-2 border-rose-100 shadow-xl space-y-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-6">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FDE8ED] text-[#B31331] text-xs font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-[#D91B3E]" />
+                    <span>
+                      {language === 'ar'
+                        ? 'مصمم باقة العريس التفاعلي — بدّل واختر بحرية'
+                        : 'Interactive Tier Configurator — Swap Any Item Freely'}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#2A1D20]">
+                    {language === 'ar'
+                      ? 'صمم باقتك: 100 ألف إلى 500 ألف ج.م'
+                      : 'Configure Your 100k – 500k EGP Trousseau Package'}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {language === 'ar'
+                      ? 'قارن البدائل الاقتصادية والمتوازنة والفاخرة لكل بند، احذف البنود غير المطلوبة الآن، واحفظ خطتك لحسابك.'
+                      : 'Switch budget tiers, swap economic/balanced/premium items per slot, or exclude optional rooms. Plans sync automatically.'}
+                  </p>
+                </div>
+
+                <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[#FAF7F2] text-gray-600 border border-rose-100 shrink-0 self-start">
+                  {currentUser
+                    ? language === 'ar'
+                      ? '✓ محفوظ تلقائياً في حسابك السحابي'
+                      : '✓ Synced to your signed-in account'
+                    : language === 'ar'
+                    ? 'محفوظ محلياً • سجل الدخول للمزامنة'
+                    : 'Saved locally • Sign in to cloud-sync'}
+                </span>
+              </div>
+
+              {/* Tier Selection Tabs */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {sortedPackages.map((pkg) => {
+                  const isActive = pkg.tierKey === activeConfigurablePkg.tierKey;
+                  return (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      data-testid={`groom-tier-${pkg.tierKey}`}
+                      onClick={() => handleSelectTier(pkg.tierKey, pkg.targetBudgetEgp)}
+                      className={`p-4 rounded-2xl border-2 text-start transition cursor-pointer ${
+                        isActive
+                          ? 'bg-red-gradient text-white border-[#B31331] shadow-lg'
+                          : 'bg-[#FAF7F2] text-[#2A1D20] border-rose-100 hover:border-[#D91B3E]/40'
+                      }`}
+                    >
+                      <div className="text-base sm:text-lg font-black">
+                        {pkg.targetBudgetEgp.toLocaleString()} {t.groom.egp}
+                      </div>
+                      <div
+                        className={`text-[11px] font-semibold mt-1 line-clamp-1 ${
+                          isActive ? 'text-rose-100' : 'text-gray-600'
+                        }`}
+                      >
+                        {language === 'ar' ? pkg.nameAr : pkg.nameEn}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Package Description & Slots + Live Summary */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Slot Cards */}
+                <div className="lg:col-span-8 space-y-4">
+                  <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-[#2A1D20]">
+                        {language === 'ar' ? activeConfigurablePkg.nameAr : activeConfigurablePkg.nameEn}
+                      </h3>
+                      <p className="text-xs text-gray-600">
+                        {language === 'ar' ? activeConfigurablePkg.taglineAr : activeConfigurablePkg.taglineEn}
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeConfigurablePkg.slots.map((slot) => {
+                    const resolved = packageCalc.resolvedSlots.find((r) => r.slotKey === slot.slotKey);
+                    const isExcluded = resolved?.excluded ?? false;
+                    const chosenOptId = resolved?.selectedOption.optionId || slot.defaultOptionId;
+
+                    return (
+                      <div
+                        key={slot.slotKey}
+                        data-testid={`groom-slot-${slot.slotKey}`}
+                        className={`rounded-2xl p-4 sm:p-5 border transition space-y-3 ${
+                          isExcluded
+                            ? 'bg-gray-50 border-gray-200 opacity-75'
+                            : 'bg-white border-rose-100 shadow-sm'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-[#2A1D20]">
+                              {language === 'ar' ? slot.slotLabelAr : slot.slotLabelEn}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                slot.required
+                                  ? 'bg-[#FDE8ED] text-[#B31331]'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {slot.required
+                                ? language === 'ar'
+                                  ? 'بند رئيسي'
+                                  : 'Core Slot'
+                                : language === 'ar'
+                                ? 'اختياري'
+                                : 'Optional'}
+                            </span>
+                          </div>
+
+                          {!slot.required && (
+                            <button
+                              type="button"
+                              data-testid={`slot-toggle-exclude-${slot.slotKey}`}
+                              onClick={() => handleToggleExcludeSlot(slot.slotKey)}
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                                isExcluded
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:border-rose-300'
+                              }`}
+                            >
+                              {isExcluded
+                                ? language === 'ar'
+                                  ? '+ تضمين البند'
+                                  : '+ Re-Include'
+                                : language === 'ar'
+                                ? 'استبعاد من الباقة'
+                                : 'Exclude Slot'}
+                            </button>
+                          )}
+                        </div>
+
+                        {!isExcluded && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                            {slot.options.map((opt) => {
+                              const isChosen = opt.optionId === chosenOptId;
+                              const tierTag =
+                                opt.tierLevel === 'economic'
+                                  ? language === 'ar'
+                                    ? 'اقتصادي'
+                                    : 'Economic'
+                                  : opt.tierLevel === 'balanced'
+                                  ? language === 'ar'
+                                    ? 'متوازن'
+                                    : 'Balanced'
+                                  : language === 'ar'
+                                  ? 'فاخر'
+                                  : 'Premium';
+
+                              return (
+                                <button
+                                  key={opt.optionId}
+                                  type="button"
+                                  data-testid={`slot-opt-${slot.slotKey}-${opt.optionId}`}
+                                  onClick={() => handleSelectSlotOption(slot.slotKey, opt.optionId)}
+                                  className={`p-3 rounded-xl border text-start transition cursor-pointer flex flex-col justify-between space-y-2 ${
+                                    isChosen
+                                      ? 'bg-[#FDE8ED]/70 border-[#D91B3E] shadow-sm'
+                                      : 'bg-[#FAF7F2]/60 border-gray-200 hover:border-rose-200'
+                                  }`}
+                                >
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="text-[10px] font-black text-[#B31331]">
+                                        {tierTag} • {opt.brand}
+                                      </span>
+                                      {isChosen && <CheckCircle2 className="w-3.5 h-3.5 text-[#D91B3E] shrink-0" />}
+                                    </div>
+                                    <p className="text-xs font-bold text-[#2A1D20] leading-snug">
+                                      {language === 'ar' ? opt.nameAr : opt.nameEn}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 line-clamp-1">
+                                      {language === 'ar' ? opt.specsAr : opt.specsEn}
+                                    </p>
+                                  </div>
+
+                                  <div className="text-xs font-black text-[#D91B3E]">
+                                    {opt.priceEgp.toLocaleString()} {t.groom.egp}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom User Items */}
+                  <div className="bg-[#FAF7F2] rounded-2xl p-4 sm:p-5 border border-rose-100 space-y-3">
+                    <h4 className="text-xs sm:text-sm font-black text-[#2A1D20]">
+                      {language === 'ar'
+                        ? 'إضافات خاصة بخطة العريس (مذكراتك الإضافية)'
+                        : 'Additional Custom Groom Requirements'}
+                    </h4>
+                    <form onSubmit={handleAddCustomGroomItem} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customItemInput}
+                        onChange={(e) => setCustomItemInput(e.target.value)}
+                        placeholder={
+                          language === 'ar'
+                            ? 'أضف بنداً خاصاً (مثل: غسالة أطباق، ديب فريزر رأسي...)'
+                            : 'Add custom note/item (e.g. Dishwasher, Vertical Freezer...)'
+                        }
+                        className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs focus:border-[#D91B3E] outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold hover:opacity-95 transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{language === 'ar' ? 'إضافة' : 'Add'}</span>
+                      </button>
+                    </form>
+
+                    {userGroomPlan.customItems.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {userGroomPlan.customItems.map((ci) => (
+                          <span
+                            key={ci}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-rose-200 text-xs font-semibold text-[#2A1D20]"
+                          >
+                            <span>{ci}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomGroomItem(ci)}
+                              aria-label="Remove item"
+                              className="text-gray-400 hover:text-[#D91B3E] cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Sticky Summary Panel */}
+                <div className="lg:col-span-4 lg:sticky lg:top-24 bg-gradient-to-br from-[#1C1819] to-[#2B181A] text-white rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl border border-rose-900/30">
+                  <div className="space-y-1 border-b border-white/10 pb-4">
+                    <span className="text-xs font-bold text-rose-200">
+                      {language === 'ar' ? 'إجمالي باقتك المخصصة الآن' : 'Configured Package Total'}
+                    </span>
+                    <div
+                      data-testid="groom-configured-total"
+                      className="text-3xl sm:text-4xl font-black text-white"
+                    >
+                      {packageCalc.totalEgp.toLocaleString()}{' '}
+                      <span className="text-sm font-bold text-rose-200">{t.groom.egp}</span>
+                    </div>
+                    <p
+                      className={`text-xs font-semibold pt-1 ${
+                        packageCalc.varianceEgp >= 0 ? 'text-emerald-400' : 'text-amber-300'
+                      }`}
+                    >
+                      {packageCalc.varianceEgp >= 0
+                        ? language === 'ar'
+                          ? `وفر ${packageCalc.varianceEgp.toLocaleString()} ج.م تحت سقف الباقة (${activeConfigurablePkg.targetBudgetEgp.toLocaleString()})`
+                          : `${packageCalc.varianceEgp.toLocaleString()} EGP under ${activeConfigurablePkg.targetBudgetEgp.toLocaleString()} target`
+                        : language === 'ar'
+                        ? `زيادة ${Math.abs(packageCalc.varianceEgp).toLocaleString()} ج.م عن سقف الباقة`
+                        : `${Math.abs(packageCalc.varianceEgp).toLocaleString()} EGP above tier target`}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 text-xs text-gray-300">
+                    <div className="flex justify-between">
+                      <span>{language === 'ar' ? 'البنود النشطة:' : 'Included Slots:'}</span>
+                      <strong className="text-white">
+                        {packageCalc.selectedCount} / {activeConfigurablePkg.slots.length}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ar' ? 'آخر تحديث للتسعير:' : 'Pricing Baseline:'}</span>
+                      <strong className="text-white">
+                        {activeConfigurablePkg.priceUpdatedAt.slice(0, 10)}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{language === 'ar' ? 'قسط تقديري (24 شهر):' : 'Est. Monthly (24 mo):'}</span>
+                      <strong className="text-[#FF4D6D]">
+                        {Math.round(packageCalc.totalEgp / 24).toLocaleString()} {t.groom.egp}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-gray-300 bg-white/5 p-3 rounded-xl border border-white/10 leading-relaxed">
+                    {language === 'ar'
+                      ? activeConfigurablePkg.warrantyNoteAr
+                      : activeConfigurablePkg.warrantyNoteEn}
+                  </p>
+
+                  <div className="space-y-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddConfiguredPackageToCart}
+                      className="w-full bg-red-gradient text-white font-bold text-xs py-3.5 px-4 rounded-xl shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4 text-white" />
+                      <span>
+                        {language === 'ar' ? 'أضف الباقة المخصصة للسلة' : 'Add Package to Cart'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInstallmentPrefillAmount(packageCalc.totalEgp);
+                        setInstallmentModalOpen(true);
+                      }}
+                      className="w-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs py-3 px-4 rounded-xl border border-white/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <CreditCard className="w-4 h-4 text-rose-200" />
+                      <span>
+                        {language === 'ar' ? 'طلب تقسيط هذه الباقة' : 'Apply for Installment'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* 3. Persisted Custom Budget Builder */}
         <div id="budget-builder" className="scroll-mt-24">

@@ -405,6 +405,251 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
+// =========================================================================
+// STAGE 2: COMPLETE ENCYCLOPEDIA & KNOWLEDGE HUB TYPES (MODULES C, D, E, O)
+// =========================================================================
+
+export interface FinishingEncyclopediaCategory {
+  id: string;
+  slug: string;
+  stepOrder: number;
+  phaseKey: 'planning' | 'rough_in' | 'surfaces' | 'fit_out' | 'handover';
+  nameAr: string;
+  nameEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  budgetSharePercent: number;
+  typicalDurationAr: string;
+  typicalDurationEn: string;
+  technicalSpecsAr: string[];
+  technicalSpecsEn: string[];
+  commonMistakesAr: string[];
+  commonMistakesEn: string[];
+  inspectionChecklistAr: string[];
+  inspectionChecklistEn: string[];
+  recommendedMaterialsAr: string[];
+  recommendedMaterialsEn: string[];
+  imageUrl: string;
+}
+
+export interface FinishingMaterialItem {
+  id: string;
+  slug: string;
+  categorySlug: string;
+  materialGroup: 'flooring' | 'plumbing' | 'electrical' | 'paint' | 'gypsum' | 'countertop' | 'windows' | 'waterproofing';
+  nameAr: string;
+  nameEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  originAr: string;
+  originEn: string;
+  unitAr: string;
+  unitEn: string;
+  priceMinEgp: number;
+  priceMaxEgp: number;
+  priceSource: string;
+  priceUpdatedAt: string;
+  prosAr: string[];
+  prosEn: string[];
+  consAr: string[];
+  consEn: string[];
+  alternativesAr: string[];
+  alternativesEn: string[];
+  specsAr: Record<string, string>;
+  specsEn: Record<string, string>;
+  bestUseAr: string;
+  bestUseEn: string;
+  imageUrl: string;
+}
+
+export interface BeforeAfterProject {
+  id: string;
+  slug: string;
+  titleAr: string;
+  titleEn: string;
+  governorateSlug: string;
+  governorateAr: string;
+  governorateEn: string;
+  areaSqm: number;
+  tier: FinishingTier;
+  tierAr: string;
+  tierEn: string;
+  durationDays: number;
+  durationAr: string;
+  durationEn: string;
+  estimatedBandAr: string;
+  estimatedBandEn: string;
+  beforeImage: string;
+  afterImage: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  scopeHighlightsAr: string[];
+  scopeHighlightsEn: string[];
+  isSampleListing: boolean;
+}
+
+export interface FinishingContractorListing {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  roleTitleAr: string;
+  roleTitleEn: string;
+  specialtyGroup: 'turnkey' | 'architect_3d' | 'mep' | 'carpentry_kitchens';
+  specialtyAr: string;
+  specialtyEn: string;
+  governoratesCovered: string[];
+  experienceYears: number;
+  verificationBadge: 'registered' | 'verified';
+  pricingModelAr: string;
+  pricingModelEn: string;
+  portfolioHighlightsAr: string[];
+  portfolioHighlightsEn: string[];
+  warrantyOfferedAr: string;
+  warrantyOfferedEn: string;
+  reviewsCount: number;
+  ratingNoteAr: string;
+  ratingNoteEn: string;
+  isSampleListing: boolean;
+}
+
+export interface GroomSubcategoryGuide {
+  id: string;
+  slug: string;
+  groupKey: 'appliances' | 'furniture' | 'household';
+  nameAr: string;
+  nameEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  priority: 'essential' | 'recommended' | 'optional';
+  budgetSharePercent: number;
+  estimatedMinEgp: number;
+  estimatedMaxEgp: number;
+  buyingChecklistAr: string[];
+  buyingChecklistEn: string[];
+  warrantyTipsAr: string;
+  warrantyTipsEn: string;
+}
+
+export interface GroomPackageOption {
+  optionId: string;
+  tierLevel: 'economic' | 'balanced' | 'premium';
+  productId?: string;
+  nameAr: string;
+  nameEn: string;
+  brand: string;
+  specsAr: string;
+  specsEn: string;
+  priceEgp: number;
+}
+
+export interface GroomPackageSlot {
+  slotKey: string;
+  slotLabelAr: string;
+  slotLabelEn: string;
+  categoryGroup: 'appliances' | 'furniture' | 'household';
+  required: boolean;
+  defaultOptionId: string;
+  options: GroomPackageOption[];
+}
+
+export interface GroomConfigurablePackage {
+  id: string;
+  slug: string;
+  tierKey: 'tier_100k' | 'tier_200k' | 'tier_300k' | 'tier_500k' | 'custom';
+  targetBudgetEgp: number;
+  nameAr: string;
+  nameEn: string;
+  taglineAr: string;
+  taglineEn: string;
+  warrantyNoteAr: string;
+  warrantyNoteEn: string;
+  priceUpdatedAt: string;
+  slots: GroomPackageSlot[];
+}
+
+export interface BrideCategoryGuide {
+  id: string;
+  slug: string;
+  sortOrder: number;
+  groupKey: 'kitchen_cookware' | 'dining_hosting' | 'linens_bedding' | 'bath_home' | 'personal_care';
+  nameAr: string;
+  nameEn: string;
+  summaryAr: string;
+  summaryEn: string;
+  budgetWeightPercent: number;
+  antiWasteTipAr: string;
+  antiWasteTipEn: string;
+  recommendedCountLabelAr: string;
+  recommendedCountLabelEn: string;
+}
+
+export interface BrideChecklistTemplateItem {
+  id: string;
+  categoryId: string;
+  labelAr: string;
+  labelEn: string;
+  recommendedQty: number;
+  unitLabelAr: string;
+  unitLabelEn: string;
+  priority: 'essential' | 'recommended' | 'optional';
+  estimatedUnitPriceEgp: number;
+  presets: ('compact' | 'balanced' | 'extended')[];
+  noteAr: string;
+  noteEn: string;
+}
+
+export interface UserGroomPlanState {
+  selectedTierKey: 'tier_100k' | 'tier_200k' | 'tier_300k' | 'tier_500k' | 'custom';
+  targetBudgetEgp: number;
+  slotSelections: Record<string, string>;
+  excludedSlots: string[];
+  customItems: string[];
+  updatedAt?: string;
+}
+
+export interface UserBrideCustomItem {
+  id: string;
+  categoryId: string;
+  labelAr: string;
+  labelEn: string;
+  qty: number;
+  estimatedUnitPriceEgp: number;
+  checked: boolean;
+}
+
+export interface UserBridePlanState {
+  presetMode: 'compact' | 'balanced' | 'extended';
+  targetBudgetEgp: number;
+  checkedItemIds: string[];
+  qtyOverrides: Record<string, number>;
+  customItems: UserBrideCustomItem[];
+  updatedAt?: string;
+}
+
+export interface GlossaryTerm {
+  id: string;
+  slug: string;
+  domain: ContentDomain;
+  termAr: string;
+  termEn: string;
+  definitionAr: string;
+  definitionEn: string;
+  exampleAr: string;
+  exampleEn: string;
+  relatedCalculatorSlug?: string;
+}
+
+export interface FaqEntry {
+  id: string;
+  domain: ContentDomain;
+  questionAr: string;
+  questionEn: string;
+  answerAr: string;
+  answerEn: string;
+  sortOrder: number;
+}
+
 export interface PaginatedMeta {
   page: number;
   limit: number;

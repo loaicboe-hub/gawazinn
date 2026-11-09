@@ -4,11 +4,12 @@
 
 ---
 
-## Integration Matrix (Updated After Stage 1 — `2026-11-09`)
+## Integration Matrix (Updated After Stage 2 — `2026-11-09`)
 
-| Capability | Category | Current Stage 1 State | Next Step / Env Requirements |
+| Capability | Category | Current Stage 2 State | Next Step / Env Requirements |
 |---|---|---|---|
-| **Relational Database** | Core Infra + Adapter | **(A) Working Internal (`node:sqlite` + PG parity DDL):** Real `.data/gawazinn.db` tables, foreign keys, transactions, migrations (`db/migrations/sqlite/`) + `db/migrations/postgres/` ready. | Attach managed PostgreSQL (`DATABASE_URL`) adapter for stateless Vercel serverless production. |
+| **Relational Database** | Core Infra + Adapter | **(A) Working Internal (`node:sqlite` + PG parity DDL):** Real `.data/gawazinn.db` tables across `001` & `002` migrations (`user_groom_plans`, `user_bride_plans`, encyclopedia & CMS tables), foreign keys, transactions & PostgreSQL mirror scripts ready. | Attach managed PostgreSQL (`DATABASE_URL`) adapter for stateless Vercel serverless production. |
+| **Encyclopedia & User Planners** | Modules C, D, E, O | **(A) Working Full-Stack:** Server-seeded finishing stages/materials/projects/sample contractors, groom configurable `100k–500k` packages, bride 19-category planner, glossary & FAQs backed by SQLite + guest `localStorage` fallback & authenticated sync; zero fake reviews (`reviewsCount: 0`). | Stage 7 replaces sample contractor listings with real verified marketplace vendor profiles. |
 | **Authentication & Sessions** | Core Security | **(A) Working Internal:** Real email/phone + password (`scrypt`) login/register, `SHA-256` hashed `HttpOnly` cookie sessions (`sessions` table), RBAC (`customer`, `vendor`, `expert`, `moderator`, `editor`, `admin`, `super_admin`), rate limiting & `audit_logs`. | Optional SMS OTP gateway (Twilio / VictoryLink Egypt) stays disabled until credentials are configured in `.env`. |
 | **Deployment Hosting** | DevOps | **(A) Static + Local Full-Stack + Vercel Config (`vercel.json`, `api/index.ts`)**: `npm run build` + `server/index.ts` verified; `vercel.json` routes configured. | Push to GitHub + set remote `DATABASE_URL` & `SESSION_SECRET` on Vercel/VPS. |
 | **Email & Messaging Notifications** | Messaging | **(C) Pending External Provider Keys:** UI actions submit into SQLite + audit trail cleanly. | Add `server/integrations/email.ts` (`SMTP_HOST` / `RESEND_API_KEY`) when configuring transactional mail. |

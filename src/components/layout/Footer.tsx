@@ -12,6 +12,8 @@ import {
   BookOpen,
   MapPin,
   CreditCard,
+  Wrench,
+  HelpCircle,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -101,6 +103,39 @@ export const Footer: React.FC = () => {
             >
               <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'الموسوعة' : 'Encyclopedia'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/finishing/materials"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Wrench className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'دليل الخامات' : 'Materials Guide'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/glossary"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'القاموس' : 'Glossary'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/faqs"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}</span>
             </Link>
 
             <span>•</span>
