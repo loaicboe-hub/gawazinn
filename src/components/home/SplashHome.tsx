@@ -319,6 +319,36 @@ export const SplashHome: React.FC = () => {
             <Layers className="w-3.5 h-3.5" />
             <span>{language === 'ar' ? 'طلبات التسعير ومقارنة العروض' : 'Multi-Vendor RFQs'}</span>
           </Link>
+
+          <Link
+            to="/real-weddings"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-stories"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <Heart className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'قصص زفاف بميزانيات حقيقية' : 'Real Wedding Budgets'}</span>
+          </Link>
+
+          <Link
+            to="/community"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-community"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
+            <span>{language === 'ar' ? 'منتدى الأسئلة والخبراء' : 'Community Q&A'}</span>
+          </Link>
+
+          <Link
+            to="/experts"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="home-discovery-experts"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
+          >
+            <BadgeCheck className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'دليل الخبراء المعتمدين' : 'Verified Experts'}</span>
+          </Link>
         </div>
       </div>
     </div>

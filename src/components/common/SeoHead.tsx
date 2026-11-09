@@ -197,6 +197,27 @@ export const SeoHead: React.FC = () => {
         'تصفح مقاولي التشطيب، معارض الأثاث والأجهزة، الأتيليهات، قاعات الزفاف، وخدمات ما بعد الزواج في مصر مع شارات توثيق مستقلة وتقييمات حقيقية فقط.';
       descEn =
         'Browse finishing contractors, furniture & appliance showrooms, bridal ateliers, wedding venues, and home-care partners across Egypt with audit-only badges.';
+    } else if (pathname === '/real-weddings') {
+      titleAr = 'قصص زفاف حقيقية وميزانيات التجهيز في مصر | جواز إن';
+      titleEn = 'Real Egyptian Wedding Stories & Actual Budget Breakdowns | GAWAZ INN';
+      descAr =
+        'استعرض تجارب حقيقية للأزواج وتكاليف التشطيب والجهاز والفرح في المحافظات مع الدروس المستفادة ومراجعة المشرفين.';
+      descEn =
+        'Explore real moderated Egyptian couple case studies with itemized finishing, trousseau & wedding budgets.';
+    } else if (pathname === '/community') {
+      titleAr = 'مجتمع جواز إن للأسئلة والأجوبة واستشارات الخبراء | جواز إن';
+      titleEn = 'GAWAZ INN Q&A Community & Verified Advisor Threads | GAWAZ INN';
+      descAr =
+        'اطرح سؤالك حول التشطيب أو الجهاز أو الفرح أو الادخار المبكر واحصل على إجابات من أزواج مجربين وخبراء معتمدين.';
+      descEn =
+        'Ask questions about Egyptian apartment finishing, trousseau, wedding contracts & savings—with verified expert replies.';
+    } else if (pathname === '/experts') {
+      titleAr = 'دليل الخبراء والمستشارين المعتمدين | جواز إن';
+      titleEn = 'Verified Experts & Marriage Planning Advisors Directory | GAWAZ INN';
+      descAr =
+        'مهندسو تشطيب، مخططو ميزانيات، ومستشارو زواج مفحوصو المؤهلات إدارياً في مصر.';
+      descEn =
+        'Admin-verified Egyptian finishing engineers, marriage financial coaches, and bridal trousseau specialists.';
     } else if (vendorMatch) {
       const slugOrId = decodeURIComponent(vendorMatch[1]);
       const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);

@@ -288,6 +288,39 @@ export const Footer: React.FC = () => {
               <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'عروض الأسعار RFQ' : 'RFQ Center'}</span>
             </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/real-weddings"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Heart className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'قصص الزفاف الحقيقية' : 'Real Weddings'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/community"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'منتدى المجتمع' : 'Community Q&A'}</span>
+            </Link>
+
+            <span>•</span>
+
+            <Link
+              to="/experts"
+              onClick={scrollTop}
+              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#D91B3E]" />
+              <span>{language === 'ar' ? 'الخبراء المعتمدون' : 'Verified Experts'}</span>
+            </Link>
           </div>
 
           {/* Contact Hotlines */}

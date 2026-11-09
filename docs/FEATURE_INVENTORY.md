@@ -1,4 +1,4 @@
-# GAWAZ INN — Feature Inventory & Implementation Tracker (Updated After Stage 8)
+# GAWAZ INN — Feature Inventory & Implementation Tracker (Updated After Stage 9)
 
 Status legend:
 - **Working Full-Stack (SQLite + API + UI)**: Persisted in SQLite via authenticated/validated `/api/v1/*` routes, tested in Vitest & Chrome E2E.
@@ -28,9 +28,9 @@ Status legend:
 | Product Encyclopedia, Compare Matrix & Multi-List Baskets (Module K — Stage 6) | `ProductsEncyclopediaView.tsx`, `ProductCompareView.tsx`, `ProductDetailPageView.tsx`, `ShoppingListsView.tsx`, `server/productShoppingService.ts` | **Working Full-Stack** | 19 enriched Egyptian catalog items with dimensions/energy/warranty/pros/cons/warnings, SVG price history chart, official agent vs gray-market offer caveats, up-to-4 side-by-side matrix, multi-list private vs shared shopping baskets, and automatic admin price-drop notifications. |
 | Vendor Marketplace, Portal, Audit Governance & Local SEO (Modules L, U, F — Stage 7) | `VendorDirectoryView.tsx`, `VendorProfileView.tsx`, `VendorPortalView.tsx`, `VendorBadges.tsx`, `LocalDiscoveryView.tsx`, `server/vendorMarketplaceService.ts`, `AdminDashboardView.tsx` | **Working Full-Stack** | 17 sectors, 18 seeded vendors (`reviewsCount: 0`, zero fake stars), honest customer reviews blocking owner self-reviews, `/locations/:govSlug/:catSlug` local cost guides & `LocalBusiness` JSON-LD (omits `aggregateRating` at 0 reviews), owner-isolated `/vendor` self-service portal (`free..premium` commercial quotas + billing ledger), and Admin-only verification audit strictly decoupled from paid plans. |
 | Multi-Vendor RFQ Engine, Slot Appointments & 8-Stage Vendor CRM (Modules M, N — Stage 8) | `RfqCenterView.tsx`, `VendorProfileView.tsx`, `VendorPortalView.tsx`, `server/rfqCrmService.ts`, `BudgetManagerView.tsx` | **Working Full-Stack** | `/rfq` & `/rfq/new` (`noindex`) multi-vendor quote dispatch, side-by-side sealed quote compare (competitor confidentiality), atomic Accept -> Wedding Budget sync (`rfq_quote`), per-vendor Q&A threads, Vendor slot appointment booking & vendor-only confirm/reschedule/complete, and 8-stage Vendor CRM pipeline with metrics & activity logs. |
+| Real Wedding Stories, Community Q&A, Verified Experts & Admin OS (Modules O, P — Stage 9) | `RealWeddingsView.tsx`, `CommunityForumView.tsx`, `ExpertsDirectoryView.tsx`, `AdminDashboardView.tsx`, `server/communityAdminService.ts` | **Working Full-Stack** | `/real-weddings` moderated budget stories (pending drafts never leak publicly), `/community` Q&A threads with server-verified Expert badges, idempotent votes, helpful attribution & abuse reports, `/experts` strictly Admin-verified advisors, and `/admin` live DB analytics, moderation queue, CMS status manager & user status governance. |
 
-## 2. Upcoming GAWAZ INN 2.0 Modules (Stages 9–12)
-- **Module O/P + Admin OS (Stage 9):** My Wedding Story, Community Q&A, Expert Directory, Full Admin Analytics/CMS/Moderation
+## 2. Upcoming GAWAZ INN 2.0 Modules (Stages 10–12)
 - **Module Q, R, S (Stage 10):** Grounded AI Assistant, Smart Room Designer & Moodboards, Wedding Day Ops (RSVP/Guests/Seating/Registry)
 - **Module T (Stage 11):** Married Life & Home Care Directory, Newlyweds Guide, Digital Home File, Warranty Tracker, Maintenance Reminders
 

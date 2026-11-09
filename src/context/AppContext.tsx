@@ -79,6 +79,18 @@ import type {
   MarketplaceAppointmentStatus,
   MarketplaceAppointmentType,
   RfqRequest,
+  RealWeddingStory,
+  StoryModerationStatus,
+  CommunityQuestion,
+  CommunityAnswer,
+  CommunityCategorySlug,
+  CommunityReport,
+  CommunityReportReason,
+  ExpertProfile,
+  ExpertSpecialtySlug,
+  ExpertVerificationStatus,
+  AdminAnalyticsPayload,
+  AdminModerationOverview,
 } from '../types';
 import { translations } from '../i18n/translations';
 import {
@@ -120,7 +132,7 @@ import {
 import { STAGE2_GLOSSARY_TERMS, STAGE2_FAQ_ITEMS } from '../../shared/knowledgeGlossaryData';
 import { listCalculatorSummaries, runCalculator } from '../../shared/calculators';
 import { EARLY_START_ACADEMY_LESSONS } from '../../shared/earlyStartData';
-import { ADMIN_PANEL_ROLES, FULL_ADMIN_ROLES, hasAnyRole } from '../../shared/rbac';
+import { ADMIN_PANEL_ROLES, FULL_ADMIN_ROLES, MODERATION_ROLES, hasAnyRole } from '../../shared/rbac';
 import { estimateFinishingRange, maskNationalId } from '../../shared/catalogMeta';
 import { apiRequest, ApiClientError } from '../services/api';
 
@@ -144,6 +156,9 @@ export type SectionKey =
   | 'compare'
   | 'shoppingLists'
   | 'vendors'
+  | 'stories'
+  | 'community'
+  | 'experts'
   | 'rfq'
   | 'vendorPortal'
   | 'myHub'
@@ -170,6 +185,9 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   compare: '/products/compare',
   shoppingLists: '/my/shopping-lists',
   vendors: '/vendors',
+  stories: '/real-weddings',
+  community: '/community',
+  experts: '/experts',
   rfq: '/rfq',
   vendorPortal: '/vendor',
   myHub: '/my/workspace',
@@ -800,6 +818,83 @@ interface AppContextType {
     },
   ) => Promise<MarketplaceAppointment>;
 
+  // Stage 9: Real Wedding Stories, Community Q&A, Experts & Full Admin OS Analytics + Moderation
+  realWeddings: RealWeddingStory[];
+  mySubmittedStories: RealWeddingStory[];
+  communityQuestions: CommunityQuestion[];
+  verifiedExperts: ExpertProfile[];
+  adminAnalytics: AdminAnalyticsPayload | null;
+  adminModeration: AdminModerationOverview | null;
+  refreshStage9Public: () => Promise<void>;
+  submitWeddingStory: (input: {
+    coupleTitleAr: string;
+    coupleTitleEn?: string;
+    governorateSlug: string;
+    cityAr: string;
+    cityEn?: string;
+    weddingYear: number;
+    guestCount: number;
+    finishingCostEgp: number;
+    groomTrousseauEgp: number;
+    brideTrousseauEgp: number;
+    weddingCostEgp: number;
+    preparationMonths: number;
+    summaryAr: string;
+    summaryEn?: string;
+    lessonsLearnedAr: string;
+    lessonsLearnedEn?: string;
+    photos?: string[];
+  }) => Promise<RealWeddingStory>;
+  createCommunityQuestion: (input: {
+    categorySlug: CommunityCategorySlug;
+    titleAr: string;
+    titleEn?: string;
+    bodyAr: string;
+    bodyEn?: string;
+    tags?: string[];
+  }) => Promise<CommunityQuestion>;
+  postCommunityAnswer: (questionId: string, bodyAr: string, bodyEn?: string) => Promise<CommunityAnswer>;
+  toggleCommunityVote: (targetType: 'question' | 'answer', targetId: string) => Promise<void>;
+  markAnswerHelpful: (questionId: string, answerId: string) => Promise<void>;
+  submitCommunityReport: (input: {
+    targetType: 'question' | 'answer' | 'story' | 'vendor_review';
+    targetId: string;
+    reason: CommunityReportReason;
+    details?: string | null;
+  }) => Promise<CommunityReport>;
+  applyExpertProfile: (input: {
+    displayNameAr: string;
+    displayNameEn: string;
+    specialtySlug: ExpertSpecialtySlug;
+    titleAr: string;
+    titleEn: string;
+    governorateSlug: string;
+    yearsExperience: number;
+    credentialsAr: string;
+    credentialsEn: string;
+    bioAr: string;
+    bioEn: string;
+    verificationDocs: string[];
+  }) => Promise<ExpertProfile>;
+  refreshAdminStage9: () => Promise<void>;
+  moderateStoryDecision: (
+    storyId: string,
+    input: { moderationStatus: StoryModerationStatus; moderationNotes?: string | null; isFeatured?: boolean },
+  ) => Promise<RealWeddingStory>;
+  resolveCommunityReportDecision: (
+    reportId: string,
+    input: { action: 'resolve_hide' | 'dismiss'; resolutionNote?: string | null },
+  ) => Promise<CommunityReport>;
+  verifyExpertProfileDecision: (
+    expertId: string,
+    input: { verificationStatus: ExpertVerificationStatus; verificationNotes?: string | null; isFeatured?: boolean },
+  ) => Promise<ExpertProfile>;
+  adminUpdateArticleStatus: (
+    articleId: string,
+    patch: { status?: Article['status']; isFeatured?: boolean },
+  ) => Promise<Article>;
+  adminUpdateUserStatus: (userId: string, status: User['status']) => Promise<User>;
+
   // Modals & Interactivity
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
@@ -882,6 +977,9 @@ function resolveSectionFromPath(pathname: string): SectionKey {
     return 'encyclopedia';
   }
   if (pathname.startsWith('/discover') || pathname.startsWith('/locations')) return 'discover';
+  if (pathname.startsWith('/real-weddings')) return 'stories';
+  if (pathname.startsWith('/community')) return 'community';
+  if (pathname.startsWith('/experts')) return 'experts';
   if (pathname === '/rfq' || pathname.startsWith('/rfq/')) return 'rfq';
   if (pathname.startsWith('/vendors')) return 'vendors';
   if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
@@ -1074,6 +1172,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [myRfqs, setMyRfqs] = useState<RfqRequest[]>([]);
   const [marketplaceAppointments, setMarketplaceAppointments] = useState<MarketplaceAppointment[]>([]);
 
+  // Stage 9 Community, Stories, Experts & Admin OS Analytics/Moderation State
+  const [realWeddings, setRealWeddings] = useState<RealWeddingStory[]>([]);
+  const [mySubmittedStories, setMySubmittedStories] = useState<RealWeddingStory[]>([]);
+  const [communityQuestions, setCommunityQuestions] = useState<CommunityQuestion[]>([]);
+  const [verifiedExperts, setVerifiedExperts] = useState<ExpertProfile[]>([]);
+  const [adminAnalytics, setAdminAnalytics] = useState<AdminAnalyticsPayload | null>(null);
+  const [adminModeration, setAdminModeration] = useState<AdminModerationOverview | null>(null);
+
   const loadUserScopedData = useCallback(async (user: User | null, connected: boolean) => {
     if (!user) {
       setOrders([]);
@@ -1093,6 +1199,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAuditLogs([]);
       setMyRfqs([]);
       setMarketplaceAppointments([]);
+      setMySubmittedStories([]);
+      setAdminAnalytics(null);
+      setAdminModeration(null);
+      setCommunityQuestions((prev) =>
+        prev.map((q) => ({
+          ...q,
+          viewerUpvoted: false,
+          answers: (q.answers || []).map((a) => ({ ...a, viewerUpvoted: false })),
+        })),
+      );
       setUserGroomPlan(getStoredItem<UserGroomPlanState>('user_groom_plan_v2', DEFAULT_GUEST_GROOM_PLAN));
       setUserBridePlan(
         getStoredItem<UserBridePlanState>('user_bride_plan_v2', createDefaultGuestBridePlan()),
@@ -1143,6 +1259,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         uPriceAlerts,
         uRfqs,
         uAppointments,
+        uMyStories,
+        uQuestions,
       ] =
         await Promise.all([
           apiRequest<Order[]>('/orders'),
@@ -1160,6 +1278,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           apiRequest<PriceAlert[]>('/price-alerts').catch(() => []),
           apiRequest<RfqRequest[]>('/rfq').catch(() => []),
           apiRequest<MarketplaceAppointment[]>('/appointments').catch(() => []),
+          apiRequest<RealWeddingStory[]>('/stories?mine=1').catch(() => []),
+          apiRequest<CommunityQuestion[]>('/community/questions').catch(() => null),
         ]);
       setOrders(uOrders);
       setFinishingInquiries(uFin);
@@ -1178,6 +1298,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setPriceAlerts(uPriceAlerts);
       setMyRfqs(uRfqs);
       setMarketplaceAppointments(uAppointments);
+      setMySubmittedStories(uMyStories);
+      if (uQuestions) setCommunityQuestions(uQuestions);
     } catch {
       // Non-fatal fallback
     }
@@ -1222,6 +1344,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (vList) setAdminVendors(vList);
       if (pList && pList.length > 0) setSubscriptionPlans(pList);
     }
+    const [anData, modData] = await Promise.all([
+      apiRequest<AdminAnalyticsPayload>('/admin/analytics').catch(() => null),
+      hasAnyRole(currentUser.role, MODERATION_ROLES)
+        ? apiRequest<AdminModerationOverview>('/admin/moderation/overview').catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    if (anData) setAdminAnalytics(anData);
+    if (modData) setAdminModeration(modData);
   }, [apiConnected, currentUser]);
 
   // Initial Bootstrap from Backend API
@@ -1229,16 +1359,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let active = true;
     (async () => {
       try {
-        const [payload, encBundle, calcMeta, academyRes] = await Promise.all([
+        const [payload, encBundle, calcMeta, academyRes, sList, qList, expList] = await Promise.all([
           apiRequest<BootstrapPayload>('/bootstrap'),
           apiRequest<EncyclopediaBundlePayload>('/encyclopedia/bundle').catch(() => null),
           apiRequest<CalculatorSummary[]>('/calculators').catch(() => null),
           apiRequest<{ lessons: EarlyStartAcademyLesson[]; completedSlugs: string[] }>(
             '/early-start/academy',
           ).catch(() => null),
+          apiRequest<RealWeddingStory[]>('/stories').catch(() => null),
+          apiRequest<CommunityQuestion[]>('/community/questions').catch(() => null),
+          apiRequest<ExpertProfile[]>('/experts').catch(() => null),
         ]);
         if (!active) return;
         setApiConnected(true);
+        if (sList) setRealWeddings(sList);
+        if (qList) setCommunityQuestions(qList);
+        if (expList) setVerifiedExperts(expList);
         if (calcMeta && calcMeta.length > 0) setCalculatorSummaries(calcMeta);
         if (academyRes?.lessons && academyRes.lessons.length > 0) {
           setAcademyLessons(academyRes.lessons);
@@ -1309,6 +1445,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               if (vList) setAdminVendors(vList);
               if (pList && pList.length > 0) setSubscriptionPlans(pList);
             }
+            const [anData, modData] = await Promise.all([
+              apiRequest<AdminAnalyticsPayload>('/admin/analytics').catch(() => null),
+              hasAnyRole(payload.user.role, MODERATION_ROLES)
+                ? apiRequest<AdminModerationOverview>('/admin/moderation/overview').catch(() => null)
+                : Promise.resolve(null),
+            ]);
+            if (!active) return;
+            if (anData) setAdminAnalytics(anData);
+            if (modData) setAdminModeration(modData);
           }
         }
       } catch {
@@ -1362,6 +1507,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (vList) setAdminVendors(vList);
         if (pList && pList.length > 0) setSubscriptionPlans(pList);
       }
+      const [anData, modData] = await Promise.all([
+        apiRequest<AdminAnalyticsPayload>('/admin/analytics').catch(() => null),
+        hasAnyRole(res.user.role, MODERATION_ROLES)
+          ? apiRequest<AdminModerationOverview>('/admin/moderation/overview').catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      if (anData) setAdminAnalytics(anData);
+      if (modData) setAdminModeration(modData);
     }
     showToast(
       language === 'ar' ? `أهلاً بك، ${res.user.name}!` : `Welcome back, ${res.user.nameEn || res.user.name}!`,
@@ -3350,6 +3503,325 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [language, showToast],
   );
 
+  // Stage 9: Stories, Community Q&A, Experts & Full Admin Analytics/Moderation Actions
+  const refreshStage9Public = useCallback(async () => {
+    if (!apiConnected) return;
+    const [sList, qList, expList, myStories] = await Promise.all([
+      apiRequest<RealWeddingStory[]>('/stories').catch(() => null),
+      apiRequest<CommunityQuestion[]>('/community/questions').catch(() => null),
+      apiRequest<ExpertProfile[]>('/experts').catch(() => null),
+      currentUser ? apiRequest<RealWeddingStory[]>('/stories?mine=1').catch(() => null) : Promise.resolve(null),
+    ]);
+    if (sList) setRealWeddings(sList);
+    if (qList) setCommunityQuestions(qList);
+    if (expList) setVerifiedExperts(expList);
+    if (myStories) setMySubmittedStories(myStories);
+  }, [apiConnected, currentUser]);
+
+  const submitWeddingStory = useCallback(
+    async (input: {
+      coupleTitleAr: string;
+      coupleTitleEn?: string;
+      governorateSlug: string;
+      cityAr: string;
+      cityEn?: string;
+      weddingYear: number;
+      guestCount: number;
+      finishingCostEgp: number;
+      groomTrousseauEgp: number;
+      brideTrousseauEgp: number;
+      weddingCostEgp: number;
+      preparationMonths: number;
+      summaryAr: string;
+      summaryEn?: string;
+      lessonsLearnedAr: string;
+      lessonsLearnedEn?: string;
+      photos?: string[];
+    }) => {
+      const created = await apiRequest<RealWeddingStory>('/stories', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setMySubmittedStories((prev) => [created, ...prev]);
+      showToast(
+        language === 'ar'
+          ? 'تم استلام قصتك وباتت قيد مراجعة المشرف قبل النشر العام.'
+          : 'Story submitted! It stays pending moderator review before public listing.',
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const createCommunityQuestion = useCallback(
+    async (input: {
+      categorySlug: CommunityCategorySlug;
+      titleAr: string;
+      titleEn?: string;
+      bodyAr: string;
+      bodyEn?: string;
+      tags?: string[];
+    }) => {
+      const created = await apiRequest<CommunityQuestion>('/community/questions', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      setCommunityQuestions((prev) => [created, ...prev]);
+      showToast(language === 'ar' ? 'تم نشر سؤالك في مجتمع جواز إن.' : 'Question published to Community Q&A.');
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const postCommunityAnswer = useCallback(
+    async (questionId: string, bodyAr: string, bodyEn?: string) => {
+      const created = await apiRequest<CommunityAnswer>(
+        `/community/questions/${encodeURIComponent(questionId)}/answers`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ bodyAr, bodyEn }),
+        },
+      );
+      setCommunityQuestions((prev) =>
+        prev.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                answersCount: q.answersCount + 1,
+                answers: [...(q.answers || []), created],
+              }
+            : q,
+        ),
+      );
+      showToast(language === 'ar' ? 'تمت إضافة إجابتك بنجاح.' : 'Answer posted successfully.');
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const toggleCommunityVote = useCallback(
+    async (targetType: 'question' | 'answer', targetId: string) => {
+      const res = await apiRequest<{ upvoted: boolean; upvotesCount: number }>('/community/vote', {
+        method: 'POST',
+        body: JSON.stringify({ targetType, targetId }),
+      });
+      setCommunityQuestions((prev) =>
+        prev.map((q) => {
+          if (targetType === 'question' && q.id === targetId) {
+            return { ...q, viewerUpvoted: res.upvoted, upvotesCount: res.upvotesCount };
+          }
+          if (targetType === 'answer') {
+            return {
+              ...q,
+              answers: (q.answers || []).map((a) =>
+                a.id === targetId
+                  ? { ...a, viewerUpvoted: res.upvoted, upvotesCount: res.upvotesCount }
+                  : a,
+              ),
+            };
+          }
+          return q;
+        }),
+      );
+    },
+    [],
+  );
+
+  const markAnswerHelpful = useCallback(
+    async (questionId: string, answerId: string) => {
+      await apiRequest(
+        `/community/questions/${encodeURIComponent(questionId)}/answers/${encodeURIComponent(answerId)}/helpful`,
+        { method: 'POST' },
+      );
+      setCommunityQuestions((prev) =>
+        prev.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                isResolved: true,
+                answers: (q.answers || []).map((a) =>
+                  a.id === answerId ? { ...a, isHelpfulMarked: true } : a,
+                ),
+              }
+            : q,
+        ),
+      );
+      showToast(language === 'ar' ? 'تم تمييز الإجابة كمفيدة وحل السؤال.' : 'Marked answer as helpful.');
+    },
+    [language, showToast],
+  );
+
+  const submitCommunityReport = useCallback(
+    async (input: {
+      targetType: 'question' | 'answer' | 'story' | 'vendor_review';
+      targetId: string;
+      reason: CommunityReportReason;
+      details?: string | null;
+    }) => {
+      const created = await apiRequest<CommunityReport>('/community/reports', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      showToast(
+        language === 'ar'
+          ? 'تم إرسال البلاغ لفريق الإشراف لمراجعته.'
+          : 'Report submitted to the moderation queue.',
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const applyExpertProfile = useCallback(
+    async (input: {
+      displayNameAr: string;
+      displayNameEn: string;
+      specialtySlug: ExpertSpecialtySlug;
+      titleAr: string;
+      titleEn: string;
+      governorateSlug: string;
+      yearsExperience: number;
+      credentialsAr: string;
+      credentialsEn: string;
+      bioAr: string;
+      bioEn: string;
+      verificationDocs: string[];
+    }) => {
+      const created = await apiRequest<ExpertProfile>('/experts/apply', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      showToast(
+        language === 'ar'
+          ? 'تم استلام طلب اعتماد الخبير بنجاح وهو قيد فحص الأوراق عبر الإدارة.'
+          : 'Expert credential application received (pending admin audit).',
+      );
+      return created;
+    },
+    [language, showToast],
+  );
+
+  const refreshAdminStage9 = useCallback(async () => {
+    if (!apiConnected || !currentUser || !hasAnyRole(currentUser.role, ADMIN_PANEL_ROLES)) return;
+    const [anData, modData] = await Promise.all([
+      apiRequest<AdminAnalyticsPayload>('/admin/analytics').catch(() => null),
+      hasAnyRole(currentUser.role, MODERATION_ROLES)
+        ? apiRequest<AdminModerationOverview>('/admin/moderation/overview').catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    if (anData) setAdminAnalytics(anData);
+    if (modData) setAdminModeration(modData);
+  }, [apiConnected, currentUser]);
+
+  const moderateStoryDecision = useCallback(
+    async (
+      storyId: string,
+      input: { moderationStatus: StoryModerationStatus; moderationNotes?: string | null; isFeatured?: boolean },
+    ) => {
+      const updated = await apiRequest<RealWeddingStory>(
+        `/admin/moderation/stories/${encodeURIComponent(storyId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(input),
+        },
+      );
+      setAdminModeration((prev) =>
+        prev
+          ? { ...prev, stories: prev.stories.map((s) => (s.id === updated.id ? updated : s)) }
+          : prev,
+      );
+      await refreshStage9Public();
+      await refreshAdminStage9();
+      showToast(
+        language === 'ar'
+          ? `تم تحديث مراجعة القصة إلى: ${updated.moderationStatus}`
+          : `Story moderation updated to ${updated.moderationStatus}.`,
+      );
+      return updated;
+    },
+    [language, refreshAdminStage9, refreshStage9Public, showToast],
+  );
+
+  const resolveCommunityReportDecision = useCallback(
+    async (reportId: string, input: { action: 'resolve_hide' | 'dismiss'; resolutionNote?: string | null }) => {
+      const updated = await apiRequest<CommunityReport>(
+        `/admin/moderation/reports/${encodeURIComponent(reportId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(input),
+        },
+      );
+      setAdminModeration((prev) =>
+        prev
+          ? { ...prev, reports: prev.reports.map((r) => (r.id === updated.id ? updated : r)) }
+          : prev,
+      );
+      await refreshStage9Public();
+      await refreshAdminStage9();
+      showToast(language === 'ar' ? 'تم تنفيذ قرار الإشراف على البلاغ.' : 'Report moderation decision recorded.');
+      return updated;
+    },
+    [language, refreshAdminStage9, refreshStage9Public, showToast],
+  );
+
+  const verifyExpertProfileDecision = useCallback(
+    async (
+      expertId: string,
+      input: { verificationStatus: ExpertVerificationStatus; verificationNotes?: string | null; isFeatured?: boolean },
+    ) => {
+      const updated = await apiRequest<ExpertProfile>(
+        `/admin/moderation/experts/${encodeURIComponent(expertId)}/verify`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(input),
+        },
+      );
+      setAdminModeration((prev) =>
+        prev
+          ? { ...prev, experts: prev.experts.map((e) => (e.id === updated.id ? updated : e)) }
+          : prev,
+      );
+      await refreshStage9Public();
+      await refreshAdminStage9();
+      showToast(
+        language === 'ar'
+          ? `تم تحديث اعتماد الخبير إلى: ${updated.verificationStatus}`
+          : `Expert verification status updated to ${updated.verificationStatus}.`,
+      );
+      return updated;
+    },
+    [language, refreshAdminStage9, refreshStage9Public, showToast],
+  );
+
+  const adminUpdateArticleStatus = useCallback(
+    async (articleId: string, patch: { status?: Article['status']; isFeatured?: boolean }) => {
+      const updated = await apiRequest<Article>(
+        `/admin/cms/articles/${encodeURIComponent(articleId)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      );
+      setArticles((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      showToast(language === 'ar' ? 'تم تحديث حالة المقال بنجاح.' : 'Article status updated.');
+      return updated;
+    },
+    [language, showToast],
+  );
+
+  const adminUpdateUserStatus = useCallback(
+    async (userId: string, status: User['status']) => {
+      const updated = await apiRequest<User>(`/admin/users/${encodeURIComponent(userId)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      setAdminUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      showToast(language === 'ar' ? 'تم تحديث حالة الحساب بنجاح.' : 'User status updated.');
+      return updated;
+    },
+    [language, showToast],
+  );
+
   // Modals & Prefill
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
@@ -3538,6 +4010,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         postRfqMessage,
         createMarketplaceAppointment,
         patchMarketplaceAppointment,
+        realWeddings,
+        mySubmittedStories,
+        communityQuestions,
+        verifiedExperts,
+        adminAnalytics,
+        adminModeration,
+        refreshStage9Public,
+        submitWeddingStory,
+        createCommunityQuestion,
+        postCommunityAnswer,
+        toggleCommunityVote,
+        markAnswerHelpful,
+        submitCommunityReport,
+        applyExpertProfile,
+        refreshAdminStage9,
+        moderateStoryDecision,
+        resolveCommunityReportDecision,
+        verifyExpertProfileDecision,
+        adminUpdateArticleStatus,
+        adminUpdateUserStatus,
         authModalOpen,
         setAuthModalOpen,
         finishingModalOpen,

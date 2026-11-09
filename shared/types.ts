@@ -1894,6 +1894,216 @@ export interface VendorCrmOverviewPayload {
   wonValueEgp: number;
 }
 
+// ==============================================================================
+// STAGE 9: MY WEDDING STORY, COMMUNITY Q&A, EXPERTS & ADMIN OS ANALYTICS
+// ==============================================================================
+
+export type StoryModerationStatus = 'pending' | 'approved' | 'rejected';
+
+export type CommunityCategorySlug =
+  | 'finishing'
+  | 'groom'
+  | 'bride'
+  | 'wedding'
+  | 'budget'
+  | 'early_start'
+  | 'married_life';
+
+export type CommunityModerationStatus = 'approved' | 'flagged' | 'hidden';
+
+export type CommunityReportReason =
+  | 'spam'
+  | 'misleading_price'
+  | 'harassment'
+  | 'off_topic'
+  | 'self_promo';
+
+export type CommunityReportStatus = 'open' | 'resolved_hidden' | 'dismissed';
+
+export type ExpertSpecialtySlug =
+  | 'finishing_engineering'
+  | 'financial_planning'
+  | 'bridal_trousseau'
+  | 'wedding_direction'
+  | 'married_life_counseling';
+
+export type ExpertVerificationStatus = 'pending' | 'verified' | 'rejected';
+
+export interface RealWeddingCostLine {
+  categoryAr: string;
+  categoryEn: string;
+  amountEgp: number;
+}
+
+export interface RealWeddingStory {
+  id: string;
+  userId?: string | null;
+  authorName?: string | null;
+  coupleTitleAr: string;
+  coupleTitleEn: string;
+  governorateSlug: string;
+  cityAr: string;
+  cityEn: string;
+  weddingYear: number;
+  guestCount: number;
+  totalActualBudgetEgp: number;
+  finishingCostEgp: number;
+  groomTrousseauEgp: number;
+  brideTrousseauEgp: number;
+  weddingCostEgp: number;
+  preparationMonths: number;
+  summaryAr: string;
+  summaryEn: string;
+  lessonsLearnedAr: string;
+  lessonsLearnedEn: string;
+  costBreakdown: RealWeddingCostLine[];
+  photos: string[];
+  moderationStatus: StoryModerationStatus;
+  moderationNotes?: string | null;
+  moderatedByUserId?: string | null;
+  moderatedAt?: string | null;
+  isFeatured: boolean;
+  isDemoData: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityAnswer {
+  id: string;
+  questionId: string;
+  userId: string;
+  authorName: string;
+  authorRole?: UserRole;
+  authorExpertTitleAr?: string | null;
+  authorExpertTitleEn?: string | null;
+  bodyAr: string;
+  bodyEn: string;
+  isExpertAnswer: boolean;
+  isHelpfulMarked: boolean;
+  upvotesCount: number;
+  moderationStatus: CommunityModerationStatus;
+  viewerUpvoted?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityQuestion {
+  id: string;
+  userId: string;
+  authorName: string;
+  categorySlug: CommunityCategorySlug;
+  titleAr: string;
+  titleEn: string;
+  bodyAr: string;
+  bodyEn: string;
+  tags: string[];
+  moderationStatus: CommunityModerationStatus;
+  upvotesCount: number;
+  answersCount: number;
+  isResolved: boolean;
+  isDemoData: boolean;
+  viewerUpvoted?: boolean;
+  answers?: CommunityAnswer[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityReport {
+  id: string;
+  reporterUserId: string;
+  reporterName?: string;
+  targetType: 'question' | 'answer' | 'story' | 'vendor_review';
+  targetId: string;
+  targetPreview?: string;
+  reason: CommunityReportReason;
+  details?: string | null;
+  status: CommunityReportStatus;
+  reviewedByUserId?: string | null;
+  resolutionNote?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export interface ExpertProfile {
+  id: string;
+  userId: string;
+  slug: string;
+  displayNameAr: string;
+  displayNameEn: string;
+  specialtySlug: ExpertSpecialtySlug;
+  titleAr: string;
+  titleEn: string;
+  governorateSlug: string;
+  yearsExperience: number;
+  credentialsAr: string;
+  credentialsEn: string;
+  bioAr: string;
+  bioEn: string;
+  avatarUrl: string;
+  verificationStatus: ExpertVerificationStatus;
+  verificationDocs: string[];
+  verificationNotes?: string | null;
+  verifiedByUserId?: string | null;
+  verifiedAt?: string | null;
+  answersCount: number;
+  helpfulCount: number;
+  isFeatured: boolean;
+  isDemoData: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminModerationOverview {
+  stories: RealWeddingStory[];
+  reports: CommunityReport[];
+  flaggedQuestions: CommunityQuestion[];
+  experts: ExpertProfile[];
+}
+
+export interface AdminAnalyticsPayload {
+  generatedAt: string;
+  privacyNotice: string;
+  usersSummary: {
+    totalUsers: number;
+    activeCustomers: number;
+    vendorPartners: number;
+    verifiedExpertsCount: number;
+    stageDistribution: { stage: LifecycleStage; count: number }[];
+  };
+  marketplaceFunnel: {
+    totalVendors: number;
+    verifiedVendors: number;
+    trustedVendors: number;
+    totalRfqs: number;
+    openRfqs: number;
+    quotedRfqs: number;
+    acceptedRfqs: number;
+    rfqAcceptanceRatePct: number;
+    totalInvitations: number;
+    respondedInvitations: number;
+    vendorResponseRatePct: number;
+    totalAppointments: number;
+    confirmedOrCompletedAppointments: number;
+  };
+  communitySummary: {
+    approvedStoriesCount: number;
+    pendingStoriesCount: number;
+    questionsCount: number;
+    answersCount: number;
+    openReportsCount: number;
+    pendingExpertsCount: number;
+  };
+  contentTopReads: {
+    id: string;
+    slug: string;
+    titleAr: string;
+    titleEn: string;
+    domain: Article['domain'];
+    viewCount: number;
+  }[];
+}
+
+
 
 
 

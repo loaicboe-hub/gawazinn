@@ -76,19 +76,31 @@ Format: JSON (`application/json`), UTF-8, standardized envelope:
 - `GET /api/v1/appointments`, `POST /api/v1/appointments`, `PATCH /api/v1/appointments/:id` *(Auth-Required)* — Slot booking scheduling (`requested`), customer reschedule/cancel (blocks customer self-confirm with `403 CUSTOMER_CANNOT_CONFIRM`), and vendor confirmation/completion syncing CRM activities and notifications.
 - `GET /api/v1/vendor-portal/crm`, `GET /api/v1/vendor-portal/rfqs`, `GET /api/v1/vendor-portal/appointments`, `POST /api/v1/vendor-portal/crm/leads`, `PATCH /api/v1/vendor-portal/crm/leads/:leadId`, `POST /api/v1/vendor-portal/crm/leads/:leadId/activities` *(Owner-Guarded RBAC)* — Full 8-stage CRM pipeline, KPI totals, stage transitions, and activity timeline feed.
 
-## Community, Stories, AI, Wedding Day & Home Care
-- `GET/POST /api/v1/community/questions`, `POST /:id/answers`, `POST /:id/vote`, `POST /api/v1/community/reports`
-- `GET/POST /api/v1/stories` — Customer wedding stories (public shows `approved` only).
-- `GET /api/v1/experts` — Verified expert directory.
-- `POST /api/v1/ai/assist` — Grounded assistant querying live DB catalogs + calculators + user's own authorized journey context.
-- `GET/POST/PATCH/DELETE /api/v1/wedding-day/*` (invitations, public `/rsvp/:code`, guests, tables, schedule, registry).
-- `GET/POST/PATCH/DELETE /api/v1/home-care/*` (inventory, warranties, maintenance reminders, home documents).
+## Real Wedding Stories, Community Q&A & Verified Experts *(Stage 9 Implemented)*
+- `GET /api/v1/stories` — Public list returning exclusively `moderationStatus === 'approved'` Real Wedding stories (`?governorate=`, `?maxBudget=`); rejects any unapproved stories from leaking publicly.
+- `GET /api/v1/my/stories` & `POST /api/v1/stories` *(Auth-Required)* — Customer views their own submitted story statuses (`pending|approved|rejected`) and submits a new story with cost breakdowns (always initialized `pending`).
+- `GET /api/v1/community/questions` — Lists moderated questions (`moderation_status != 'hidden'`, along with non-hidden answers and optional viewer upvote flags `?category=`, `?q=`, `?sort=latest|top_votes`).
+- `POST /api/v1/community/questions` *(Auth-Required)* — Creates a new Q&A question (`approved` default, indexed tags).
+- `POST /api/v1/community/questions/:id/answers` *(Auth-Required)* — Posts an answer where `is_expert_answer` is **strictly derived server-side** from `expert_profiles` (`verification_status = 'verified'`), increments `expert_profiles.answers_count`, and notifies the question author.
+- `POST /api/v1/community/vote` *(Auth-Required)* — Idempotent toggle (`community_votes`) returning updated `upvotesCount` and `viewerUpvoted`.
+- `POST /api/v1/community/answers/:id/helpful` *(Question Owner / Staff)* — Marks an answer helpful and updates `expert_profiles.helpful_count`.
+- `POST /api/v1/community/reports` *(Auth-Required)* — Files abuse/misleading-price report against a question or answer.
+- `GET /api/v1/experts` — Public directory listing **only** admin-verified advisors (`verificationStatus === 'verified'`, `?specialty=`, `?governorate=`).
+- `POST /api/v1/experts/apply` *(Auth-Required)* — Submits an Expert Credential Verification request locked initially to `pending` (`409 EXPERT_APPLICATION_EXISTS` on duplicates).
 
-## Administration (`Admin OS`, RBAC-guarded)
-- `GET /api/v1/admin/analytics` — Real DB aggregates (users by stage, RFQs, response rates, conversions, content reads).
-- `GET/PATCH /api/v1/admin/vendors/:id/verify` — Verification review separated from billing.
-- `GET/POST/PATCH/DELETE /api/v1/admin/cms/*` — Articles, categories, materials, local pages.
-- `GET/PATCH /api/v1/admin/moderation/*` — Stories, community questions/answers/reports, expert credential verification.
-- `GET/PATCH /api/v1/admin/commercial/*` — Subscription plans & commission settings.
-- `GET /api/v1/admin/audit-logs` — Immutable security & moderation log.
+## Upcoming Stage 10–11 Endpoints
+- `POST /api/v1/ai/assist` *(Stage 10)* — Grounded assistant querying live DB catalogs + calculators + user's own authorized journey context.
+- `GET/POST/PATCH/DELETE /api/v1/wedding-day/*` *(Stage 10)* — Invitations, public `/rsvp/:code`, guests, tables, schedule, registry.
+- `GET/POST/PATCH/DELETE /api/v1/home-care/*` *(Stage 11)* — Inventory, warranties, maintenance reminders, home documents.
+
+## Administration (`Admin OS`, RBAC-guarded — Stage 9 Completed)
+- `GET /api/v1/admin/analytics` *(MODERATION_ROLES | editor)* — Real SQLite aggregates (users by lifecycle stage, public content vs. private non-exposed counts, RFQ funnel & quote response rate, community Q&A & expert totals, top viewed CMS guides — privacy notice excludes personal savings/PII).
+- `GET /api/v1/admin/vendors` & `PATCH /api/v1/admin/vendors/:id/verify` *(Full Admin RBAC)* — Verification review strictly separated from billing.
+- `GET /api/v1/admin/moderation/overview` *(MODERATION_ROLES | editor)* — Moderation queue (`pending` stories, `open` reports, `expertApplications`).
+- `PATCH /api/v1/admin/moderation/stories/:id` *(MODERATION_ROLES)* — Approve or reject real wedding stories (notifies story author & logs audit entry).
+- `PATCH /api/v1/admin/moderation/reports/:id` *(MODERATION_ROLES)* — Triage abuse reports (`review|hide_target|dismiss`) and hide infringing Q&A items.
+- `PATCH /api/v1/admin/moderation/experts/:id/verify` *(Full Admin Only — 403 for moderator)* — Verifies or rejects expert credentials and transactionally backfills `is_expert_answer` on prior answers.
+- `PATCH /api/v1/admin/cms/articles/:id` *(CMS_EDITOR_ROLES)* — Updates CMS article status (`draft|in_review|published|archived`), title & excerpt cleanly (403 for moderator).
+- `PATCH /api/v1/admin/users/:id/status` *(Full Admin Only)* — Activates or suspends accounts (prevents self-suspension) with audit logs.
+- `GET/PATCH /api/v1/admin/subscription-plans`, `GET /api/v1/admin/audit-logs` — Subscription plans & immutable security/moderation audit trail.
 

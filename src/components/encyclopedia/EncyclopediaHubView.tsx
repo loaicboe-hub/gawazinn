@@ -228,6 +228,22 @@ export const EncyclopediaHubView: React.FC = () => {
                     descEn: 'Construction idioms, legal FAQs & calculator shortcuts.',
                     icon: <HelpCircle className="w-5 h-5 text-[#D91B3E]" />,
                   },
+                  {
+                    to: '/real-weddings',
+                    titleAr: 'قصص الزفاف والميزانيات الحقيقية',
+                    titleEn: 'Real Weddings & Actual Budgets',
+                    descAr: 'تجارب أزواج حقيقية بتفصيل تكاليف التشطيب والجهاز والفرح.',
+                    descEn: 'Moderated case studies showing exact EGP allocations & lessons.',
+                    icon: <Heart className="w-5 h-5 text-[#D91B3E]" />,
+                  },
+                  {
+                    to: '/community',
+                    titleAr: 'منتدى المجتمع واستشارات الخبراء',
+                    titleEn: 'Community Q&A & Expert Advisors',
+                    descAr: 'اسأل واستشر مهندسين ومخططين ماليين معتمدين بالمنصة.',
+                    descEn: 'Peer discussions with verified finishing & financial specialists.',
+                    icon: <Compass className="w-5 h-5 text-[#D91B3E]" />,
+                  },
                 ].map((hub) => (
                   <Link
                     key={hub.to}

@@ -22,6 +22,12 @@ import {
   AlertCircle,
   Store,
   RefreshCw,
+  BarChart3,
+  BadgeCheck,
+  Flag,
+  CheckCircle2,
+  XCircle,
+  MessageSquare,
 } from 'lucide-react';
 import type {
   Product,
@@ -31,7 +37,12 @@ import type {
   VendorVerificationStatus,
   SubscriptionPlan,
 } from '../../types';
-import { getRoleLabel } from '../../../shared/rbac';
+import {
+  CMS_EDITOR_ROLES,
+  MODERATION_ROLES,
+  getRoleLabel,
+  hasAnyRole,
+} from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
 import { ModalFrame } from '../common/ModalFrame';
 import {
@@ -81,7 +92,18 @@ export const AdminDashboardView: React.FC = () => {
     refreshAdminVendors,
     adminVerifyVendor,
     adminUpdateSubscriptionPlan,
+    adminAnalytics,
+    adminModeration,
+    refreshAdminStage9,
+    moderateStoryDecision,
+    resolveCommunityReportDecision,
+    verifyExpertProfileDecision,
+    adminUpdateArticleStatus,
+    adminUpdateUserStatus,
   } = useApp();
+
+  const canModerate = hasAnyRole(currentUser?.role, MODERATION_ROLES);
+  const canEditCms = hasAnyRole(currentUser?.role, CMS_EDITOR_ROLES);
 
   const [activeModule, setActiveModule] = useState<
     | 'overview'
@@ -90,6 +112,7 @@ export const AdminDashboardView: React.FC = () => {
     | 'bride'
     | 'wedding'
     | 'vendors'
+    | 'moderation'
     | 'cms'
     | 'customers'
     | 'financing'
@@ -172,6 +195,16 @@ export const AdminDashboardView: React.FC = () => {
       void refreshAdminVendors();
     }
   }, [isAdmin, activeModule, adminVendors.length, refreshAdminVendors]);
+
+  useEffect(() => {
+    if (
+      isStaff &&
+      (activeModule === 'overview' || activeModule === 'moderation') &&
+      (!adminAnalytics || (canModerate && !adminModeration))
+    ) {
+      void refreshAdminStage9();
+    }
+  }, [isStaff, activeModule, adminAnalytics, adminModeration, canModerate, refreshAdminStage9]);
 
   // Strict RBAC Enforcement
   if (!currentUser || !isStaff) {
@@ -448,6 +481,24 @@ export const AdminDashboardView: React.FC = () => {
           },
         ]
       : []),
+    ...(canModerate
+      ? [
+          {
+            key: 'moderation' as const,
+            labelAr: 'الإشراف والقصص والخبراء',
+            labelEn: 'Moderation & Experts',
+            icon: <Flag className="w-4 h-4" />,
+            badge:
+              (adminModeration?.stories.filter((s) => s.moderationStatus === 'pending').length ??
+                0) +
+                (adminModeration?.reports.filter((r) => r.status === 'open').length ?? 0) +
+                (isAdmin
+                  ? adminModeration?.experts.filter((e) => e.verificationStatus === 'pending')
+                      .length ?? 0
+                  : 0) || undefined,
+          },
+        ]
+      : []),
     {
       key: 'cms',
       labelAr: 'الموسوعة والمحتوى (CMS)',
@@ -705,6 +756,167 @@ export const AdminDashboardView: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Stage 9 Admin OS Analytics Center */}
+            {adminAnalytics && (
+              <div
+                data-testid="admin-analytics-panel"
+                className="bg-white p-6 rounded-3xl border border-[#D91B3E]/15 shadow-sm space-y-6"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                  <div className="space-y-1">
+                    <h2 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-[#D91B3E]" />
+                      <span>
+                        {language === 'ar'
+                          ? 'مركز تحليلات المنصة وقمع الشركاء والمجتمع'
+                          : 'Admin OS Platform Analytics & Funnel Intelligence'}
+                      </span>
+                    </h2>
+                    <p
+                      data-testid="admin-analytics-privacy-notice"
+                      className="text-[11px] font-bold text-emerald-700"
+                    >
+                      🔒 {adminAnalytics.privacyNotice}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void refreshAdminStage9()}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#B31331] text-xs font-bold border border-rose-100 self-start cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>{language === 'ar' ? 'تحديث التحليلات' : 'Refresh Analytics'}</span>
+                  </button>
+                </div>
+
+                {/* Funnel & Community Aggregate Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
+                    <span className="text-gray-500 block">
+                      {language === 'ar' ? 'طلبات التسعير (RFQ)' : 'Multi-Vendor RFQs'}
+                    </span>
+                    <strong className="text-xl font-black text-[#2A1D20] block">
+                      {adminAnalytics.marketplaceFunnel.totalRfqs}
+                    </strong>
+                    <span className="text-[11px] font-bold text-[#D91B3E]">
+                      {adminAnalytics.marketplaceFunnel.quotedRfqs}{' '}
+                      {language === 'ar' ? 'مسعّر' : 'quoted'} •{' '}
+                      {adminAnalytics.marketplaceFunnel.acceptedRfqs}{' '}
+                      {language === 'ar' ? 'مقبول' : 'accepted'} (
+                      {adminAnalytics.marketplaceFunnel.rfqAcceptanceRatePct}%)
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
+                    <span className="text-gray-500 block">
+                      {language === 'ar' ? 'معدل استجابة الشركاء' : 'Vendor Response Rate'}
+                    </span>
+                    <strong className="text-xl font-black text-emerald-700 block">
+                      {adminAnalytics.marketplaceFunnel.vendorResponseRatePct}%
+                    </strong>
+                    <span className="text-[11px] text-gray-600">
+                      {adminAnalytics.marketplaceFunnel.respondedInvitations}/
+                      {adminAnalytics.marketplaceFunnel.totalInvitations}{' '}
+                      {language === 'ar' ? 'دعوة تسعير' : 'invitations'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
+                    <span className="text-gray-500 block">
+                      {language === 'ar' ? 'المجتمع والقصص' : 'Community & Stories'}
+                    </span>
+                    <strong className="text-xl font-black text-[#D91B3E] block">
+                      {adminAnalytics.communitySummary.approvedStoriesCount}{' '}
+                      <span className="text-xs font-bold text-gray-600">
+                        {language === 'ar' ? 'قصة' : 'stories'}
+                      </span>
+                    </strong>
+                    <span className="text-[11px] text-gray-600">
+                      {adminAnalytics.communitySummary.questionsCount}{' '}
+                      {language === 'ar' ? 'سؤال' : 'Qs'} •{' '}
+                      {adminAnalytics.communitySummary.openReportsCount}{' '}
+                      {language === 'ar' ? 'بلاغ مفتوح' : 'open reports'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
+                    <span className="text-gray-500 block">
+                      {language === 'ar' ? 'الخبراء والشركاء الموثقون' : 'Verified Partners & Experts'}
+                    </span>
+                    <strong className="text-xl font-black text-[#2A1D20] block">
+                      {adminAnalytics.marketplaceFunnel.verifiedVendors} /{' '}
+                      {adminAnalytics.usersSummary.verifiedExpertsCount}
+                    </strong>
+                    <span className="text-[11px] text-gray-600">
+                      {language === 'ar' ? 'شريك موثق / خبير معتمد' : 'verified vendors / experts'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Lifecycle Stages + Top Read Articles */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-3">
+                    <h3 className="font-black text-gray-900">
+                      {language === 'ar'
+                        ? 'توزيع المستخدمين على مراحل الرحلة (11 مرحلة)'
+                        : 'User Distribution Across 11 Lifecycle Stages'}
+                    </h3>
+                    <div className="space-y-2">
+                      {adminAnalytics.usersSummary.stageDistribution.map((row) => {
+                        const pct =
+                          adminAnalytics.usersSummary.totalUsers > 0
+                            ? Math.round((row.count / adminAnalytics.usersSummary.totalUsers) * 100)
+                            : 0;
+                        return (
+                          <div key={row.stage} className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-bold">
+                              <span className="font-mono text-gray-700">{row.stage}</span>
+                              <span className="text-[#D91B3E]">
+                                {row.count} ({pct}%)
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white overflow-hidden border border-gray-200">
+                              <div
+                                className="h-full bg-[#D91B3E] rounded-full"
+                                style={{ width: `${Math.max(8, pct)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-3">
+                    <h3 className="font-black text-gray-900">
+                      {language === 'ar'
+                        ? 'أكثر أدلة الموسوعة قراءة'
+                        : 'Top Read Encyclopedia Guides'}
+                    </h3>
+                    <div className="space-y-2">
+                      {adminAnalytics.contentTopReads.map((art) => (
+                        <div
+                          key={art.id}
+                          className="p-2.5 rounded-xl bg-white border border-gray-200 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <strong className="text-gray-900 block truncate">
+                              {language === 'ar' ? art.titleAr : art.titleEn}
+                            </strong>
+                            <span className="text-[10px] text-gray-500">{art.domain}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-lg bg-[#FDE8ED] text-[#B31331] font-black shrink-0">
+                            {art.viewCount} {language === 'ar' ? 'قراءة' : 'views'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1318,6 +1530,283 @@ export const AdminDashboardView: React.FC = () => {
           </div>
         )}
 
+        {/* 5C. STAGE 9 MODERATION QUEUE (STORIES, REPORTS & FULL-ADMIN EXPERT VERIFICATION) */}
+        {activeModule === 'moderation' && canModerate && (
+          <div className="space-y-8" data-testid="admin-moderation-panel">
+            <div className="bg-gradient-to-br from-[#1C1819] to-[#261618] text-white p-6 rounded-3xl border border-rose-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-rose-300">
+                  {language === 'ar'
+                    ? 'حوكمة المجتمع والمحتوى المُرسل من المستخدمين'
+                    : 'MODERATION & CREDENTIAL AUDIT WORKFLOW'}
+                </span>
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  {language === 'ar'
+                    ? 'مراجعة قصص الزفاف وبلاغات المجتمع واعتماد الخبراء'
+                    : 'Wedding Story Review, Abuse Triage & Expert Verification'}
+                </h2>
+                <p className="text-xs text-gray-300">
+                  {language === 'ar'
+                    ? 'القصص تظل مخفية عن العامة حتى اعتماد المشرف. اعتماد شارات الخبراء مقتصر على المدير العام (Full Admin) بعد فحص المستندات.'
+                    : 'Stories stay hidden until moderator approval. Expert credential verification requires Full Admin privileges.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshAdminStage9()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>{language === 'ar' ? 'تحديث الطابور' : 'Refresh Queue'}</span>
+              </button>
+            </div>
+
+            {/* 1. Real Wedding Stories Moderation Queue */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Heart className="w-4 h-4 text-[#D91B3E]" />
+                <span>
+                  {language === 'ar'
+                    ? `قصص الزفاف الواردة للمراجعة (${adminModeration?.stories.length ?? 0})`
+                    : `Submitted Wedding Stories Queue (${adminModeration?.stories.length ?? 0})`}
+                </span>
+              </h3>
+
+              <div className="space-y-3">
+                {(adminModeration?.stories || []).map((st) => (
+                  <div
+                    key={st.id}
+                    data-testid={`mod-story-card-${st.id}`}
+                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm font-black text-gray-900">
+                          {language === 'ar' ? st.coupleTitleAr : st.coupleTitleEn}
+                        </strong>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            st.moderationStatus === 'approved'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : st.moderationStatus === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}
+                        >
+                          {st.moderationStatus}
+                        </span>
+                      </div>
+                      <p className="text-gray-600">
+                        {st.authorName || 'GAWAZ INN'} • {language === 'ar' ? st.cityAr : st.cityEn} •{' '}
+                        {st.totalActualBudgetEgp.toLocaleString()} {t.groom.egp}
+                      </p>
+                      <p className="text-gray-700 line-clamp-2">{st.summaryAr}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        data-testid={`mod-story-approve-${st.id}`}
+                        onClick={() =>
+                          void moderateStoryDecision(st.id, {
+                            moderationStatus: 'approved',
+                            moderationNotes: 'Approved by Moderator after checking budget consistency.',
+                          })
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{language === 'ar' ? 'موافقة ونشر' : 'Approve'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`mod-story-reject-${st.id}`}
+                        onClick={() =>
+                          void moderateStoryDecision(st.id, {
+                            moderationStatus: 'rejected',
+                            moderationNotes: 'Rejected by Moderator during quality check.',
+                          })
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>{language === 'ar' ? 'رفض' : 'Reject'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Community Abuse Reports Triage */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#D91B3E]" />
+                <span>
+                  {language === 'ar'
+                    ? `بلاغات إساءة الاستخدام في المجتمع (${adminModeration?.reports.length ?? 0})`
+                    : `Community Abuse Reports (${adminModeration?.reports.length ?? 0})`}
+                </span>
+              </h3>
+
+              <div className="space-y-3">
+                {(adminModeration?.reports || []).map((rep) => (
+                  <div
+                    key={rep.id}
+                    data-testid={`mod-report-card-${rep.id}`}
+                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#FDE8ED] text-[#B31331] font-bold">
+                          {rep.targetType} • {rep.reason}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            rep.status === 'open'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
+                          {rep.status}
+                        </span>
+                      </div>
+                      <strong className="text-gray-900 block">
+                        {rep.targetPreview || rep.targetId}
+                      </strong>
+                      <span className="text-gray-500 block">
+                        {rep.reporterName || rep.reporterUserId}
+                        {rep.details ? ` — ${rep.details}` : ''}
+                      </span>
+                    </div>
+
+                    {rep.status === 'open' && (
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          data-testid={`mod-report-hide-${rep.id}`}
+                          onClick={() =>
+                            void resolveCommunityReportDecision(rep.id, {
+                              action: 'resolve_hide',
+                              resolutionNote: 'Content hidden after moderator investigation.',
+                            })
+                          }
+                          className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+                        >
+                          {language === 'ar' ? 'إخفاء المحتوى وإغلاق' : 'Resolve & Hide'}
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`mod-report-dismiss-${rep.id}`}
+                          onClick={() =>
+                            void resolveCommunityReportDecision(rep.id, {
+                              action: 'dismiss',
+                              resolutionNote: 'Dismissed after moderator check.',
+                            })
+                          }
+                          className="px-3 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 cursor-pointer"
+                        >
+                          {language === 'ar' ? 'رفض البلاغ (إبقاء)' : 'Dismiss Report'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Full-Admin Only: Expert Credential Verification */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <BadgeCheck className="w-4 h-4 text-[#D91B3E]" />
+                  <span>
+                    {language === 'ar'
+                      ? `طلبات توثيق الخبراء (${adminModeration?.experts.length ?? 0})`
+                      : `Expert Credential Verification (${adminModeration?.experts.length ?? 0})`}
+                  </span>
+                </h3>
+                {!isAdmin && (
+                  <span className="text-[11px] font-bold text-[#B31331] bg-[#FDE8ED] px-3 py-1 rounded-full">
+                    {language === 'ar'
+                      ? 'اعتماد الخبراء مقتصر على المدير العام (Admin) فقط'
+                      : 'Full Admin Only'}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {(adminModeration?.experts || []).map((exp) => (
+                  <div
+                    key={exp.id}
+                    data-testid={`admin-expert-row-${exp.id}`}
+                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm font-black text-gray-900">
+                          {language === 'ar' ? exp.displayNameAr : exp.displayNameEn}
+                        </strong>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            exp.verificationStatus === 'verified'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : exp.verificationStatus === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}
+                        >
+                          {exp.verificationStatus}
+                        </span>
+                      </div>
+                      <p className="text-gray-600">
+                        {exp.specialtySlug} • {language === 'ar' ? exp.titleAr : exp.titleEn}
+                      </p>
+                      <p className="text-gray-500">
+                        {language === 'ar' ? 'المستندات:' : 'Docs:'}{' '}
+                        {exp.verificationDocs.join(' • ')}
+                      </p>
+                    </div>
+
+                    {isAdmin && (
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          data-testid={`admin-expert-verify-${exp.id}`}
+                          onClick={() =>
+                            void verifyExpertProfileDecision(exp.id, {
+                              verificationStatus: 'verified',
+                              verificationNotes: 'Credentials verified by Admin.',
+                            })
+                          }
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                        >
+                          <BadgeCheck className="w-3.5 h-3.5" />
+                          <span>{language === 'ar' ? 'توثيق واعتماد' : 'Verify Expert'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`admin-expert-reject-${exp.id}`}
+                          onClick={() =>
+                            void verifyExpertProfileDecision(exp.id, {
+                              verificationStatus: 'rejected',
+                              verificationNotes: 'Credentials insufficient.',
+                            })
+                          }
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>{language === 'ar' ? 'رفض' : 'Reject'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 6. CMS ARTICLES */}
         {activeModule === 'cms' && (
           <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
@@ -1343,7 +1832,7 @@ export const AdminDashboardView: React.FC = () => {
                   key={art.id}
                   className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[10px] font-bold uppercase text-[#D91B3E] block">
                       {art.domain} • {art.contentType}
                     </span>
@@ -1354,12 +1843,31 @@ export const AdminDashboardView: React.FC = () => {
                       /{art.slug} • {art.authorName}
                     </span>
                   </div>
-                  <Link
-                    to={`/guides/${art.slug}`}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-[#D91B3E] font-bold"
-                  >
-                    {language === 'ar' ? 'معاينة' : 'Preview'}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {canEditCms && (
+                      <select
+                        data-testid={`cms-article-status-${art.id}`}
+                        value={art.status}
+                        onChange={(e) =>
+                          void adminUpdateArticleStatus(art.id, {
+                            status: e.target.value as Article['status'],
+                          })
+                        }
+                        className="max-w-full min-w-0 p-1.5 rounded-lg border border-gray-300 bg-white text-xs font-bold outline-none focus:border-[#D91B3E]"
+                      >
+                        <option value="draft">draft</option>
+                        <option value="in_review">in_review</option>
+                        <option value="published">published</option>
+                        <option value="archived">archived</option>
+                      </select>
+                    )}
+                    <Link
+                      to={`/guides/${art.slug}`}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-[#D91B3E] font-bold"
+                    >
+                      {language === 'ar' ? 'معاينة' : 'Preview'}
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1379,7 +1887,8 @@ export const AdminDashboardView: React.FC = () => {
                 {adminUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex items-center justify-between gap-3"
+                    data-testid={`admin-user-card-${u.id}`}
+                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div className="min-w-0">
                       <strong className="text-sm font-bold text-gray-900 block truncate">
@@ -1389,9 +1898,24 @@ export const AdminDashboardView: React.FC = () => {
                         {u.phone} • {u.email}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-[#D91B3E] bg-white px-2.5 py-1 rounded-lg border border-rose-100 shrink-0">
-                      {getRoleLabel(u.role, language)}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <span className="text-[11px] font-bold text-[#D91B3E] bg-white px-2.5 py-1 rounded-lg border border-rose-100">
+                        {getRoleLabel(u.role, language)}
+                      </span>
+                      {isAdmin && u.id !== currentUser.id && (
+                        <select
+                          data-testid={`admin-user-status-${u.id}`}
+                          value={u.status}
+                          onChange={(e) =>
+                            void adminUpdateUserStatus(u.id, e.target.value as typeof u.status)
+                          }
+                          className="max-w-full min-w-0 p-1 rounded-lg border border-gray-300 bg-white text-[11px] font-bold"
+                        >
+                          <option value="active">active</option>
+                          <option value="suspended">suspended</option>
+                        </select>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

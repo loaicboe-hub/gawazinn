@@ -189,6 +189,34 @@ import {
   slugifyVendorName,
   switchVendorSubscriptionPlan,
 } from './vendorMarketplaceService';
+import {
+  adminVerifyExpertSchema,
+  applyExpertProfileSchema,
+  communityVoteSchema,
+  createCommunityAnswerSchema,
+  createCommunityQuestionSchema,
+  createCommunityReportSchema,
+  createWeddingStorySchema,
+  moderateStorySchema,
+  resolveCommunityReportSchema,
+} from '../shared/schemas';
+import {
+  adminVerifyExpertProfile,
+  applyForExpertVerification,
+  buildAdminAnalytics,
+  buildAdminModerationOverview,
+  createCommunityAnswer,
+  createCommunityQuestion,
+  createCommunityReport,
+  createRealWeddingStory,
+  listCommunityQuestions,
+  listExperts,
+  listRealWeddingStories,
+  markCommunityAnswerHelpful,
+  moderateWeddingStory,
+  resolveCommunityReport,
+  toggleCommunityVote,
+} from './communityAdminService';
 import { DEFAULT_WORKSPACE_PERMISSIONS } from '../shared/journeyWorkspaceData';
 import {
   SlidingWindowRateLimiter,
@@ -847,6 +875,9 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/products',
           '/products/compare',
           '/vendors',
+          '/real-weddings',
+          '/community',
+          '/experts',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
         ];
         const articles = db
@@ -4948,6 +4979,244 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         }
       }
 
+      // ================= STAGE 9: REAL WEDDINGS, COMMUNITY Q&A & EXPERT DIRECTORY =================
+      if (method === 'GET' && route === '/stories') {
+        const govSlug = url.searchParams.get('governorate') || undefined;
+        const mineOnly = url.searchParams.get('mine') === 'true' || url.searchParams.get('mine') === '1';
+        if (mineOnly) {
+          if (!authUser) {
+            sendError(res, 401, 'UNAUTHORIZED', 'Sign in to inspect your submitted stories');
+            return;
+          }
+          sendJson(res, 200, {
+            ok: true,
+            data: listRealWeddingStories(db, { governorateSlug: govSlug, onlyMineForUserId: authUser.id }),
+          });
+          return;
+        }
+        // Public endpoint strictly returns moderation_status = 'approved' ONLY
+        sendJson(res, 200, {
+          ok: true,
+          data: listRealWeddingStories(db, { governorateSlug: govSlug, includeUnapproved: false }),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/stories') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to share your wedding story');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createWeddingStorySchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid wedding story inputs', parsed.error.flatten());
+          return;
+        }
+        const created = createRealWeddingStory(db, authUser, parsed.data);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'community.story_submitted',
+          targetType: 'real_wedding',
+          targetId: created.id,
+          metadata: { moderationStatus: 'pending' },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: created });
+        return;
+      }
+
+      if (method === 'GET' && route === '/community/questions') {
+        const categorySlug = url.searchParams.get('category') || undefined;
+        const q = url.searchParams.get('q') || undefined;
+        const sort = url.searchParams.get('sort') === 'top_votes' ? 'top_votes' : 'latest';
+        sendJson(res, 200, {
+          ok: true,
+          data: listCommunityQuestions(db, {
+            categorySlug,
+            q,
+            sort,
+            includeHidden: false,
+            viewerUserId: authUser?.id,
+          }),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/community/questions') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to ask a community question');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createCommunityQuestionSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid question fields', parsed.error.flatten());
+          return;
+        }
+        const created = createCommunityQuestion(db, authUser, parsed.data);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'community.question_created',
+          targetType: 'community_question',
+          targetId: created.id,
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: created });
+        return;
+      }
+
+      const commAnsMatch = route.match(/^\/community\/questions\/([^/]+)\/answers$/);
+      if (method === 'POST' && commAnsMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to post an answer');
+          return;
+        }
+        const questionId = decodeURIComponent(commAnsMatch[1]);
+        const body = await readJsonBody(req);
+        const parsed = createCommunityAnswerSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid answer text', parsed.error.flatten());
+          return;
+        }
+        const result = createCommunityAnswer(db, authUser, questionId, parsed.data);
+        if (!result) {
+          sendError(res, 404, 'NOT_FOUND', 'Question not found');
+          return;
+        }
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'community.answer_created',
+          targetType: 'community_answer',
+          targetId: result.answer.id,
+          metadata: { questionId, isExpertAnswer: result.answer.isExpertAnswer },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: result.answer });
+        return;
+      }
+
+      const commHelpfulMatch = route.match(/^\/community\/questions\/([^/]+)\/answers\/([^/]+)\/helpful$/);
+      if (method === 'POST' && commHelpfulMatch) {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to mark helpful answers');
+          return;
+        }
+        const questionId = decodeURIComponent(commHelpfulMatch[1]);
+        const answerId = decodeURIComponent(commHelpfulMatch[2]);
+        const resHelpful = markCommunityAnswerHelpful(
+          db,
+          authUser,
+          questionId,
+          answerId,
+          hasAnyRole(authUser.role, MODERATION_ROLES),
+        );
+        if ('errorCode' in resHelpful) {
+          sendError(
+            res,
+            resHelpful.errorCode === 'FORBIDDEN' ? 403 : 404,
+            resHelpful.errorCode,
+            resHelpful.errorCode === 'FORBIDDEN'
+              ? 'Only the question author or a moderator may mark helpful answers'
+              : 'Question or answer not found',
+          );
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: { questionId, answerId, isHelpfulMarked: true } });
+        return;
+      }
+
+      if (method === 'POST' && route === '/community/vote') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to upvote');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = communityVoteSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid vote payload', parsed.error.flatten());
+          return;
+        }
+        const result = toggleCommunityVote(db, authUser.id, parsed.data.targetType, parsed.data.targetId);
+        if (!result) {
+          sendError(res, 404, 'NOT_FOUND', 'Target not found');
+          return;
+        }
+        sendJson(res, 200, { ok: true, data: result });
+        return;
+      }
+
+      if (method === 'POST' && route === '/community/reports') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to submit moderation reports');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = createCommunityReportSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid report payload', parsed.error.flatten());
+          return;
+        }
+        const created = createCommunityReport(db, authUser, parsed.data);
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'community.report_submitted',
+          targetType: parsed.data.targetType,
+          targetId: parsed.data.targetId,
+          metadata: { reason: parsed.data.reason, reportId: created.id },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: created });
+        return;
+      }
+
+      if (method === 'GET' && route === '/experts') {
+        const specialtySlug = url.searchParams.get('specialty') || undefined;
+        const governorateSlug = url.searchParams.get('governorate') || undefined;
+        sendJson(res, 200, {
+          ok: true,
+          data: listExperts(db, {
+            specialtySlug,
+            governorateSlug,
+            includePendingOrRejected: false,
+          }),
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/experts/apply') {
+        if (!authUser) {
+          sendError(res, 401, 'UNAUTHORIZED', 'Sign in to apply for verified expert credentials');
+          return;
+        }
+        const body = await readJsonBody(req);
+        const parsed = applyExpertProfileSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Invalid expert application fields', parsed.error.flatten());
+          return;
+        }
+        const result = applyForExpertVerification(db, authUser, parsed.data);
+        if (result.alreadyExists) {
+          sendError(res, 409, 'EXPERT_APPLICATION_EXISTS', 'Your account already has an expert application on file');
+          return;
+        }
+        writeAuditLog(db, {
+          actorUserId: authUser.id,
+          actorRole: authUser.role,
+          action: 'expert.application_submitted',
+          targetType: 'expert_profile',
+          targetId: result.expert.id,
+          metadata: { specialtySlug: result.expert.specialtySlug },
+          ipAddress: ip,
+        });
+        sendJson(res, 201, { ok: true, data: result.expert });
+        return;
+      }
+
       // ================= CUSTOMER ORDERS & INQUIRIES (OWNER-SCOPED) =================
       if (method === 'GET' && route === '/orders') {
         if (!authUser) {
@@ -5964,6 +6233,196 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
             ipAddress: ip,
           });
           sendJson(res, 200, { ok: true, data: listSubscriptionPlans(db) });
+          return;
+        }
+
+        // Stage 9 Admin OS Analytics & Community/Story/Expert Moderation
+        if (method === 'GET' && route === '/admin/analytics') {
+          sendJson(res, 200, { ok: true, data: buildAdminAnalytics(db) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/admin/moderation/overview') {
+          if (!hasAnyRole(authUser.role, MODERATION_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires moderator or admin role');
+            return;
+          }
+          sendJson(res, 200, { ok: true, data: buildAdminModerationOverview(db) });
+          return;
+        }
+
+        const modStoryMatch = route.match(/^\/admin\/moderation\/stories\/([^/]+)$/);
+        if (method === 'PATCH' && modStoryMatch) {
+          if (!hasAnyRole(authUser.role, MODERATION_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires moderator or admin role');
+            return;
+          }
+          const storyId = decodeURIComponent(modStoryMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = moderateStorySchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid moderation decision', parsed.error.flatten());
+            return;
+          }
+          const updated = moderateWeddingStory(db, storyId, authUser.id, parsed.data);
+          if (!updated) {
+            sendError(res, 404, 'NOT_FOUND', 'Story not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'moderation.story_decided',
+            targetType: 'real_wedding',
+            targetId: storyId,
+            metadata: { moderationStatus: updated.moderationStatus },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: updated });
+          return;
+        }
+
+        const modReportMatch = route.match(/^\/admin\/moderation\/reports\/([^/]+)$/);
+        if (method === 'PATCH' && modReportMatch) {
+          if (!hasAnyRole(authUser.role, MODERATION_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires moderator or admin role');
+            return;
+          }
+          const reportId = decodeURIComponent(modReportMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = resolveCommunityReportSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid report resolution', parsed.error.flatten());
+            return;
+          }
+          const updated = resolveCommunityReport(db, reportId, authUser.id, parsed.data);
+          if (!updated) {
+            sendError(res, 404, 'NOT_FOUND', 'Report not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'moderation.report_resolved',
+            targetType: 'community_report',
+            targetId: reportId,
+            metadata: { action: parsed.data.action, status: updated.status },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: updated });
+          return;
+        }
+
+        const adminExpertMatch = route.match(/^\/admin\/moderation\/experts\/([^/]+)\/verify$/);
+        if (method === 'PATCH' && adminExpertMatch) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires full admin role to verify experts');
+            return;
+          }
+          const expertId = decodeURIComponent(adminExpertMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = adminVerifyExpertSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid expert verification payload', parsed.error.flatten());
+            return;
+          }
+          const updated = adminVerifyExpertProfile(db, expertId, authUser.id, parsed.data);
+          if (!updated) {
+            sendError(res, 404, 'NOT_FOUND', 'Expert profile not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.expert_verified',
+            targetType: 'expert_profile',
+            targetId: expertId,
+            metadata: { verificationStatus: updated.verificationStatus },
+            ipAddress: ip,
+          });
+          sendJson(res, 200, { ok: true, data: updated });
+          return;
+        }
+
+        const adminArticlePatchMatch = route.match(/^\/admin\/cms\/articles\/([^/]+)$/);
+        if (method === 'PATCH' && adminArticlePatchMatch) {
+          if (!hasAnyRole(authUser.role, CMS_EDITOR_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires editor or admin role');
+            return;
+          }
+          const articleId = decodeURIComponent(adminArticlePatchMatch[1]);
+          const body = (await readJsonBody(req)) as { status?: string; isFeatured?: boolean };
+          if (body.status && !['draft', 'in_review', 'published', 'archived'].includes(body.status)) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid article status');
+            return;
+          }
+          const now = new Date().toISOString();
+          const result = db
+            .prepare(
+              `UPDATE articles
+               SET status = COALESCE(?, status),
+                   is_featured = COALESCE(?, is_featured),
+                   updated_at = ?
+               WHERE id = ?`,
+            )
+            .run(
+              body.status ?? null,
+              body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : null,
+              now,
+              articleId,
+            );
+          if (result.changes === 0) {
+            sendError(res, 404, 'NOT_FOUND', 'Article not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.article_updated',
+            targetType: 'article',
+            targetId: articleId,
+            metadata: { status: body.status },
+            ipAddress: ip,
+          });
+          const row = db.prepare('SELECT * FROM articles WHERE id = ?').get(articleId) as Record<string, unknown>;
+          sendJson(res, 200, { ok: true, data: mapArticleRow(row) });
+          return;
+        }
+
+        const adminUserStatusMatch = route.match(/^\/admin\/users\/([^/]+)\/status$/);
+        if (method === 'PATCH' && adminUserStatusMatch) {
+          if (!hasAnyRole(authUser.role, FULL_ADMIN_ROLES)) {
+            sendError(res, 403, 'FORBIDDEN', 'Requires full admin role');
+            return;
+          }
+          const targetUserId = decodeURIComponent(adminUserStatusMatch[1]);
+          if (targetUserId === authUser.id) {
+            sendError(res, 400, 'CANNOT_SUSPEND_SELF', 'Admin cannot alter own account status');
+            return;
+          }
+          const body = (await readJsonBody(req)) as { status?: string };
+          if (!body.status || !['active', 'suspended'].includes(body.status)) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'status must be active or suspended');
+            return;
+          }
+          const resUpd = db
+            .prepare('UPDATE users SET status = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL')
+            .run(body.status, new Date().toISOString(), targetUserId);
+          if (resUpd.changes === 0) {
+            sendError(res, 404, 'NOT_FOUND', 'User not found');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'admin.user_status_updated',
+            targetType: 'user',
+            targetId: targetUserId,
+            metadata: { status: body.status },
+            ipAddress: ip,
+          });
+          const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(targetUserId) as Record<string, unknown>;
+          sendJson(res, 200, { ok: true, data: mapUserRow(userRow) });
           return;
         }
       }

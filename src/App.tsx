@@ -164,6 +164,21 @@ const ShoppingListsView = lazy(() =>
     default: m.ShoppingListsView,
   })),
 );
+const RealWeddingsView = lazy(() =>
+  import('./components/community/RealWeddingsView').then((m) => ({
+    default: m.RealWeddingsView,
+  })),
+);
+const CommunityForumView = lazy(() =>
+  import('./components/community/CommunityForumView').then((m) => ({
+    default: m.CommunityForumView,
+  })),
+);
+const ExpertsDirectoryView = lazy(() =>
+  import('./components/community/ExpertsDirectoryView').then((m) => ({
+    default: m.ExpertsDirectoryView,
+  })),
+);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -227,6 +242,9 @@ const MainContent: React.FC = () => {
             <Route path="/locations/:govSlug/:catSlug" element={<LocalDiscoveryView />} />
             <Route path="/vendors" element={<VendorDirectoryView />} />
             <Route path="/vendors/:slug" element={<VendorProfileView />} />
+            <Route path="/real-weddings" element={<RealWeddingsView />} />
+            <Route path="/community" element={<CommunityForumView />} />
+            <Route path="/experts" element={<ExpertsDirectoryView />} />
             <Route path="/vendor" element={<VendorPortalView />} />
             <Route path="/rfq" element={<RfqCenterView />} />
             <Route path="/rfq/new" element={<RfqCenterView initialTab="new" />} />

@@ -842,6 +842,103 @@ export const createVendorLeadActivitySchema = z.object({
   note: z.string().trim().min(2).max(1000),
 });
 
+// ==============================================================================
+// STAGE 9: REAL WEDDING STORIES, COMMUNITY Q&A, REPORTS, EXPERTS & MODERATION
+// ==============================================================================
+
+export const createWeddingStorySchema = z.object({
+  coupleTitleAr: z.string().trim().min(4).max(160),
+  coupleTitleEn: z.string().trim().max(160).optional(),
+  governorateSlug: z.string().trim().min(2).max(60),
+  cityAr: z.string().trim().min(2).max(100),
+  cityEn: z.string().trim().max(100).optional(),
+  weddingYear: z.number().int().min(2015).max(2030),
+  guestCount: z.number().int().min(0).max(3000).default(150),
+  finishingCostEgp: z.number().int().min(0).max(50000000).default(0),
+  groomTrousseauEgp: z.number().int().min(0).max(50000000).default(0),
+  brideTrousseauEgp: z.number().int().min(0).max(50000000).default(0),
+  weddingCostEgp: z.number().int().min(0).max(50000000).default(0),
+  preparationMonths: z.number().int().min(1).max(120).default(12),
+  summaryAr: z.string().trim().min(20).max(2500),
+  summaryEn: z.string().trim().max(2500).optional(),
+  lessonsLearnedAr: z.string().trim().min(10).max(2000),
+  lessonsLearnedEn: z.string().trim().max(2000).optional(),
+  photos: z.array(z.string().trim().min(8).max(500)).max(6).default([]),
+});
+
+export const moderateStorySchema = z.object({
+  moderationStatus: z.enum(['approved', 'rejected', 'pending']),
+  moderationNotes: z.string().trim().max(500).nullable().optional(),
+  isFeatured: z.boolean().optional(),
+});
+
+export const createCommunityQuestionSchema = z.object({
+  categorySlug: z.enum([
+    'finishing',
+    'groom',
+    'bride',
+    'wedding',
+    'budget',
+    'early_start',
+    'married_life',
+  ]),
+  titleAr: z.string().trim().min(6).max(200),
+  titleEn: z.string().trim().max(200).optional(),
+  bodyAr: z.string().trim().min(12).max(3000),
+  bodyEn: z.string().trim().max(3000).optional(),
+  tags: z.array(z.string().trim().min(2).max(40)).max(6).default([]),
+});
+
+export const createCommunityAnswerSchema = z.object({
+  bodyAr: z.string().trim().min(8).max(3000),
+  bodyEn: z.string().trim().max(3000).optional(),
+});
+
+export const communityVoteSchema = z.object({
+  targetType: z.enum(['question', 'answer']),
+  targetId: z.string().trim().min(2).max(120),
+});
+
+export const createCommunityReportSchema = z.object({
+  targetType: z.enum(['question', 'answer', 'story', 'vendor_review']),
+  targetId: z.string().trim().min(2).max(120),
+  reason: z.enum(['spam', 'misleading_price', 'harassment', 'off_topic', 'self_promo']),
+  details: z.string().trim().max(600).nullable().optional(),
+});
+
+export const resolveCommunityReportSchema = z.object({
+  action: z.enum(['resolve_hide', 'dismiss']),
+  resolutionNote: z.string().trim().max(500).nullable().optional(),
+});
+
+export const applyExpertProfileSchema = z.object({
+  displayNameAr: z.string().trim().min(3).max(120),
+  displayNameEn: z.string().trim().min(3).max(120),
+  specialtySlug: z.enum([
+    'finishing_engineering',
+    'financial_planning',
+    'bridal_trousseau',
+    'wedding_direction',
+    'married_life_counseling',
+  ]),
+  titleAr: z.string().trim().min(3).max(140),
+  titleEn: z.string().trim().min(3).max(140),
+  governorateSlug: z.string().trim().min(2).max(60),
+  yearsExperience: z.number().int().min(1).max(60).default(5),
+  credentialsAr: z.string().trim().min(6).max(300),
+  credentialsEn: z.string().trim().min(6).max(300),
+  bioAr: z.string().trim().min(15).max(1500),
+  bioEn: z.string().trim().min(15).max(1500),
+  verificationDocs: z.array(z.string().trim().min(3).max(200)).min(1).max(8),
+});
+
+export const adminVerifyExpertSchema = z.object({
+  verificationStatus: z.enum(['verified', 'rejected', 'pending']),
+  verificationNotes: z.string().trim().max(500).nullable().optional(),
+  isFeatured: z.boolean().optional(),
+});
+
+
 
 
 

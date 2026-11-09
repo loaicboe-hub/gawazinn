@@ -69,6 +69,7 @@ export function seedDatabase(
   stage6Seeded: boolean;
   stage7Seeded: boolean;
   stage8Seeded: boolean;
+  stage9Seeded: boolean;
 } {
   const userCountRow = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   const stage2CatCountRow = db.prepare('SELECT COUNT(*) as cnt FROM finishing_categories').get() as { cnt: number };
@@ -84,6 +85,7 @@ export function seedDatabase(
   const stage7VendorCountRow = db.prepare('SELECT COUNT(*) as cnt FROM vendors').get() as { cnt: number };
   const stage7LocCountRow = db.prepare('SELECT COUNT(*) as cnt FROM locations').get() as { cnt: number };
   const stage8RfqCountRow = db.prepare('SELECT COUNT(*) as cnt FROM rfq_requests').get() as { cnt: number };
+  const stage9StoryCountRow = db.prepare('SELECT COUNT(*) as cnt FROM real_weddings').get() as { cnt: number };
   const needsStage1 = userCountRow.cnt === 0;
   const needsStage2 = stage2CatCountRow.cnt === 0;
   const needsStage3 = stage3PlanCountRow.cnt === 0;
@@ -94,6 +96,7 @@ export function seedDatabase(
   const needsStage7 = stage7VendorCountRow.cnt === 0;
   const needsExtraLocs = stage7LocCountRow.cnt < 15;
   const needsStage8 = stage8RfqCountRow.cnt === 0;
+  const needsStage9 = stage9StoryCountRow.cnt === 0;
 
   if (
     !needsStage1 &&
@@ -105,7 +108,8 @@ export function seedDatabase(
     !needsBaseProductSlugFix &&
     !needsStage7 &&
     !needsExtraLocs &&
-    !needsStage8
+    !needsStage8 &&
+    !needsStage9
   ) {
     return {
       seeded: false,
@@ -116,6 +120,7 @@ export function seedDatabase(
       stage6Seeded: false,
       stage7Seeded: false,
       stage8Seeded: false,
+      stage9Seeded: false,
     };
   }
 
@@ -1746,6 +1751,455 @@ export function seedDatabase(
       );
     }
 
+    if (needsStage9) {
+      const demoPassHash = hashPassword('DemoPass@2026');
+      db.prepare(
+        `INSERT OR IGNORE INTO users (
+          id, name, name_en, email, phone, password_hash, role, status, city, governorate_slug,
+          current_stage, language, is_demo_data, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'expert', 'active', ?, 'cairo', 'maintaining_home', 'ar', 1, ?, ?)`,
+      ).run(
+        'usr-exp-cand',
+        'م. هاني فتحي الدسوقي (خبير قيد المراجعة)',
+        'Eng. Hany Fathy (Applicant)',
+        'applicant@gawazinn.demo',
+        '01000000009',
+        demoPassHash,
+        'القاهرة الجديدة',
+        now,
+        now,
+      );
+
+      const insStory = db.prepare(
+        `INSERT OR IGNORE INTO real_weddings (
+          id, user_id, couple_title_ar, couple_title_en, governorate_slug, city_ar, city_en,
+          wedding_year, guest_count, total_actual_budget_egp, finishing_cost_egp,
+          groom_trousseau_egp, bride_trousseau_egp, wedding_cost_egp, preparation_months,
+          summary_ar, summary_en, lessons_learned_ar, lessons_learned_en,
+          cost_breakdown_json, photos_json, moderation_status, moderation_notes,
+          moderated_by_user_id, moderated_at, is_featured, is_demo_data, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      );
+
+      insStory.run(
+        'story-cairo-1',
+        'usr-1',
+        'قصة زفاف أحمد ونورهان — شقة 135م في مدينة نصر بميزانية واقعية',
+        'Ahmed & Nourhan Wedding Case Study — 135m² Apartment in Nasr City',
+        'cairo',
+        'مدينة نصر — القاهرة',
+        'Nasr City, Cairo',
+        2026,
+        220,
+        925000,
+        345000,
+        245000,
+        155000,
+        180000,
+        18,
+        'بدأنا التجهيز قبل الفرح بـ 18 شهراً عبر تقسيم التكاليف إلى 4 مسارات واضحة: التأسيس والسباكة والكهرباء أولاً، ثم باقات الأجهزة، ثم حجز قاعة نهارية موفرة بـ 35% من التكلفة المعتادة.',
+        'We planned across 18 months using four structured buckets: finishing rough-in first, appliance bundling before seasonal increases, and a sunlit afternoon venue booking saving ~35%.',
+        'الدرس الأهم: لا تشترِ الإكسسوارات قبل إنهاء بند المحارة والسيراميك، واحتفظ بـ 10% احتياطي طوارئ لفروق الأسعار.',
+        'Top takeaway: Never purchase finishing fixtures before rough-in inspection, and keep a 10% emergency price-drift buffer.',
+        JSON.stringify([
+          { categoryAr: 'تشطيب وتجهيز الشقة (أعمال وتأسيس)', categoryEn: 'Apartment Finishing & MEP', amountEgp: 345000 },
+          { categoryAr: 'جهاز العريس والأجهزة الكهربائية', categoryEn: "Groom's Appliances & Furniture", amountEgp: 245000 },
+          { categoryAr: 'جهاز العروسة والمطبخ', categoryEn: "Bride's Trousseau", amountEgp: 155000 },
+          { categoryAr: 'حفل الزفاف والضيافة والتصوير', categoryEn: 'Wedding Venue & Photo', amountEgp: 180000 },
+        ]),
+        JSON.stringify([
+          'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=80',
+        ]),
+        'approved',
+        'Approved real case study verified against itemized budget sheet.',
+        'usr-mod',
+        now,
+        1,
+        now,
+        now,
+      );
+
+      insStory.run(
+        'story-giza-2',
+        null,
+        'تجهيز منزل عمر وسلمى في الشيخ زايد خلال 12 شهراً',
+        'Omar & Salma Home & Wedding Journey in Sheikh Zayed (12 Months)',
+        'giza',
+        'الشيخ زايد — الجيزة',
+        'Sheikh Zayed, Giza',
+        2026,
+        180,
+        1180000,
+        460000,
+        310000,
+        185000,
+        225000,
+        12,
+        'اعتمدنا طلبات تسعير متعددة RFQ لـ 3 مقاولي تشطيب ومطابخ للوصول إلى أقل عرض موثق بجودة خامات سوبر لوكس وبضمان مكتوب.',
+        'Used side-by-side multi-vendor RFQ quotes across 3 finishing and kitchen vendors to lock verified specs and written warranty milestones.',
+        'مقارنة 3 عروض سعر وفّرت 48,000 ج.م في بنود المطبخ والألوميتال.',
+        'Comparing 3 sealed RFQ offers saved 48,000 EGP across custom cabinetry and aluminum windows.',
+        JSON.stringify([
+          { categoryAr: 'تشطيب الشقة والمطبخ الألومنيوم', categoryEn: 'Finishing & Kitchens', amountEgp: 460000 },
+          { categoryAr: 'جهاز العريس والغرف الرئيسية', categoryEn: "Groom's Furniture & Tech", amountEgp: 310000 },
+          { categoryAr: 'مستلزمات العروسة والمفروشات', categoryEn: "Bride's Linens & Homeware", amountEgp: 185000 },
+          { categoryAr: 'حفل الزفاف والفستان والتصوير', categoryEn: 'Wedding Celebration', amountEgp: 225000 },
+        ]),
+        JSON.stringify([
+          'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=1000&q=80',
+        ]),
+        'approved',
+        'Verified editorial story.',
+        'usr-mod',
+        now,
+        1,
+        now,
+        now,
+      );
+
+      insStory.run(
+        'story-alex-3',
+        null,
+        'زواج يوسف ومي في الإسكندرية — تنظيم اقتصادي ذكي لشقة 95م',
+        'Youssef & Mai in Alexandria — Smart Economic Plan for 95m²',
+        'alexandria',
+        'سموحة — الإسكندرية',
+        'Smouha, Alexandria',
+        2025,
+        120,
+        615000,
+        220000,
+        180000,
+        110000,
+        105000,
+        24,
+        'من خلال البداية المبكرة والادخار الشهري المنتظم لمدة عامين تجنبنا القروض الاستهلاكية تماماً وركزنا في الأساسيات طويلة العمر.',
+        'Early Start monthly saving across 24 months eliminated consumer loans and kept 95m² finishing focused on durable essentials.',
+        'حصر الاحتياجات الفعلية في قائمة العروسة وفّر 30% من المشتريات الزائدة.',
+        'Trimming redundant trousseau items using checklist essentials saved ~30%.',
+        JSON.stringify([
+          { categoryAr: 'تشطيب اقتصادي ذكي 95م', categoryEn: 'Smart 95m² Finishing', amountEgp: 220000 },
+          { categoryAr: 'أجهزة وأثاث أساسي', categoryEn: 'Core Appliances & Rooms', amountEgp: 180000 },
+          { categoryAr: 'جهاز العروسة الأساسي', categoryEn: 'Essential Bridal Items', amountEgp: 110000 },
+          { categoryAr: 'كتب كتاب وحفل عائلي', categoryEn: 'Intimate Reception', amountEgp: 105000 },
+        ]),
+        JSON.stringify([
+          'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=1000&q=80',
+        ]),
+        'approved',
+        'Approved economic blueprint story.',
+        'usr-mod',
+        now,
+        0,
+        now,
+        now,
+      );
+
+      insStory.run(
+        'story-seed-pending',
+        'usr-2',
+        'قصة خطوبة وتجهيز سارة (قيد مراجعة المشرف)',
+        'Sara Pending Wedding Story Draft (In Moderation)',
+        'giza',
+        'الشيخ زايد',
+        'Sheikh Zayed',
+        2026,
+        140,
+        740000,
+        290000,
+        210000,
+        140000,
+        100000,
+        14,
+        'تجربة تنظيم جهاز العروسة والالتزام بالميزانية بدون ديون.',
+        'Organizing trousseau within budget before wedding season.',
+        'التخطيط المبكر هو الأساس.',
+        'Early tracking prevents budget shocks.',
+        JSON.stringify([
+          { categoryAr: 'تشطيب وتأسيس', categoryEn: 'Finishing', amountEgp: 290000 },
+        ]),
+        JSON.stringify([
+          'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1000&q=80',
+        ]),
+        'pending',
+        null,
+        null,
+        null,
+        0,
+        now,
+        now,
+      );
+
+      const insExp = db.prepare(
+        `INSERT OR IGNORE INTO expert_profiles (
+          id, user_id, slug, display_name_ar, display_name_en, specialty_slug,
+          title_ar, title_en, governorate_slug, years_experience, credentials_ar,
+          credentials_en, bio_ar, bio_en, avatar_url, verification_status,
+          verification_docs_json, verification_notes, verified_by_user_id, verified_at,
+          answers_count, helpful_count, is_featured, is_demo_data, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      );
+
+      insExp.run(
+        'exp-mahmoud-fin',
+        'usr-expert',
+        'mahmoud-selim-financial-coach',
+        'أ. محمود سليم',
+        'Mahmoud Selim',
+        'financial_planning',
+        'مستشار التخطيط المالي وميزانية الزواج والادخار المبكر',
+        'Marriage Financial Planning & Early Start Coach',
+        'giza',
+        11,
+        'ماجستير التخطيط المالي الشخصي — خبير معتمد لدى جواز إن',
+        'MSc Personal Financial Planning — Verified GAWAZ INN Advisor',
+        'متخصص في بناء خطط الادخار المبكر من 6 أشهر وحتى 10 سنوات وتوزيع ميزانية الشقة والجهاز بدون فوائد مبالغ فيها.',
+        'Specializes in 6m–10y Early Start marriage saving blueprints and balanced debt-free apartment budgeting.',
+        'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80',
+        'verified',
+        JSON.stringify(['شهادة التخطيط المالي الشخصي', 'بطاقة الهوية الموثقة']),
+        'Verified credential documents by Platform Admin.',
+        'usr-admin',
+        now,
+        2,
+        1,
+        1,
+        now,
+        now,
+      );
+
+      insExp.run(
+        'exp-tarek-arch',
+        'usr-admin',
+        'eng-tarek-finishing-consultant',
+        'م. طارق المنياوي',
+        'Eng. Tarek El-Minyaoui',
+        'finishing_engineering',
+        'مهندس استشاري لتشطيب الشقق واستلام بنود التأسيس (22 مرحلة)',
+        'Consulting Finishing & MEP Inspection Engineer',
+        'cairo',
+        14,
+        'نقابة المهندسين المصرية — شعبة العمارة وإدارة المشروعات',
+        'Egyptian Engineers Syndicate — Architecture & MEP QA',
+        'يراجع المقايسات الفنية وموازين الشرب والسباكة والكهرباء ويساعد المقبلين على الزواج في تفادي أخطاء المقاولات الشائعة.',
+        'Guides couples through the 22 finishing stages, El-Sherb datum checks, and plumbing/electrical acceptance testing.',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+        'verified',
+        JSON.stringify(['كارنيه نقابة المهندسين', 'سجل الاستشارات الهندسية']),
+        'Verified engineering syndicate registration.',
+        'usr-admin',
+        now,
+        2,
+        1,
+        1,
+        now,
+        now,
+      );
+
+      insExp.run(
+        'exp-salma-trousseau',
+        'usr-editor',
+        'dr-salma-bridal-advisor',
+        'د. سلمى نصر',
+        'Dr. Salma Nasr',
+        'bridal_trousseau',
+        'خبيرة تخطيط جهاز العروسة وإدارة المنزل المصري الحديث',
+        'Bridal Trousseau & Household Curation Specialist',
+        'cairo',
+        9,
+        'باحثة في الاقتصاد المنزلي ومحررة موسوعة الجهاز بجواز إن',
+        'Home Economics Specialist & GAWAZ INN Lead Editor',
+        'تساعد العرائس على بناء قائمة جهاز متوازنة بترتيب الأولويات دون إسراف أو تكرار.',
+        'Helps brides assemble balanced 19-category trousseau plans focused on durability instead of overbuying.',
+        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+        'verified',
+        JSON.stringify(['شهادة التخصص الأكاديمي', 'أوراق الاعتماد الموثقة']),
+        'Verified editorial & home economics credentials.',
+        'usr-admin',
+        now,
+        1,
+        0,
+        1,
+        now,
+        now,
+      );
+
+      insExp.run(
+        'exp-seed-pending',
+        'usr-exp-cand',
+        'eng-hany-fathy-pending',
+        'م. هاني فتحي الدسوقي',
+        'Eng. Hany Fathy',
+        'wedding_direction',
+        'مخرج ومدير حفلات زفاف وتنسيق القاعات',
+        'Wedding Producer & Venue Logistics Advisor',
+        'cairo',
+        7,
+        'شهادة إدارة الفعاليات الدولية — طلب توثيق قيد الفحص',
+        'Certified Event Production — Pending Credential Review',
+        'متقدم لاعتماد ملفه كخبير إخراج وتنظيم حفلات الزفاف في القاهرة والجيزة.',
+        'Applicant for verified Wedding Production advisor status across Cairo & Giza.',
+        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
+        'pending',
+        JSON.stringify(['بطاقة العضوية المهنية', 'سابقة أعمال 15 حفل زفاف']),
+        null,
+        null,
+        null,
+        0,
+        0,
+        0,
+        now,
+        now,
+      );
+
+      const insQ = db.prepare(
+        `INSERT OR IGNORE INTO community_questions (
+          id, user_id, category_slug, title_ar, title_en, body_ar, body_en,
+          tags_json, moderation_status, upvotes_count, answers_count, is_resolved,
+          is_demo_data, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      );
+
+      insQ.run(
+        'cq-seed-1',
+        'usr-1',
+        'finishing',
+        'هل الأفضل كبس مواسير السباكة قبل المحارة أم بعدها؟ وكم مدة الاختبار؟',
+        'Should plumbing pressure testing happen before plastering, and how long?',
+        'أنا في مرحلة تأسيس السباكة بشقة التجمع 135م، ما الضغط المطلوب لاختبار مواسير البولي بروبلين وهل أطلب ضمان الشركة؟',
+        'Starting plumbing rough-in on a 135m² New Cairo flat. What bar pressure and warranty duration should I insist on before closing walls?',
+        JSON.stringify(['سباكة', 'تأسيس', 'اختبار ضغط']),
+        'approved',
+        2,
+        2,
+        1,
+        now,
+        now,
+      );
+
+      insQ.run(
+        'cq-seed-2',
+        'usr-2',
+        'early_start',
+        'بميزانية ادخار 3,000 جنيه شهرياً قبل الفرح بـ 3 سنوات، كيف أوزع المبلغ؟',
+        'Saving 3,000 EGP monthly for 3 years ahead — how should I split buckets?',
+        'نرغب في التخطيط المبكر بدون ضغط، كيف نوازن بين صندوق الطوارئ وتكاليف التأسيس المبدئية؟',
+        'Looking for an Early Start balance between Emergency Reserve and apartment finishing capital over 36 months.',
+        JSON.stringify(['البداية المبكرة', 'ادخار', 'ميزانية']),
+        'approved',
+        1,
+        1,
+        1,
+        now,
+        now,
+      );
+
+      insQ.run(
+        'cq-seed-3',
+        'usr-2',
+        'bride',
+        'ما العدد المثالي لأطقم السرير والمفروشات دون شراء مبالغ فيه؟',
+        'Optimal count for bride bed linens & sets without overbuying?',
+        'كثير من القوائم تذكر 12 طقماً وأكثر، ما العدد العملي الواقعي للمنزل الجديد؟',
+        'Many traditional checklists ask for 12+ sheet sets — what is the truly practical count?',
+        JSON.stringify(['جهاز العروسة', 'مفروشات']),
+        'approved',
+        1,
+        1,
+        0,
+        now,
+        now,
+      );
+
+      const insAns = db.prepare(
+        `INSERT OR IGNORE INTO community_answers (
+          id, question_id, user_id, body_ar, body_en, is_expert_answer,
+          is_helpful_marked, upvotes_count, moderation_status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)`,
+      );
+
+      insAns.run(
+        'ca-seed-1',
+        'cq-seed-1',
+        'usr-admin',
+        'لابد من إجراء اختبار كبس المياه قبل التقفيل بالمونة والسيراميك على ضغط لا يقل عن 10 بار لمدة 24 ساعة كاملة مع استلام شهادة ضمان الشركة المصنعة (10 سنوات فما فوق).',
+        'Always execute hydraulic pressure testing BEFORE plastering/tiling at 10+ bar for a full 24 hours, followed by the manufacturer 10-year written warranty inspection certificate.',
+        1,
+        1,
+        2,
+        now,
+        now,
+      );
+
+      insAns.run(
+        'ca-seed-2',
+        'cq-seed-1',
+        'usr-2',
+        'نفس النصيحة فادتنا جداً عند استلام السباكة في زايد، تصوير مسارات المواسير قبل السيراميك مهم جداً للمستقبل.',
+        'Photographing concealed pipe runs with tape measurements before tiling also saved us later.',
+        0,
+        0,
+        1,
+        now,
+        now,
+      );
+
+      insAns.run(
+        'ca-seed-3',
+        'cq-seed-2',
+        'usr-expert',
+        'ابدأ بتخصيص 25% لاحتياطي الطوارئ حتى يكتمل مبلغ أمان يعادل 3 أشهر مصروفات، ثم وجّه 45% لتجهيز الشقة الأساسي و30% لصندوق الجهاز والزفاف عبر نظام صندوق مستقبلي مع زيادة سنوية 10% لمواكبة التضخم.',
+        'Allocate 25% into Emergency Reserve until hitting a 3-month safety cushion, then direct 45% toward home finishing and 30% into trousseau/wedding goals with a conservative 10% annual step-up.',
+        1,
+        1,
+        2,
+        now,
+        now,
+      );
+
+      insAns.run(
+        'ca-seed-4',
+        'cq-seed-3',
+        'usr-editor',
+        'العدد الذهبي العملي: 4 أطقم قطنية يومية عالية الجودة + طقمين للضيوف + لحافين (صيفي وشتوي)، ويمكن استكمال الباقي بعد الزواج حسب الحاجة الفعلية.',
+        'Practical sweet spot: 4 high-thread-count everyday cotton sheet sets + 2 guest sets + 2 seasonal comforters. Avoid stocking oversized quantities that crowd storage.',
+        1,
+        0,
+        1,
+        now,
+        now,
+      );
+
+      const insVote = db.prepare(
+        `INSERT OR IGNORE INTO community_votes (id, user_id, target_type, target_id, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      );
+      insVote.run('cv-seed-1', 'usr-2', 'question', 'cq-seed-1', now);
+      insVote.run('cv-seed-2', 'usr-admin', 'question', 'cq-seed-1', now);
+      insVote.run('cv-seed-3', 'usr-1', 'question', 'cq-seed-2', now);
+      insVote.run('cv-seed-4', 'usr-admin', 'question', 'cq-seed-3', now);
+      insVote.run('cv-seed-5', 'usr-1', 'answer', 'ca-seed-1', now);
+      insVote.run('cv-seed-6', 'usr-2', 'answer', 'ca-seed-1', now);
+      insVote.run('cv-seed-7', 'usr-1', 'answer', 'ca-seed-2', now);
+      insVote.run('cv-seed-8', 'usr-1', 'answer', 'ca-seed-3', now);
+      insVote.run('cv-seed-9', 'usr-2', 'answer', 'ca-seed-3', now);
+      insVote.run('cv-seed-10', 'usr-2', 'answer', 'ca-seed-4', now);
+
+      db.prepare(
+        `INSERT OR IGNORE INTO community_reports (
+          id, reporter_user_id, target_type, target_id, reason, details, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
+      ).run(
+        'crep-seed-1',
+        'usr-1',
+        'question',
+        'cq-seed-3',
+        'off_topic',
+        'بلاغ تجريبي لمراجعة المشرف حول التحقق من تطابق القسم مع سؤال الجهاز.',
+        now,
+      );
+    }
+
     db.exec('COMMIT;');
     return {
       seeded:
@@ -1757,7 +2211,8 @@ export function seedDatabase(
         needsStage6 ||
         needsStage7 ||
         needsExtraLocs ||
-        needsStage8,
+        needsStage8 ||
+        needsStage9,
       stage2Seeded: needsStage2,
       stage3Seeded: needsStage3,
       stage4Seeded: needsStage4,
@@ -1765,6 +2220,7 @@ export function seedDatabase(
       stage6Seeded: needsStage6,
       stage7Seeded: needsStage7,
       stage8Seeded: needsStage8,
+      stage9Seeded: needsStage9,
     };
   } catch (err) {
     db.exec('ROLLBACK;');

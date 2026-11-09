@@ -64,10 +64,11 @@
 37. `vendor_leads` & `lead_activities` *(Implemented `008`)*: 8-stage Vendor CRM (`new_lead|contacted|quotation_sent|negotiation|accepted|in_progress|completed|lost`) with partial unique deduplication indexes (`idx_vendor_leads_rfq_unique`, `idx_vendor_leads_apt_unique`) + timeline activity feed (`note|call|whatsapp|appointment|quote_sent|stage_change|system`).
 38. `orders` & `order_items`, `finishing_inquiries`, `wedding_bookings`, `financing_applications`, `support_cases`, `sponsorship_inquiries` (preserving & hardening all 1.0 records with proper FKs, user ownership, and masked PII).
 
-### Community, Wedding Day, Home Care & System (Modules P, R, S, T, Admin)
-34. `community_questions`, `community_answers`, `community_reports`, `expert_profiles` (credential verification status).
-35. `room_design_projects`, `moodboards`, `price_alerts`.
-36. `wedding_invitations`, `wedding_guests`, `seating_tables`, `wedding_schedule_items`, `gift_registry_items`.
-37. `home_inventory_items`, `home_warranties`, `maintenance_reminders`, `home_documents`.
-38. `notifications`, `audit_logs`, `analytics_events`, `platform_settings`.
+### Community, Stories, Verified Experts, Wedding Day, Home Care & System
+39. `real_weddings` *(Implemented `009`)*: `id`, `user_id` (FK -> `users` ON DELETE SET NULL), `couple_title_ar/en`, `governorate_slug`, `city_ar/en`, `wedding_year`, `guest_count`, `total_actual_budget_egp`, `finishing_cost_egp`, `groom_trousseau_egp`, `bride_trousseau_egp`, `wedding_cost_egp`, `preparation_months`, `summary_ar/en`, `lessons_learned_ar/en`, `cost_breakdown_json`, `photos_json`, `moderation_status` (`pending|approved|rejected`), `moderation_notes`, `moderated_by_user_id`, `moderated_at`, `is_featured`, `is_demo_data`, `created_at`, `updated_at`.
+40. `expert_profiles` *(Implemented `009`)*: `id`, `user_id` (unique FK -> `users` ON DELETE CASCADE), `slug` (unique), `display_name_ar/en`, `specialty_slug` (`finishing_engineering|financial_planning|bridal_trousseau|wedding_direction|married_life_counseling`), `title_ar/en`, `governorate_slug`, `years_experience`, `credentials_ar/en`, `bio_ar/en`, `avatar_url`, `verification_status` (`pending|verified|rejected`), `verification_docs_json`, `verification_notes`, `verified_by_user_id`, `verified_at`, `answers_count`, `helpful_count`, `is_featured`, `is_demo_data`, `created_at`, `updated_at`.
+41. `community_questions`, `community_answers`, `community_votes` & `community_reports` *(Implemented `009`)*: Q&A forum threads (`category_slug`: `finishing..married_life`), server-derived `is_expert_answer` badges (`expert_profiles.verification_status = 'verified'`), `is_helpful_marked`, idempotent `UNIQUE (user_id, target_type, target_id)` upvote toggles, and moderator abuse reporting triage (`open|reviewed|action_taken|dismissed`) updating `moderation_status` (`approved|flagged|hidden`).
+42. *(Planned Stage 10)* `ai_conversations`, `room_moodboards`, `moodboard_items`, `wedding_guests` (`rsvp_code`), `seating_tables`, `wedding_timeline_events`, `gift_registry_items`.
+43. *(Planned Stage 11)* `home_file_assets`, `maintenance_reminders`, `home_inventory_items`.
+44. `notifications`, `audit_logs`, `platform_settings` *(Implemented Stages 1, 5, 7)*.
 
