@@ -20,7 +20,6 @@ Allow: /vendors
 Allow: /real-weddings
 Allow: /community
 Allow: /experts
-Allow: /assistant
 Allow: /newlyweds-guide
 Allow: /home-care
 Allow: /glossary

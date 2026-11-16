@@ -97,7 +97,7 @@ describe('Stage 10 Grounded AI, Room Studio, Wedding Day Ops & Public RSVP API',
     // 1. SEO Sitemap includes public AI & Room Studio tools, excludes private Wedding Ops & RSVP links
     const sitemapRes = await fetch(`${baseUrl}/sitemap.xml`);
     const xml = await sitemapRes.text();
-    expect(xml).toContain('/assistant</loc>');
+    expect(xml).not.toContain('/assistant</loc>');
     expect(xml).not.toContain('/room-designer</loc>');
     expect(xml).not.toContain('/wedding-day</loc>');
     expect(xml).not.toContain('/rsvp/</loc>');

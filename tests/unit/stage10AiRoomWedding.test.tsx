@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
-import { AiAssistantView } from '../../src/components/assistant/AiAssistantView';
 import { WeddingDayOpsView } from '../../src/components/wedding/WeddingDayOpsView';
 import { PublicRsvpView } from '../../src/components/wedding/PublicRsvpView';
 import {
@@ -118,20 +117,7 @@ describe('Stage 10 Grounded AI, 2D Room Designer, Wedding Day Ops & Public RSVP'
     ).toBe(true);
   });
 
-  it('renders /assistant, auth-guarded /wedding-day, and /rsvp/:code views cleanly', () => {
-    render(
-      <MemoryRouter initialEntries={['/assistant']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/assistant" element={<AiAssistantView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('ai-assistant-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-grounding-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-query-input')).toBeInTheDocument();
-    cleanup();
+  it('renders auth-guarded /wedding-day and /rsvp/:code views cleanly', () => {
 
     render(
       <MemoryRouter initialEntries={['/wedding-day']}>

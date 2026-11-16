@@ -176,7 +176,6 @@ export type SectionKey =
   | 'stories'
   | 'community'
   | 'experts'
-  | 'assistant'
   | 'weddingDay'
   | 'newlywedsGuide'
   | 'homeCare'
@@ -209,7 +208,6 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   stories: '/real-weddings',
   community: '/community',
   experts: '/experts',
-  assistant: '/assistant',
   weddingDay: '/wedding-day',
   newlywedsGuide: '/newlyweds-guide',
   homeCare: '/home-care',
@@ -1144,7 +1142,6 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/real-weddings')) return 'stories';
   if (pathname.startsWith('/community')) return 'community';
   if (pathname.startsWith('/experts')) return 'experts';
-  if (pathname.startsWith('/assistant')) return 'assistant';
   if (pathname.startsWith('/wedding-day') || pathname.startsWith('/rsvp/')) return 'weddingDay';
   if (pathname.startsWith('/newlyweds-guide')) return 'newlywedsGuide';
   if (pathname.startsWith('/home-care')) return 'homeCare';

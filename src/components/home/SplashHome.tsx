@@ -20,7 +20,6 @@ import {
   ShoppingBag,
   Store,
   BadgeCheck,
-  Bot,
   Users,
   HeartHandshake,
   Wrench,
@@ -352,16 +351,6 @@ export const SplashHome: React.FC = () => {
           >
             <BadgeCheck className="w-3.5 h-3.5" />
             <span>{language === 'ar' ? 'دليل الخبراء المعتمدين' : 'Verified Experts'}</span>
-          </Link>
-
-          <Link
-            to="/assistant"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-assistant"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
-          >
-            <Bot className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'مستشار جواز إن الذكي' : 'Grounded AI Advisor'}</span>
           </Link>
 
           <Link

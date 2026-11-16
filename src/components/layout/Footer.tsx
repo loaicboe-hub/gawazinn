@@ -22,7 +22,6 @@ import {
   ListTodo,
   ShoppingBag,
   Store,
-  Bot,
   Users,
 } from 'lucide-react';
 
@@ -324,17 +323,6 @@ export const Footer: React.FC = () => {
             >
               <Sparkles className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'الخبراء المعتمدون' : 'Verified Experts'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/assistant"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Bot className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'المستشار الذكي' : 'Grounded AI'}</span>
             </Link>
 
             <span>•</span>

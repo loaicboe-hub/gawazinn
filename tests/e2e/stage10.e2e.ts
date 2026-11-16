@@ -158,33 +158,10 @@ async function main() {
       }
     });
 
-    // 1. Guest uses /assistant starter prompt (120m² finishing + catalog) -> sees live calculator & clickable citations
-    await page.goto(`${webUrl}/assistant`, { waitUntil: 'networkidle' });
+    // 1. Karim logs in -> inspects /wedding-day, copies GI-KARIM-102 status ('pending'), then logs out
+    await page.goto(`${webUrl}/`, { waitUntil: 'networkidle' });
     await dismissIntroIfPresent(page);
-    await page.getByTestId('ai-assistant-heading').waitFor({ state: 'visible' });
-    const robotsPub = await page.locator('meta[name="robots"]').getAttribute('content');
-    assert.equal(robotsPub, 'index, follow');
-
-    const aiGuestDone = page.waitForResponse(
-      (res) => res.url().endsWith('/api/v1/assistant/ask') && res.status() === 200,
-    );
-    await page.getByTestId('ai-starter-prompt-finish-120').click();
-    await aiGuestDone;
-    await page.getByTestId('ai-message-assistant').waitFor({ state: 'visible' });
-    await page.getByTestId('ai-calc-card-finishing-cost').waitFor({ state: 'visible' });
-    assert.equal(await page.getByTestId('ai-personal-context-badge').count(), 0);
-    await assertNoHorizontalOverflow(page, 'desktop /assistant guest');
-
-    // 2. Karim logs in -> asks personal budget analysis on /assistant -> private context active
     await loginViaModal(page, 'karim@gawazinn.demo', 'DemoPass@2026');
-    const aiPersonalDone = page.waitForResponse(
-      (res) => res.url().endsWith('/api/v1/assistant/ask') && res.status() === 200,
-    );
-    await page.getByTestId('ai-starter-prompt-my-budget').click();
-    await aiPersonalDone;
-    await page.getByTestId('ai-personal-context-badge').waitFor({ state: 'visible' });
-
-    // 4. Karim inspects /wedding-day, copies GI-KARIM-102 status ('pending'), then logs out
     await page.goto(`${webUrl}/wedding-day`, { waitUntil: 'networkidle' });
     await page.getByTestId('wedding-day-heading').waitFor({ state: 'visible' });
     const robotsPriv = await page.locator('meta[name="robots"]').getAttribute('content');
@@ -236,17 +213,17 @@ async function main() {
     assert.ok(afterConfirmed > initialConfirmed, `Expected confirmed headcount > ${initialConfirmed}, got ${afterConfirmed}`);
     assert.notEqual(afterReserved, initialReserved, `Expected reserved gifts count to increment from ${initialReserved}`);
 
-    // Language switch check (EN LTR & back to AR RTL) on /assistant
-    await page.goto(`${webUrl}/assistant`, { waitUntil: 'networkidle' });
+    // Language switch check (EN LTR & back to AR RTL) on /wedding-day
+    await page.goto(`${webUrl}/wedding-day`, { waitUntil: 'networkidle' });
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'ltr');
-    await assertNoHorizontalOverflow(page, 'desktop /assistant LTR');
+    await assertNoHorizontalOverflow(page, 'desktop /wedding-day LTR');
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'rtl');
 
-    // 7. Mobile 375px RTL checks across all Stage 10 routes
+    // 7. Mobile 375px RTL checks across Stage 10 routes
     const mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 } });
     const mPage = await mobileContext.newPage();
     mPage.on('console', (msg) => {
@@ -261,12 +238,8 @@ async function main() {
       }
     });
 
-    await mPage.goto(`${webUrl}/assistant`, { waitUntil: 'networkidle' });
-    await dismissIntroIfPresent(mPage);
-    await mPage.getByTestId('ai-assistant-heading').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(mPage, 'mobile /assistant');
-
     await mPage.goto(`${webUrl}/rsvp/GI-KARIM-102`, { waitUntil: 'networkidle' });
+    await dismissIntroIfPresent(mPage);
     await mPage.getByTestId('rsvp-guest-heading').waitFor({ state: 'visible' });
     await assertNoHorizontalOverflow(mPage, 'mobile /rsvp/GI-KARIM-102');
 

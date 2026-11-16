@@ -220,13 +220,6 @@ export const SeoHead: React.FC = () => {
         'مهندسو تشطيب، مخططو ميزانيات، ومستشارو زواج مفحوصو المؤهلات إدارياً في مصر.';
       descEn =
         'Admin-verified Egyptian finishing engineers, marriage financial coaches, and bridal trousseau specialists.';
-    } else if (pathname === '/assistant') {
-      titleAr = 'مستشار جواز إن الذكي الموثق من قاعدة البيانات | جواز إن';
-      titleEn = 'Grounded AI Marriage & Home Planning Advisor | GAWAZ INN';
-      descAr =
-        'اسأل عن أسعار المنتجات الحقيقية، تكاليف تشطيب الشقق في مصر، وحسابات التجهيز والزفاف بمصادر موثقة من المنصة.';
-      descEn =
-        'Ask grounded questions backed by live Egyptian product prices, finishing calculators, and vetted vendor records.';
     } else if (pathname === '/wedding-day') {
       titleAr = 'إدارة يوم الفرح والضيوف والطاولات والهدايا | جواز إن';
       titleEn = 'Wedding Day Operations: Guests, Seating, Timeline & Gift Registry | GAWAZ INN';
