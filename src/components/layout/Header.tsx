@@ -23,7 +23,6 @@ import {
   Wallet,
   Compass,
   Layers,
-  Gem,
   ListTodo,
   Store,
   Users,
@@ -335,17 +334,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
-                      to="/engagement"
-                      onClick={closeMenus}
-                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
-                    >
-                      <Gem className="w-3.5 h-3.5 text-[#D91B3E]" />
-                      <span>
-                        {language === 'ar' ? 'مخطط الخطوبة والشبكة' : 'Engagement Planner'}
-                      </span>
-                    </Link>
-
-                    <Link
                       to="/journey"
                       onClick={closeMenus}
                       className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
@@ -518,14 +506,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <Layers className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'مسارك في 11 مرحلة + مركزي' : '11-Stage Onboarding & Hub'}</span>
-          </Link>
-          <Link
-            to="/engagement"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
-          >
-            <Gem className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'مخطط الخطوبة' : 'Engagement Planner'}</span>
           </Link>
           <Link
             to="/journey"

@@ -120,6 +120,20 @@ export function seedDatabase(
     // products table not yet created on first run
   }
 
+  // Clear unverified placeholder hotline
+  try {
+    const settingsRow = db.prepare("SELECT value_json FROM platform_settings WHERE key = 'main'").get() as { value_json: string } | undefined;
+    if (settingsRow) {
+      const parsed = JSON.parse(settingsRow.value_json) as { hotline?: string };
+      if (parsed.hotline === '19742') {
+        parsed.hotline = '';
+        db.prepare("UPDATE platform_settings SET value_json = ? WHERE key = 'main'").run(JSON.stringify(parsed));
+      }
+    }
+  } catch {
+    // platform_settings table not yet created on first run
+  }
+
   if (
     !needsStage1 &&
     !needsStage2 &&

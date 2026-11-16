@@ -17,7 +17,7 @@ export const initialSettings: PlatformSettings = {
   brandNameEn: 'GAWAZ INN',
   sloganAr: 'من أول الشقة.. لحد ليلة العمر.',
   sloganEn: 'From Apartment Keys.. To Your Dream Wedding.',
-  hotline: '19742',
+  hotline: '',
   whatsapp: '+201023456789',
   email: 'concierge@gawazinn.com',
   addressAr: 'مبنى جواز إن، التجمع الخامس، القاهرة الجديدة، مصر',

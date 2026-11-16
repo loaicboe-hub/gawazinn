@@ -6,7 +6,6 @@ import {
   Briefcase,
   Sparkles,
   Heart,
-  PhoneCall,
   MessageSquare,
   HeartHandshake,
   BookOpen,
@@ -18,7 +17,6 @@ import {
   Wallet,
   Compass,
   Layers,
-  Gem,
   ListTodo,
   ShoppingBag,
   Store,
@@ -196,17 +194,6 @@ export const Footer: React.FC = () => {
             <span>•</span>
 
             <Link
-              to="/engagement"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Gem className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'مخطط الخطوبة' : 'Engagement'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
               to="/journey"
               onClick={scrollTop}
               className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
@@ -359,12 +346,8 @@ export const Footer: React.FC = () => {
             </Link>
           </div>
 
-          {/* Contact Hotlines */}
+          {/* Contact Support */}
           <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-[#2A1D20]">
-              <PhoneCall className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{settings.hotline}</span>
-            </div>
             <a
               href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
               target="_blank"

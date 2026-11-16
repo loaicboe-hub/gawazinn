@@ -944,7 +944,6 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/early-start',
           '/early-start/academy',
           '/onboarding',
-          '/engagement',
           '/journey',
           '/products',
           '/products/compare',

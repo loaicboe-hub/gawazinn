@@ -175,19 +175,6 @@ async function main() {
       `Expected stage 8 active after reload, got: ${activeStageBadge}`,
     );
 
-    // Module B: Engagement Planner save & add item
-    await page.goto(`${webUrl}/engagement`, { waitUntil: 'networkidle' });
-    await page.getByTestId('engagement-new-title-input').fill('صينية الشبكة والتزيين');
-    const engAddDone = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/engagement/items') &&
-        res.request().method() === 'POST' &&
-        res.status() === 201,
-    );
-    await page.getByTestId('add-engagement-item-btn').click();
-    await engAddDone;
-    await assertNoHorizontalOverflow(page, 'Desktop /engagement');
-
     // Module I: Wedding Journey Planner -> List + Calendar Grid + Add Task
     await page.goto(`${webUrl}/my/journey`, { waitUntil: 'networkidle' });
     await page.getByTestId('journey-task-list').waitFor({ state: 'visible' });
@@ -321,7 +308,7 @@ async function main() {
       }
     });
 
-    for (const r of ['/onboarding', '/engagement', '/journey', '/my/workspace']) {
+    for (const r of ['/onboarding', '/journey', '/my/workspace']) {
       await mobPage.goto(`${webUrl}${r}`, { waitUntil: 'networkidle' });
       await dismissIntroIfPresent(mobPage);
       await assertNoHorizontalOverflow(mobPage, `Mobile RTL ${r}`);

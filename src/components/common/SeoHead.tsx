@@ -146,9 +146,6 @@ export const SeoHead: React.FC = () => {
         'حدد مرحلتك الحالية من 11 مرحلة دون فقدان أي بيانات سابقة: من البداية المبكرة للخطوبة وتشطيب الشقة والزفاف وما بعد الزواج.';
       descEn =
         'Pick your current marriage preparation stage across 11 adaptive milestones with zero loss of prior savings or plans.';
-    } else if (pathname === '/engagement' || pathname.startsWith('/my/engagement')) {
-      titleAr = 'مخطط الخطوبة والشبكة وتنسيق العائلتين | جواز إن';
-      titleEn = 'Engagement Readiness Planner: Shabka, Guests & Venue | GAWAZ INN';
     } else if (pathname === '/journey' || pathname.startsWith('/my/journey')) {
       titleAr = 'مخطط رحلة الزواج والجدول الزمني التفاعلي | جواز إن';
       titleEn = 'Interactive 10-Phase Wedding Journey Planner & Calendar | GAWAZ INN';

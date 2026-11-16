@@ -4,7 +4,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
 import { LifecycleOnboardingView } from '../../src/components/workspace/LifecycleOnboardingView';
-import { EngagementPlannerView } from '../../src/components/workspace/EngagementPlannerView';
 import { JourneyPlannerView } from '../../src/components/workspace/JourneyPlannerView';
 import { MyGawazInnHubView } from '../../src/components/workspace/MyGawazInnHubView';
 import {
@@ -101,18 +100,6 @@ describe('Stage 5 Domain Catalogs (11 Stages, 10 Journey Phases, 17 Hub Modules)
     );
     expect(screen.getByTestId('onboarding-signin-btn')).toBeInTheDocument();
     expect(screen.getByTestId('stage-card-maintaining_home')).toBeInTheDocument();
-    cleanup();
-
-    render(
-      <MemoryRouter initialEntries={['/engagement']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/engagement" element={<EngagementPlannerView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('engagement-signin-btn')).toBeInTheDocument();
     cleanup();
 
     render(

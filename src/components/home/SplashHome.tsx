@@ -15,7 +15,6 @@ import {
   Wallet,
   Compass,
   Layers,
-  Gem,
   ListTodo,
   ShoppingBag,
   Store,
@@ -200,16 +199,6 @@ export const SplashHome: React.FC = () => {
             <span>
               {language === 'ar' ? 'البداية المبكرة وصندوق المستقبل' : 'Early Start & Future Fund'}
             </span>
-          </Link>
-
-          <Link
-            to="/engagement"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-engagement"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
-          >
-            <Gem className="w-3.5 h-3.5 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'مخطط الخطوبة' : 'Engagement Planner'}</span>
           </Link>
 
           <Link

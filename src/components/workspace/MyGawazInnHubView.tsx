@@ -187,7 +187,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
   const appointments = myHubPayload?.appointments || [];
   const notifications = myHubPayload?.notifications || [];
   const unreadCount = myHubPayload?.unreadNotificationsCount || 0;
-  const engagement = myHubPayload?.engagement;
   const journey = myHubPayload?.journey;
   const savedFavoriteProducts = wishlist;
 
@@ -628,21 +627,9 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
           {activeTab === 'checklists' && (
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-sm space-y-5">
               <h2 className="text-lg font-black text-[#2A1D20]">
-                {language === 'ar' ? 'ملخص القوائم والخطوبة وجهاز الزوجين' : 'Checklists, Engagement & Trousseau Status'}
+                {language === 'ar' ? 'ملخص القوائم وجهاز الزوجين' : 'Checklists & Trousseau Status'}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Link
-                  to="/engagement"
-                  className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 hover:border-[#D91B3E] transition space-y-1.5"
-                >
-                  <span className="text-xs font-black text-[#D91B3E]">
-                    {language === 'ar' ? 'مخطط الخطوبة' : 'Engagement Planner'}
-                  </span>
-                  <p className="text-base font-black text-[#2A1D20]">
-                    {engagement ? `${engagement.summary.completionPercent}%` : '0%'}{' '}
-                    {language === 'ar' ? 'جاهزية' : 'ready'}
-                  </p>
-                </Link>
                 <Link
                   to="/bride"
                   className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 hover:border-[#D91B3E] transition space-y-1.5"

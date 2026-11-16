@@ -157,7 +157,6 @@ export type SectionKey =
   | 'home'
   | 'onboarding'
   | 'earlyStart'
-  | 'engagement'
   | 'journey'
   | 'finishing'
   | 'groom'
@@ -189,7 +188,6 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   home: '/',
   onboarding: '/onboarding',
   earlyStart: '/early-start',
-  engagement: '/engagement',
   journey: '/journey',
   finishing: '/finishing',
   groom: '/groom',
@@ -1111,9 +1109,6 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/onboarding')) return 'onboarding';
   if (pathname.startsWith('/early-start') || pathname.startsWith('/my/future-fund')) {
     return 'earlyStart';
-  }
-  if (pathname.startsWith('/engagement') || pathname.startsWith('/my/engagement')) {
-    return 'engagement';
   }
   if (pathname.startsWith('/journey') || pathname.startsWith('/my/journey')) {
     return 'journey';
