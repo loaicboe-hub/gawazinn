@@ -227,13 +227,6 @@ export const SeoHead: React.FC = () => {
         'اسأل عن أسعار المنتجات الحقيقية، تكاليف تشطيب الشقق في مصر، وحسابات التجهيز والزفاف بمصادر موثقة من المنصة.';
       descEn =
         'Ask grounded questions backed by live Egyptian product prices, finishing calculators, and vetted vendor records.';
-    } else if (pathname === '/room-designer') {
-      titleAr = 'مصمم الغرف 2D ولوحات الإلهام بالأسعار الحقيقية | جواز إن';
-      titleEn = '2D Smart Room Designer & Priced Moodboards | GAWAZ INN';
-      descAr =
-        'ارسم أبعاد غرف شقتك، رتب الأثاث والأجهزة والخامات على شبكة 2D، واحسب إجمالي التكلفة الحقيقية من الكتالوج.';
-      descEn =
-        'Plan apartment room dimensions, place furniture & appliances on a 2D canvas, and pin live catalog prices.';
     } else if (pathname === '/wedding-day') {
       titleAr = 'إدارة يوم الفرح والضيوف والطاولات والهدايا | جواز إن';
       titleEn = 'Wedding Day Operations: Guests, Seating, Timeline & Gift Registry | GAWAZ INN';

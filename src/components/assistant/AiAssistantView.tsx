@@ -100,13 +100,6 @@ export const AiAssistantView: React.FC = () => {
 
           <div className="flex flex-wrap gap-3 shrink-0">
             <Link
-              to="/room-designer"
-              className="bg-white text-[#B31331] hover:bg-[#FDE8ED] font-black text-xs sm:text-sm px-4 py-3 rounded-xl shadow-lg transition flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{language === 'ar' ? 'استوديو تصميم الغرف' : 'Room Moodboard Studio'}</span>
-            </Link>
-            <Link
               to="/calculators"
               className="bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition flex items-center gap-2"
             >

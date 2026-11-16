@@ -98,7 +98,7 @@ describe('Stage 10 Grounded AI, Room Studio, Wedding Day Ops & Public RSVP API',
     const sitemapRes = await fetch(`${baseUrl}/sitemap.xml`);
     const xml = await sitemapRes.text();
     expect(xml).toContain('/assistant</loc>');
-    expect(xml).toContain('/room-designer</loc>');
+    expect(xml).not.toContain('/room-designer</loc>');
     expect(xml).not.toContain('/wedding-day</loc>');
     expect(xml).not.toContain('/rsvp/</loc>');
 

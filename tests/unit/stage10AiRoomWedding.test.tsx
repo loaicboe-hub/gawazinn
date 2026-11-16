@@ -4,7 +4,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
 import { AiAssistantView } from '../../src/components/assistant/AiAssistantView';
-import { RoomDesignerView } from '../../src/components/tools/RoomDesignerView';
 import { WeddingDayOpsView } from '../../src/components/wedding/WeddingDayOpsView';
 import { PublicRsvpView } from '../../src/components/wedding/PublicRsvpView';
 import {
@@ -119,7 +118,7 @@ describe('Stage 10 Grounded AI, 2D Room Designer, Wedding Day Ops & Public RSVP'
     ).toBe(true);
   });
 
-  it('renders /assistant, /room-designer, auth-guarded /wedding-day, and /rsvp/:code views cleanly', () => {
+  it('renders /assistant, auth-guarded /wedding-day, and /rsvp/:code views cleanly', () => {
     render(
       <MemoryRouter initialEntries={['/assistant']}>
         <AppProvider>
@@ -132,19 +131,6 @@ describe('Stage 10 Grounded AI, 2D Room Designer, Wedding Day Ops & Public RSVP'
     expect(screen.getByTestId('ai-assistant-heading')).toBeInTheDocument();
     expect(screen.getByTestId('ai-grounding-badge')).toBeInTheDocument();
     expect(screen.getByTestId('ai-query-input')).toBeInTheDocument();
-    cleanup();
-
-    render(
-      <MemoryRouter initialEntries={['/room-designer']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/room-designer" element={<RoomDesignerView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('room-designer-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('room-signin-btn')).toBeInTheDocument();
     cleanup();
 
     render(

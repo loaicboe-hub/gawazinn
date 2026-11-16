@@ -27,7 +27,6 @@ import {
   ListTodo,
   Store,
   Bot,
-  LayoutGrid,
   Users,
   FolderHeart,
 } from 'lucide-react';
@@ -419,16 +418,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
-                      to="/room-designer"
-                      onClick={closeMenus}
-                      data-testid="usermenu-room-designer"
-                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 text-[#D91B3E]" />
-                      <span>{language === 'ar' ? 'مصمم الغرف 2D والمودبورد' : '2D Room Designer'}</span>
-                    </Link>
-
-                    <Link
                       to="/wedding-day"
                       onClick={closeMenus}
                       data-testid="usermenu-wedding-day"
@@ -638,14 +627,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <Bot className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'المستشار الذكي الموثق' : 'Grounded AI Advisor'}</span>
-          </Link>
-          <Link
-            to="/room-designer"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
-          >
-            <LayoutGrid className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'مصمم الغرف 2D والمودبورد' : '2D Room Designer'}</span>
           </Link>
           <Link
             to="/wedding-day"

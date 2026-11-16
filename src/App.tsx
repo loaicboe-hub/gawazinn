@@ -184,11 +184,6 @@ const AiAssistantView = lazy(() =>
     default: m.AiAssistantView,
   })),
 );
-const RoomDesignerView = lazy(() =>
-  import('./components/tools/RoomDesignerView').then((m) => ({
-    default: m.RoomDesignerView,
-  })),
-);
 const WeddingDayOpsView = lazy(() =>
   import('./components/wedding/WeddingDayOpsView').then((m) => ({
     default: m.WeddingDayOpsView,
@@ -281,7 +276,6 @@ const MainContent: React.FC = () => {
             <Route path="/community" element={<CommunityForumView />} />
             <Route path="/experts" element={<ExpertsDirectoryView />} />
             <Route path="/assistant" element={<AiAssistantView />} />
-            <Route path="/room-designer" element={<RoomDesignerView />} />
             <Route path="/wedding-day" element={<WeddingDayOpsView />} />
             <Route path="/rsvp/:code" element={<PublicRsvpView />} />
             <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />

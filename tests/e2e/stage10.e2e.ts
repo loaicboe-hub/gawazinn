@@ -184,30 +184,6 @@ async function main() {
     await aiPersonalDone;
     await page.getByTestId('ai-personal-context-badge').waitFor({ state: 'visible' });
 
-    // 3. Karim visits /room-designer -> creates bedroom board & adds DB product -> cost updates live
-    await page.goto(`${webUrl}/room-designer`, { waitUntil: 'networkidle' });
-    await page.getByTestId('room-designer-heading').waitFor({ state: 'visible' });
-    await page.getByTestId('room-designer-canvas').waitFor({ state: 'visible' });
-
-    await page.getByTestId('room-open-create-btn').click();
-    await page.getByTestId('room-create-form').waitFor({ state: 'visible' });
-    await page.getByTestId('room-title-input').fill('غرفة النوم الرئيسية E2E');
-    const createBoardDone = page.waitForResponse(
-      (res) => res.url().endsWith('/api/v1/room-studio/moodboards') && res.status() === 201,
-    );
-    await page.getByTestId('room-create-submit').click();
-    await createBoardDone;
-
-    // Add catalog product onto the new 2D floor plan canvas
-    const addItemDone = page.waitForResponse(
-      (res) => res.url().includes('/room-studio/moodboards/') && res.url().endsWith('/items') && res.status() === 201,
-    );
-    await page.getByTestId('room-add-item-submit').click();
-    await addItemDone;
-    const costText = await page.getByTestId('room-total-cost').innerText();
-    assert.ok(!costText.startsWith('0 '), `Expected live DB product cost > 0 EGP, got "${costText}"`);
-    await assertNoHorizontalOverflow(page, 'desktop /room-designer');
-
     // 4. Karim inspects /wedding-day, copies GI-KARIM-102 status ('pending'), then logs out
     await page.goto(`${webUrl}/wedding-day`, { waitUntil: 'networkidle' });
     await page.getByTestId('wedding-day-heading').waitFor({ state: 'visible' });
@@ -260,12 +236,12 @@ async function main() {
     assert.ok(afterConfirmed > initialConfirmed, `Expected confirmed headcount > ${initialConfirmed}, got ${afterConfirmed}`);
     assert.notEqual(afterReserved, initialReserved, `Expected reserved gifts count to increment from ${initialReserved}`);
 
-    // Language switch check (EN LTR & back to AR RTL) on /room-designer
-    await page.goto(`${webUrl}/room-designer`, { waitUntil: 'networkidle' });
+    // Language switch check (EN LTR & back to AR RTL) on /assistant
+    await page.goto(`${webUrl}/assistant`, { waitUntil: 'networkidle' });
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'ltr');
-    await assertNoHorizontalOverflow(page, 'desktop /room-designer LTR');
+    await assertNoHorizontalOverflow(page, 'desktop /assistant LTR');
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'rtl');
@@ -295,10 +271,6 @@ async function main() {
     await assertNoHorizontalOverflow(mPage, 'mobile /rsvp/GI-KARIM-102');
 
     await loginViaModal(mPage, 'karim@gawazinn.demo', 'DemoPass@2026');
-    await mPage.goto(`${webUrl}/room-designer`, { waitUntil: 'networkidle' });
-    await mPage.getByTestId('room-designer-canvas').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(mPage, 'mobile /room-designer');
-
     await mPage.goto(`${webUrl}/wedding-day`, { waitUntil: 'networkidle' });
     await mPage.getByTestId('wedding-day-heading').waitFor({ state: 'visible' });
     await assertNoHorizontalOverflow(mPage, 'mobile /wedding-day');

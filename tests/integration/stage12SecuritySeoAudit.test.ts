@@ -153,7 +153,6 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
       '/community</loc>',
       '/experts</loc>',
       '/assistant</loc>',
-      '/room-designer</loc>',
       '/newlyweds-guide</loc>',
       '/home-care</loc>',
     ];
@@ -168,6 +167,7 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
       '/admin',
       '/wedding-day',
       '/rsvp/',
+      '/room-designer',
       'gawazinn.vercel.app/vendor</loc>',
       'gawazinn.vercel.app/vendor/',
     ];

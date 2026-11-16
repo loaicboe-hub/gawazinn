@@ -23,7 +23,6 @@ import {
   ShoppingBag,
   Store,
   Bot,
-  LayoutGrid,
   Users,
 } from 'lucide-react';
 
@@ -336,17 +335,6 @@ export const Footer: React.FC = () => {
             >
               <Bot className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'المستشار الذكي' : 'Grounded AI'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/room-designer"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'مصمم الغرف 2D' : 'Room Designer'}</span>
             </Link>
 
             <span>•</span>
