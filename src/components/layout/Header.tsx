@@ -406,18 +406,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
-                      to="/rfq"
-                      onClick={closeMenus}
-                      data-testid="usermenu-rfq-center"
-                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#D91B3E]" />
-                      <span>
-                        {language === 'ar' ? 'طلبات التسعير والمواعيد' : 'RFQs & Slot Bookings'}
-                      </span>
-                    </Link>
-
-                    <Link
                       to="/vendor"
                       onClick={closeMenus}
                       data-testid="usermenu-vendor-portal"
@@ -586,14 +574,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <Wrench className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'دليل النقل والصيانة بعد الزواج' : 'Moving & Home Care Directory'}</span>
-          </Link>
-          <Link
-            to="/rfq"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
-          >
-            <FileText className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'طلبات التسعير ومقارنة العروض' : 'RFQs & Quote Compare'}</span>
           </Link>
           <Link
             to="/vendor"

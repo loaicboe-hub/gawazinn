@@ -343,14 +343,6 @@ export const VendorProfileView: React.FC = () => {
                     <span>{language === 'ar' ? 'الموقع' : 'Website'}</span>
                   </a>
                 )}
-                <Link
-                  to={`/rfq/new?vendorId=${encodeURIComponent(vendor.id)}&category=${encodeURIComponent(vendor.primaryCategorySlug)}`}
-                  data-testid="vendor-request-rfq-btn"
-                  className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#2A1D20] text-xs font-black shadow transition flex items-center gap-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>{language === 'ar' ? 'اطلب عرض سعر (RFQ)' : 'Request Quote (RFQ)'}</span>
-                </Link>
                 <a
                   href="#book-slot-section"
                   data-testid="vendor-open-booking-btn"
@@ -768,13 +760,6 @@ export const VendorProfileView: React.FC = () => {
                   : 'Select an available date & slot time — requests stay Pending until formally confirmed by the Vendor Partner.'}
               </p>
             </div>
-            <Link
-              to={`/rfq/new?vendorId=${encodeURIComponent(vendor.id)}&category=${encodeURIComponent(vendor.primaryCategorySlug)}`}
-              className="px-4 py-2 rounded-xl bg-white border border-[#D91B3E]/30 text-[#B31331] hover:bg-[#FDE8ED] text-xs font-bold flex items-center gap-1.5"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>{language === 'ar' ? 'أو أرسل طلب تسعير RFQ' : 'Or Send RFQ Quote Request'}</span>
-            </Link>
           </div>
 
           {!currentUser ? (
@@ -809,7 +794,7 @@ export const VendorProfileView: React.FC = () => {
                       ? `تم إرسال طلب الموعد (${bookedApt.slotDate} الساعة ${bookedApt.slotTime}) بحالة "${bookedApt.status}".`
                       : `Slot request submitted (${bookedApt.slotDate} at ${bookedApt.slotTime}) with status "${bookedApt.status}".`}
                   </span>
-                  <Link to="/rfq?tab=appointments" className="underline font-black text-emerald-800">
+                  <Link to="/my/workspace?tab=appointments" className="underline font-black text-emerald-800">
                     {language === 'ar' ? 'متابعة مواعيدي ->' : 'Track My Appointments ->'}
                   </Link>
                 </div>

@@ -89,11 +89,6 @@ const VendorPortalView = lazy(() =>
     default: m.VendorPortalView,
   })),
 );
-const RfqCenterView = lazy(() =>
-  import('./components/rfq/RfqCenterView').then((m) => ({
-    default: m.RfqCenterView,
-  })),
-);
 const CustomerPortalView = lazy(() =>
   import('./components/customer/CustomerPortalView').then((m) => ({
     default: m.CustomerPortalView,
@@ -259,8 +254,6 @@ const MainContent: React.FC = () => {
             <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />
             <Route path="/home-care" element={<HomeCareDirectoryView />} />
             <Route path="/vendor" element={<VendorPortalView />} />
-            <Route path="/rfq" element={<RfqCenterView />} />
-            <Route path="/rfq/new" element={<RfqCenterView initialTab="new" />} />
             <Route path="/calculators" element={<CalculatorsHubView />} />
             <Route path="/calculators/:slug" element={<CalculatorDetailView />} />
             <Route path="/my/budget" element={<BudgetManagerView />} />

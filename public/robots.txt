@@ -25,7 +25,6 @@ Allow: /faqs
 
 Disallow: /portal
 Disallow: /my/
-Disallow: /rfq
 Disallow: /admin
 Disallow: /api/
 Disallow: /vendor$

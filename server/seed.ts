@@ -134,6 +134,20 @@ export function seedDatabase(
     // platform_settings table not yet created on first run
   }
 
+  // Clear demo RFQ request so site and admin start clean
+  try {
+    db.exec(`
+      DELETE FROM rfq_messages WHERE rfq_id = 'rfq-seed-1';
+      DELETE FROM rfq_quotes WHERE rfq_id = 'rfq-seed-1';
+      DELETE FROM rfq_invitations WHERE rfq_id = 'rfq-seed-1';
+      DELETE FROM vendor_leads WHERE rfq_id = 'rfq-seed-1';
+      DELETE FROM appointments WHERE rfq_id = 'rfq-seed-1';
+      DELETE FROM rfq_requests WHERE id = 'rfq-seed-1';
+    `);
+  } catch {
+    // tables not yet created on first run
+  }
+
   if (
     !needsStage1 &&
     !needsStage2 &&

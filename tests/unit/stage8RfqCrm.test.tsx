@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
-import { RfqCenterView } from '../../src/components/rfq/RfqCenterView';
 import { VendorProfileView } from '../../src/components/vendors/VendorProfileView';
 import { VendorPortalView } from '../../src/components/vendors/VendorPortalView';
 import { VENDOR_CRM_STAGES, mapCategoryToBudgetBucket } from '../../server/rfqCrmService';
@@ -100,19 +99,7 @@ describe('Stage 8 Multi-Vendor RFQ, Slot Appointments & 8-Stage Vendor CRM', () 
     ).toBe(true);
   });
 
-  it('renders /rfq guest prompt and VendorProfileView RFQ + slot booking controls cleanly', () => {
-    render(
-      <MemoryRouter initialEntries={['/rfq']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/rfq" element={<RfqCenterView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('rfq-signin-btn')).toBeInTheDocument();
-    cleanup();
-
+  it('renders VendorProfileView slot booking controls and VendorPortalView cleanly', () => {
     render(
       <MemoryRouter initialEntries={['/vendors/el-rowad-contracting']}>
         <AppProvider>
@@ -122,7 +109,6 @@ describe('Stage 8 Multi-Vendor RFQ, Slot Appointments & 8-Stage Vendor CRM', () 
         </AppProvider>
       </MemoryRouter>,
     );
-    expect(screen.getByTestId('vendor-request-rfq-btn')).toBeInTheDocument();
     expect(screen.getByTestId('vendor-slot-booking-card')).toBeInTheDocument();
     cleanup();
 

@@ -913,12 +913,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    to="/rfq"
-                    className="px-4 py-2 rounded-xl bg-white border border-[#D91B3E]/30 text-[#B31331] font-bold text-xs"
-                  >
-                    {language === 'ar' ? 'مركز عروض أسعار الشركاء (RFQ)' : 'Multi-Vendor RFQ Center'}
-                  </Link>
-                  <Link
                     to="/calculators"
                     className="bg-red-gradient text-white font-bold text-xs px-4 py-2 rounded-xl"
                   >

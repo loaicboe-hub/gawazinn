@@ -800,37 +800,7 @@ export const AdminDashboardView: React.FC = () => {
                 </div>
 
                 {/* Funnel & Community Aggregate Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
-                    <span className="text-gray-500 block">
-                      {language === 'ar' ? 'طلبات التسعير (RFQ)' : 'Multi-Vendor RFQs'}
-                    </span>
-                    <strong className="text-xl font-black text-[#2A1D20] block">
-                      {adminAnalytics.marketplaceFunnel.totalRfqs}
-                    </strong>
-                    <span className="text-[11px] font-bold text-[#D91B3E]">
-                      {adminAnalytics.marketplaceFunnel.quotedRfqs}{' '}
-                      {language === 'ar' ? 'مسعّر' : 'quoted'} •{' '}
-                      {adminAnalytics.marketplaceFunnel.acceptedRfqs}{' '}
-                      {language === 'ar' ? 'مقبول' : 'accepted'} (
-                      {adminAnalytics.marketplaceFunnel.rfqAcceptanceRatePct}%)
-                    </span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
-                    <span className="text-gray-500 block">
-                      {language === 'ar' ? 'معدل استجابة الشركاء' : 'Vendor Response Rate'}
-                    </span>
-                    <strong className="text-xl font-black text-emerald-700 block">
-                      {adminAnalytics.marketplaceFunnel.vendorResponseRatePct}%
-                    </strong>
-                    <span className="text-[11px] text-gray-600">
-                      {adminAnalytics.marketplaceFunnel.respondedInvitations}/
-                      {adminAnalytics.marketplaceFunnel.totalInvitations}{' '}
-                      {language === 'ar' ? 'دعوة تسعير' : 'invitations'}
-                    </span>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-1">
                     <span className="text-gray-500 block">
                       {language === 'ar' ? 'المجتمع والقصص' : 'Community & Stories'}

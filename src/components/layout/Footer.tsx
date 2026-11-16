@@ -271,17 +271,6 @@ export const Footer: React.FC = () => {
             <span>•</span>
 
             <Link
-              to="/rfq"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'عروض الأسعار RFQ' : 'RFQ Center'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
               to="/real-weddings"
               onClick={scrollTop}
               className="hover:text-[#D91B3E] transition flex items-center gap-1.5"

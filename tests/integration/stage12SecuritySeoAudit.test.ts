@@ -178,7 +178,7 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
     const robotsContent = fs.readFileSync(path.resolve(process.cwd(), 'public/robots.txt'), 'utf8');
     expect(robotsContent).toContain('Disallow: /my/');
     expect(robotsContent).toContain('Disallow: /admin');
-    expect(robotsContent).toContain('Disallow: /rfq');
+    expect(robotsContent).not.toContain('Disallow: /rfq');
     expect(robotsContent).toContain('Disallow: /wedding-day');
     expect(robotsContent).toContain('Disallow: /rsvp/');
   });

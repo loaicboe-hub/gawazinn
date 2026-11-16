@@ -90,20 +90,9 @@ export const HomeCareDirectoryView: React.FC = () => {
             </h1>
             <p className="text-sm sm:text-base text-rose-100/95 leading-relaxed">
               {language === 'ar'
-                ? 'استعرض قوائم الفحص قبل التعاقد مع شركات النقل أو فنيي التكييف والسباكة، وقارن العروض عبر نظام RFQ قبل الدفع.'
-                : 'Review Egypt-specific moving & maintenance checklists, inspect verified partner terms, and request sealed quotes cleanly via Multi-Vendor RFQ.'}
+                ? 'استعرض قوائم الفحص قبل التعاقد مع شركات النقل أو فنيي التكييف والسباكة، وتأكد من شروط الضمان قبل الدفع.'
+                : 'Review Egypt-specific moving & maintenance checklists and inspect verified partner terms before booking.'}
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3 shrink-0">
-            <Link
-              to="/rfq/new?category=home_maintenance"
-              data-testid="homecare-rfq-btn"
-              className="px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/25 font-black text-xs sm:text-sm flex items-center gap-2 transition"
-            >
-              <FileText className="w-4 h-4" />
-              <span>{language === 'ar' ? 'اطلب تسعير صيانة أو نقل' : 'Request Home Care Quote'}</span>
-            </Link>
           </div>
         </div>
       </div>
@@ -165,12 +154,6 @@ export const HomeCareDirectoryView: React.FC = () => {
                   >
                     {language === 'ar' ? 'عرض شركاء هذا القسم' : 'Filter These Partners'}
                   </button>
-                  <Link
-                    to={`/rfq/new?category=${encodeURIComponent(cat.slug)}`}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-[#D91B3E]/25 text-[#B31331] text-xs font-bold hover:bg-[#FDE8ED] transition"
-                  >
-                    {language === 'ar' ? 'اطلب عروض أسعار RFQ' : 'Request RFQ'}
-                  </Link>
                 </div>
               </div>
             );
@@ -303,13 +286,6 @@ export const HomeCareDirectoryView: React.FC = () => {
                       >
                         <span>{language === 'ar' ? 'ملف الشريك' : 'Partner Profile'}</span>
                         <ArrowIcon className="w-3.5 h-3.5" />
-                      </Link>
-                      <Link
-                        to={`/rfq/new?category=${encodeURIComponent(rfqCategory)}&vendorId=${encodeURIComponent(vendor.id)}`}
-                        className="px-3.5 py-2 rounded-xl bg-red-gradient text-white text-xs font-bold flex items-center gap-1 shadow-xs"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>{language === 'ar' ? 'طلب عرض سعر' : 'Request Quote'}</span>
                       </Link>
                     </div>
                   </article>
