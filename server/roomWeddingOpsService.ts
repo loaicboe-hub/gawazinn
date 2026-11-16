@@ -825,16 +825,15 @@ export function getPublicRsvpByCode(db: DatabaseSync, code: string): PublicRsvpP
   const hostUser = db
     .prepare('SELECT name FROM users WHERE id = ?')
     .get(guest.userId) as { name: string } | undefined;
-  const ws = db
-    .prepare(
-      'SELECT wedding_date FROM couple_workspaces WHERE owner_user_id = ? AND wedding_date IS NOT NULL ORDER BY updated_at DESC LIMIT 1',
-    )
+  const workspace = db
+    .prepare('SELECT wedding_date FROM couple_workspaces WHERE owner_user_id = ?')
     .get(guest.userId) as { wedding_date: string | null } | undefined;
-  const prefs = !ws?.wedding_date
+  const earlyProfile = !workspace?.wedding_date
     ? (db
-        .prepare('SELECT expected_marriage_date FROM early_start_profiles WHERE user_id = ?')
-        .get(guest.userId) as { expected_marriage_date: string | null } | undefined)
+        .prepare('SELECT target_marriage_date FROM early_start_profiles WHERE user_id = ?')
+        .get(guest.userId) as { target_marriage_date: string | null } | undefined)
     : undefined;
+  const expectedWeddingDate = workspace?.wedding_date || earlyProfile?.target_marriage_date || null;
 
   const registryRows = db
     .prepare('SELECT * FROM gift_registry_items WHERE user_id = ? ORDER BY created_at ASC')
@@ -857,7 +856,7 @@ export function getPublicRsvpByCode(db: DatabaseSync, code: string): PublicRsvpP
       respondedAt: guest.respondedAt,
     },
     hostCoupleName: hostUser?.name || 'GAWAZ INN Couple',
-    expectedWeddingDate: ws?.wedding_date || prefs?.expected_marriage_date || null,
+    expectedWeddingDate,
     giftRegistry: registryRows.map((g) => ({
       id: String(g.id),
       productId: g.product_id ? String(g.product_id) : null,

@@ -86,8 +86,8 @@ export const SupportModal: React.FC = () => {
         err instanceof Error
           ? err.message
           : language === 'ar'
-          ? 'يرجى التأكد من استيفاء جميع البيانات وشرح الحالة (15 حرفاً على الأقل).'
-          : 'Please check required inputs and social case description length.',
+            ? 'يرجى التأكد من استيفاء جميع البيانات وشرح الحالة (15 حرفاً على الأقل).'
+            : 'Please check required inputs and social case description length.',
       );
     } finally {
       setSubmitting(false);
@@ -320,8 +320,8 @@ export const SupportModal: React.FC = () => {
                     ? 'جاري التسجيل السري...'
                     : 'Submitting Confidentially...'
                   : language === 'ar'
-                  ? 'إرسال طلب الدعم للمراجعة السرية'
-                  : 'Submit Confidential Application'}
+                    ? 'إرسال طلب الدعم للمراجعة السرية'
+                    : 'Submit Confidential Application'}
               </span>
               <ArrowIcon className="w-4 h-4" />
             </button>

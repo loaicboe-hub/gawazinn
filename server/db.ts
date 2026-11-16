@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { EMBEDDED_MIGRATIONS } from './embeddedMigrations';
 
 export function openDatabase(sqlitePath: string): DatabaseSync {
   if (sqlitePath !== ':memory:') {
@@ -28,34 +29,41 @@ export function runMigrations(
     );
   `);
 
-  if (!fs.existsSync(migrationsDir)) {
-    return [];
+  let migrationItems: Array<{ name: string; sql: string }> = [];
+
+  if (fs.existsSync(migrationsDir)) {
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    migrationItems = files.map((file) => ({
+      name: file,
+      sql: fs.readFileSync(path.join(migrationsDir, file), 'utf8'),
+    }));
   }
 
-  const files = fs
-    .readdirSync(migrationsDir)
-    .filter((file) => file.endsWith('.sql'))
-    .sort();
+  if (migrationItems.length === 0) {
+    migrationItems = EMBEDDED_MIGRATIONS;
+  }
 
   const applied: string[] = [];
 
-  for (const file of files) {
+  for (const item of migrationItems) {
     const existing = db
       .prepare('SELECT name FROM _migrations WHERE name = ?')
-      .get(file) as { name: string } | undefined;
+      .get(item.name) as { name: string } | undefined;
 
     if (existing) continue;
 
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
     db.exec('BEGIN;');
     try {
-      db.exec(sql);
+      db.exec(item.sql);
       db.prepare('INSERT INTO _migrations (name, applied_at) VALUES (?, ?)').run(
-        file,
+        item.name,
         new Date().toISOString(),
       );
       db.exec('COMMIT;');
-      applied.push(file);
+      applied.push(item.name);
     } catch (err) {
       db.exec('ROLLBACK;');
       throw err;

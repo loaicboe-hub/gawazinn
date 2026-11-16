@@ -12,20 +12,39 @@ import { createAppHandler } from '../server/app';
 let cachedHandler: ((req: IncomingMessage, res: ServerResponse) => Promise<void>) | null = null;
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  let fn = cachedHandler;
-  if (!fn) {
-    const config = loadConfig();
-    const sqlitePath = process.env.VERCEL ? '/tmp/gawazinn.db' : config.sqlitePath;
-    const db = openDatabase(sqlitePath);
-    runMigrations(db);
-    seedDatabase(db, config.sessionSecret);
-    fn = createAppHandler(db, {
-      sessionSecret: config.sessionSecret,
-      appOrigin: config.appOrigin,
-      sessionTtlSeconds: config.sessionTtlSeconds,
-      isProduction: config.nodeEnv === 'production',
+  try {
+    let fn = cachedHandler;
+    if (!fn) {
+      const config = loadConfig();
+      const sqlitePath = process.env.VERCEL ? '/tmp/gawazinn.db' : config.sqlitePath;
+      const db = openDatabase(sqlitePath);
+      runMigrations(db);
+      seedDatabase(db, config.sessionSecret);
+      fn = createAppHandler(db, {
+        sessionSecret: config.sessionSecret,
+        appOrigin: config.appOrigin || 'https://gawazinn.vercel.app',
+        sessionTtlSeconds: config.sessionTtlSeconds,
+        isProduction: true,
+      });
+      cachedHandler = fn;
+    }
+    return await fn(req, res);
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Vercel serverless error:', error);
+    res.writeHead(500, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': req.headers.origin || '*',
+      'Access-Control-Allow-Credentials': 'true',
     });
-    cachedHandler = fn;
+    res.end(
+      JSON.stringify({
+        ok: false,
+        error: {
+          code: 'SERVERLESS_FUNCTION_ERROR',
+          message: error.message || 'Internal Server Error',
+        },
+      }),
+    );
   }
-  return fn(req, res);
 }

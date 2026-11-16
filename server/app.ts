@@ -885,8 +885,17 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
 
   return async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const reqOrigin = req.headers.origin;
-    const allowedOrigins = [options.appOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000'];
-    if (typeof reqOrigin === 'string' && allowedOrigins.includes(reqOrigin)) {
+    const allowedOrigins = [
+      options.appOrigin,
+      'https://gawazinn.vercel.app',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ];
+    const isVercelDomain =
+      typeof reqOrigin === 'string' && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(reqOrigin);
+    if (typeof reqOrigin === 'string' && (allowedOrigins.includes(reqOrigin) || isVercelDomain)) {
       res.setHeader('Access-Control-Allow-Origin', reqOrigin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
