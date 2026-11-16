@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { User as UserIcon, ShieldCheck, AlertCircle, KeyRound } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, AlertCircle, KeyRound, Store } from 'lucide-react';
 import { ModalFrame } from '../common/ModalFrame';
 
 export const AuthModal: React.FC = () => {
@@ -220,23 +220,32 @@ export const AuthModal: React.FC = () => {
                   : 'Seeded Demo Accounts (Authenticated via Server):'}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => handleDemoLogin('karim@gawazinn.demo', 'DemoPass@2026')}
-                className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#FDE8ED] border border-rose-200 text-[#2A1D20] text-[11px] font-bold transition cursor-pointer"
+                className="px-2 py-2 rounded-xl bg-white hover:bg-[#FDE8ED] border border-rose-200 text-[#2A1D20] text-[11px] font-bold transition cursor-pointer text-center"
               >
-                {language === 'ar' ? 'دخول عميل (كريم)' : 'Demo Customer'}
+                {language === 'ar' ? 'دخول عميل' : 'Customer'}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => handleDemoLogin('vendor@gawazinn.demo', 'DemoPass@2026')}
+                className="px-2 py-2 rounded-xl bg-white hover:bg-[#FDE8ED] border border-rose-200 text-[#B31331] text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer text-center"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'دخول مورد' : 'Vendor'}</span>
               </button>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => handleDemoLogin('admin@gawazinn.demo', 'AdminPass@2026')}
-                className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#FDE8ED] border border-rose-200 text-[#D91B3E] text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                className="px-2 py-2 rounded-xl bg-white hover:bg-[#FDE8ED] border border-rose-200 text-[#D91B3E] text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer text-center"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>{language === 'ar' ? 'دخول الإدارة' : 'Demo Admin'}</span>
+                <span>{language === 'ar' ? 'دخول الإدارة' : 'Admin'}</span>
               </button>
             </div>
           </div>
