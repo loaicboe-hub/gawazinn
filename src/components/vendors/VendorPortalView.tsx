@@ -93,7 +93,7 @@ const SAMPLE_PRODUCT_PHOTOS = [
   { label: 'ثلاجة حديثة', url: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=800&q=80' },
   { label: 'غسالة ملابس', url: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?auto=format&fit=crop&w=800&q=80' },
   { label: 'شاشة تلفزيون 65', url: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=800&q=80' },
-  { label: 'بوتاجاز وفرن', url: 'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80' },
+  { label: 'بوتاجاز وفرن', url: 'https://images.unsplash.com/flagged/photo-1585755044460-daac4171e511?auto=format&fit=crop&w=800&q=80' },
   { label: 'تكييف سبليت', url: 'https://images.unsplash.com/photo-1709432767122-d3cb5326911a?auto=format&fit=crop&w=800&q=80' },
   { label: 'طقم حلل جرانيت', url: 'https://images.unsplash.com/photo-1585469385562-12b359da399d?auto=format&fit=crop&w=800&q=80' },
   { label: 'طقم صيني وسفرة', url: 'https://images.unsplash.com/photo-1571987530791-58e3e7744d99?auto=format&fit=crop&w=800&q=80' },

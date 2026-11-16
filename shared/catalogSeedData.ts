@@ -1,4 +1,4 @@
-﻿import { 
+import { 
   FinishingPackage, 
   FinishingService, 
   Product, 
@@ -325,7 +325,7 @@ export const initialGroomProducts: Product[] = [
     originalPrice: 20200,
     sku: 'FRS-CKR-90-SS',
     stock: 12,
-    imageUrl: 'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=900&q=80',
+    imageUrl: 'https://images.unsplash.com/flagged/photo-1585755044460-daac4171e511?auto=format&fit=crop&w=900&q=80',
     descriptionAr: 'سطح ستانلس ستيل عريض، شعلات نحاسية سباف إيطالية، حوامل زهر ثقيلة، وشواية دوارة أوتوماتيكية.',
     descriptionEn: 'Italian Sabaf brass burners, heavy cast iron pan supports, full flame safety auto cut-off.',
     specsAr: { 'المقاس': '60 * 90 سم', 'الشعلات': '5 شعلة غاز', 'الأمان': 'أمان كامل 100%', 'الضمان': '5 سنوات' },
