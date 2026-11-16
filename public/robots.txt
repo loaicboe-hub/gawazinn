@@ -18,7 +18,6 @@ Allow: /products
 Allow: /vendors
 Allow: /real-weddings
 Allow: /community
-Allow: /experts
 Allow: /newlyweds-guide
 Allow: /home-care
 Allow: /glossary

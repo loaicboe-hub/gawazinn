@@ -210,13 +210,6 @@ export const SeoHead: React.FC = () => {
         'اطرح سؤالك حول التشطيب أو الجهاز أو الفرح أو الادخار المبكر واحصل على إجابات من أزواج مجربين وخبراء معتمدين.';
       descEn =
         'Ask questions about Egyptian apartment finishing, trousseau, wedding contracts & savings—with verified expert replies.';
-    } else if (pathname === '/experts') {
-      titleAr = 'دليل الخبراء والمستشارين المعتمدين | جواز إن';
-      titleEn = 'Verified Experts & Marriage Planning Advisors Directory | GAWAZ INN';
-      descAr =
-        'مهندسو تشطيب، مخططو ميزانيات، ومستشارو زواج مفحوصو المؤهلات إدارياً في مصر.';
-      descEn =
-        'Admin-verified Egyptian finishing engineers, marriage financial coaches, and bridal trousseau specialists.';
     } else if (pathname === '/wedding-day') {
       titleAr = 'إدارة يوم الفرح والضيوف والطاولات والهدايا | جواز إن';
       titleEn = 'Wedding Day Operations: Guests, Seating, Timeline & Gift Registry | GAWAZ INN';

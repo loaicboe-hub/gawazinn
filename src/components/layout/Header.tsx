@@ -564,14 +564,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
             <span>{language === 'ar' ? 'منتدى الأسئلة والخبراء' : 'Community Q&A'}</span>
           </Link>
           <Link
-            to="/experts"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
-          >
-            <Sparkles className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'دليل الخبراء المعتمدين' : 'Verified Experts Directory'}</span>
-          </Link>
-          <Link
             to="/wedding-day"
             onClick={closeMenus}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"

@@ -333,16 +333,6 @@ export const SplashHome: React.FC = () => {
           </Link>
 
           <Link
-            to="/experts"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-experts"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
-          >
-            <BadgeCheck className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'دليل الخبراء المعتمدين' : 'Verified Experts'}</span>
-          </Link>
-
-          <Link
             to="/wedding-day"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             data-testid="home-discovery-wedding-day"

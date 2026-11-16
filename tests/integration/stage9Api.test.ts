@@ -102,7 +102,7 @@ describe('Stage 9 Real Weddings, Community Q&A, Experts Governance & Admin OS An
     const xml = await sitemapRes.text();
     expect(xml).toContain('/real-weddings</loc>');
     expect(xml).toContain('/community</loc>');
-    expect(xml).toContain('/experts</loc>');
+    expect(xml).not.toContain('/experts</loc>');
 
     // 2. Public /stories ONLY shows approved stories (never 'story-seed-pending')
     const pubStoriesInit = await reqJson<RealWeddingStory[]>('/api/v1/stories');

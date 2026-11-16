@@ -190,13 +190,6 @@ export const CommunityForumView: React.FC = () => {
               <Plus className="w-4 h-4" />
               <span>{language === 'ar' ? 'اطرح سؤالاً جديداً' : 'Ask a Question'}</span>
             </button>
-            <Link
-              to="/experts"
-              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition flex items-center gap-2"
-            >
-              <BadgeCheck className="w-4 h-4" />
-              <span>{language === 'ar' ? 'دليل الخبراء المعتمدين' : 'Verified Experts'}</span>
-            </Link>
           </div>
         </div>
       </div>

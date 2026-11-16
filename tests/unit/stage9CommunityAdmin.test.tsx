@@ -5,7 +5,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
 import { RealWeddingsView } from '../../src/components/community/RealWeddingsView';
 import { CommunityForumView } from '../../src/components/community/CommunityForumView';
-import { ExpertsDirectoryView } from '../../src/components/community/ExpertsDirectoryView';
 import { AdminDashboardView } from '../../src/components/admin/AdminDashboardView';
 import {
   COMMUNITY_CATEGORY_META,
@@ -108,7 +107,7 @@ describe('Stage 9 Real Weddings, Community Q&A, Experts Directory & Admin OS', (
     expect(adminVerifyExpertSchema.safeParse({ verificationStatus: 'verified' }).success).toBe(true);
   });
 
-  it('renders /real-weddings, /community, /experts, and RBAC-guarded /admin views cleanly', () => {
+  it('renders /real-weddings, /community, and RBAC-guarded /admin views cleanly', () => {
     render(
       <MemoryRouter initialEntries={['/real-weddings']}>
         <AppProvider>
@@ -133,19 +132,6 @@ describe('Stage 9 Real Weddings, Community Q&A, Experts Directory & Admin OS', (
     );
     expect(screen.getByTestId('community-heading')).toBeInTheDocument();
     expect(screen.getByTestId('community-signin-btn')).toBeInTheDocument();
-    cleanup();
-
-    render(
-      <MemoryRouter initialEntries={['/experts']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/experts" element={<ExpertsDirectoryView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('experts-directory-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('expert-open-apply-btn')).toBeInTheDocument();
     cleanup();
 
     render(

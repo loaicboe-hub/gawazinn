@@ -276,11 +276,6 @@ async function main() {
     await page.getByTestId('admin-expert-verify-exp-seed-pending').click();
     await verifyExpDone;
 
-    await page.goto(`${webUrl}/experts`, { waitUntil: 'networkidle' });
-    await page.getByTestId('expert-card-exp-seed-pending').waitFor({ state: 'visible' });
-    await page.getByTestId('expert-verified-badge-exp-seed-pending').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(page, 'desktop /experts');
-
     // Language Switch Check on /community (EN LTR & AR RTL)
     await page.goto(`${webUrl}/community`, { waitUntil: 'networkidle' });
     await page.getByTestId('lang-switch-btn').click();
@@ -314,10 +309,6 @@ async function main() {
     await mPage.goto(`${webUrl}/community`, { waitUntil: 'networkidle' });
     await mPage.getByTestId('community-heading').waitFor({ state: 'visible' });
     await assertNoHorizontalOverflow(mPage, 'mobile /community');
-
-    await mPage.goto(`${webUrl}/experts`, { waitUntil: 'networkidle' });
-    await mPage.getByTestId('experts-directory-heading').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(mPage, 'mobile /experts');
 
     await loginViaModal(mPage, 'admin@gawazinn.demo', 'AdminPass@2026');
     await mPage.goto(`${webUrl}/admin`, { waitUntil: 'networkidle' });

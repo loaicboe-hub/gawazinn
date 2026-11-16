@@ -151,13 +151,13 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
       '/vendors</loc>',
       '/real-weddings</loc>',
       '/community</loc>',
-      '/experts</loc>',
       '/newlyweds-guide</loc>',
       '/home-care</loc>',
     ];
     for (const p of requiredPublicPaths) {
       expect(xml).toContain(p);
     }
+    expect(xml).not.toContain('/experts</loc>');
 
     const forbiddenPrivateFragments = [
       '/portal',

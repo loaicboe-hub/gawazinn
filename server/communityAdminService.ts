@@ -444,7 +444,7 @@ export function adminVerifyExpertProfile(
           : 'Expert Credential Review Update',
       bodyAr: `الحالة: ${input.verificationStatus}${input.verificationNotes ? ` — ${input.verificationNotes}` : ''}`,
       bodyEn: `Status: ${input.verificationStatus}${input.verificationNotes ? ` — ${input.verificationNotes}` : ''}`,
-      linkPath: '/experts',
+      linkPath: '/community',
     });
 
     db.exec('COMMIT;');

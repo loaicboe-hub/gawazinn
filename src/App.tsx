@@ -169,11 +169,6 @@ const CommunityForumView = lazy(() =>
     default: m.CommunityForumView,
   })),
 );
-const ExpertsDirectoryView = lazy(() =>
-  import('./components/community/ExpertsDirectoryView').then((m) => ({
-    default: m.ExpertsDirectoryView,
-  })),
-);
 const WeddingDayOpsView = lazy(() =>
   import('./components/wedding/WeddingDayOpsView').then((m) => ({
     default: m.WeddingDayOpsView,
@@ -259,7 +254,6 @@ const MainContent: React.FC = () => {
             <Route path="/vendors/:slug" element={<VendorProfileView />} />
             <Route path="/real-weddings" element={<RealWeddingsView />} />
             <Route path="/community" element={<CommunityForumView />} />
-            <Route path="/experts" element={<ExpertsDirectoryView />} />
             <Route path="/wedding-day" element={<WeddingDayOpsView />} />
             <Route path="/rsvp/:code" element={<PublicRsvpView />} />
             <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />

@@ -950,7 +950,6 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/vendors',
           '/real-weddings',
           '/community',
-          '/experts',
           '/newlyweds-guide',
           '/home-care',
           ...listCalculatorSummaries().map((c) => `/calculators/${encodeURIComponent(c.slug)}`),
