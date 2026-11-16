@@ -110,6 +110,16 @@ export function seedDatabase(
   const needsStage10 = stage10BoardCountRow.cnt === 0;
   const needsStage11 = stage11AssetCountRow.cnt === 0;
 
+  // Always synchronize canonical catalog product image URLs with verified photography
+  try {
+    const updProdImg = db.prepare('UPDATE products SET image_url = ? WHERE id = ?');
+    for (const p of [...initialGroomProducts, ...initialBrideProducts, ...STAGE6_ADDITIONAL_PRODUCTS]) {
+      updProdImg.run(p.imageUrl, p.id);
+    }
+  } catch {
+    // products table not yet created on first run
+  }
+
   if (
     !needsStage1 &&
     !needsStage2 &&

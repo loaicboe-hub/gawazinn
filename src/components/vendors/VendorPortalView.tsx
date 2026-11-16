@@ -93,11 +93,17 @@ const SAMPLE_PRODUCT_PHOTOS = [
   { label: 'ثلاجة حديثة', url: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=800&q=80' },
   { label: 'غسالة ملابس', url: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?auto=format&fit=crop&w=800&q=80' },
   { label: 'شاشة تلفزيون 65', url: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=800&q=80' },
-  { label: 'صالون مودرن', url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80' },
+  { label: 'بوتاجاز وفرن', url: 'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80' },
+  { label: 'تكييف سبليت', url: 'https://images.unsplash.com/photo-1709432767122-d3cb5326911a?auto=format&fit=crop&w=800&q=80' },
+  { label: 'طقم حلل جرانيت', url: 'https://images.unsplash.com/photo-1585469385562-12b359da399d?auto=format&fit=crop&w=800&q=80' },
+  { label: 'طقم صيني وسفرة', url: 'https://images.unsplash.com/photo-1571987530791-58e3e7744d99?auto=format&fit=crop&w=800&q=80' },
+  { label: 'عجان ومحضر طعام', url: 'https://images.unsplash.com/photo-1576602355403-bd9c3c93583e?auto=format&fit=crop&w=800&q=80' },
+  { label: 'قلاية هوائية', url: 'https://images.unsplash.com/photo-1695089028114-ce28248f0ab9?auto=format&fit=crop&w=800&q=80' },
   { label: 'غرفة نوم كاملة', url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80' },
-  { label: 'طقم سفرة 8 كراسي', url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=800&q=80' },
-  { label: 'مطبخ ألوميتال', url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80' },
-  { label: 'سيراميك وبورسلين', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80' },
+  { label: 'صالون وركنة', url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80' },
+  { label: 'مفرش سرير عروسة', url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80' },
+  { label: 'طقم برنس وفوط', url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=800&q=80' },
+  { label: 'خلاط دش وأدوات صحية', url: 'https://images.unsplash.com/photo-1714399913207-b9198ba711f9?auto=format&fit=crop&w=800&q=80' },
 ];
 
 export const VendorPortalView: React.FC = () => {

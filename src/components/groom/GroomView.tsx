@@ -145,7 +145,7 @@ export const GroomView: React.FC<{ onOpenCompare: (prods: Product[]) => void }> 
       price: packageCalc.totalEgp,
       sku: activeConfigurablePkg.id,
       stock: 5,
-      imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=900&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=900&q=80',
       descriptionAr: activeConfigurablePkg.taglineAr,
       descriptionEn: activeConfigurablePkg.taglineEn,
       specsAr: { 'الأبواب المختارة': `${packageCalc.selectedCount} بنود` },

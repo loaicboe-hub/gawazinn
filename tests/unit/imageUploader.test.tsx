@@ -82,3 +82,4 @@ describe('ImageUploader Component', () => {
     expect(handleChange).not.toHaveBeenCalled();
   });
 });
+
