@@ -179,6 +179,34 @@ export const productUpsertSchema = z.object({
   isReadyPackageItem: z.boolean().optional(),
 });
 
+export const vendorProductCreateSchema = z.object({
+  trousseauType: z.enum(['groom', 'bride', 'shared', 'finishing']).default('shared'),
+  category: z.string().trim().min(1).max(64),
+  categoryAr: z.string().trim().min(1).max(120).optional(),
+  categoryEn: z.string().trim().min(1).max(120).optional(),
+  nameAr: z.string().trim().min(2).max(200),
+  nameEn: z.string().trim().max(200).optional(),
+  brand: z.string().trim().min(1).max(100),
+  model: z.string().trim().max(100).optional(),
+  price: z.number().min(1),
+  originalPrice: z.number().min(1).optional(),
+  stock: z.number().int().min(0).default(5),
+  imageUrl: z.string().trim().min(1),
+  galleryUrls: z.array(z.string().trim()).optional(),
+  descriptionAr: z.string().trim().min(2).max(2000),
+  descriptionEn: z.string().trim().max(2000).optional(),
+  specsAr: z.record(z.string(), z.string()).optional(),
+  specsEn: z.record(z.string(), z.string()).optional(),
+  dimensions: z.string().trim().max(120).optional(),
+  capacity: z.string().trim().max(120).optional(),
+  energyRating: z.string().trim().max(32).optional(),
+  warrantyMonths: z.number().int().min(0).max(240).optional(),
+  warrantyTermsAr: z.string().trim().max(400).optional(),
+  warrantyTermsEn: z.string().trim().max(400).optional(),
+});
+
+export const vendorProductPatchSchema = vendorProductCreateSchema.partial();
+
 export const weddingServiceUpsertSchema = z.object({
   id: z.string().optional(),
   category: z.enum([

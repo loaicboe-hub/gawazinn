@@ -20,17 +20,23 @@ import {
   Layers,
   Lock,
   MessageSquare,
+  Package,
+  Pencil,
   Plus,
   Save,
+  Search,
   Send,
   ShieldCheck,
   Sparkles,
   Store,
   Tag,
   Trash2,
+  X,
 } from 'lucide-react';
+import { SmartImage } from '../common/SmartImage';
 import type {
   MarketplaceAppointmentStatus,
+  Product,
   RfqRequest,
   SubscriptionPlanCode,
   VendorBillingRecord,
@@ -62,6 +68,37 @@ const CRM_STAGE_META: {
   { key: 'lost', ar: 'مفقود / مرفوض', en: 'Lost', cls: 'bg-gray-100 text-gray-700 border-gray-300' },
 ];
 
+const PRODUCT_CATEGORY_OPTIONS = [
+  { slug: 'refrigerators', ar: 'ثلاجات وديب فريزر', en: 'Refrigerators & Freezers' },
+  { slug: 'washing_machines', ar: 'غسالات ومجففات ملابس', en: 'Washing Machines' },
+  { slug: 'cookers', ar: 'بوتاجازات وأفران وشفاطات', en: 'Cookers & Ovens' },
+  { slug: 'tvs', ar: 'شاشات وتلفزيونات وساوند بار', en: 'TVs & Soundbars' },
+  { slug: 'air_conditioners', ar: 'تكييفات ومبردات هواء', en: 'Air Conditioners' },
+  { slug: 'kitchen_appliances', ar: 'أجهزة مطبخ صغيرة وخلاطات', en: 'Small Kitchen Appliances' },
+  { slug: 'living_room', ar: 'صالونات وأنتريهات وركنات', en: 'Living Rooms & Sofas' },
+  { slug: 'bedroom', ar: 'غرف نوم ودواليب وسراير', en: 'Bedrooms' },
+  { slug: 'dining_room', ar: 'سفرة وترابيزات وكراسي', en: 'Dining Rooms' },
+  { slug: 'kitchen_furniture', ar: 'مطابخ خشب وألوميتال وتجهيزات', en: 'Kitchen Furniture' },
+  { slug: 'bedding', ar: 'مفروشات وملايات ومراتب ولحاف', en: 'Bedding & Mattresses' },
+  { slug: 'carpets', ar: 'سجاد وموكيت ومشاية', en: 'Carpets & Rugs' },
+  { slug: 'curtains', ar: 'ستائر وبلاك آوت وتجهيزات أقمشة', en: 'Curtains & Drapery' },
+  { slug: 'lighting', ar: 'نجف وإضاءة وأبليكات ديكور', en: 'Lighting & Chandeliers' },
+  { slug: 'flooring', ar: 'سيراميك وبورسلين وباركيه', en: 'Ceramics & Flooring' },
+  { slug: 'sanitary', ar: 'أطقم حمامات وخلاطات وبانيوهات', en: 'Sanitary Ware' },
+  { slug: 'paint', ar: 'دهانات وديكورات حوائط وبديل خشب', en: 'Paints & Wall Finishes' },
+];
+
+const SAMPLE_PRODUCT_PHOTOS = [
+  { label: 'ثلاجة حديثة', url: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=800&q=80' },
+  { label: 'غسالة ملابس', url: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?auto=format&fit=crop&w=800&q=80' },
+  { label: 'شاشة تلفزيون 65', url: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=800&q=80' },
+  { label: 'صالون مودرن', url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80' },
+  { label: 'غرفة نوم كاملة', url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80' },
+  { label: 'طقم سفرة 8 كراسي', url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&w=800&q=80' },
+  { label: 'مطبخ ألوميتال', url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80' },
+  { label: 'سيراميك وبورسلين', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80' },
+];
+
 export const VendorPortalView: React.FC = () => {
   const {
     language,
@@ -73,6 +110,7 @@ export const VendorPortalView: React.FC = () => {
     setAuthModalOpen,
     registerVendor,
     refreshVendors,
+    refreshProducts,
     showToast,
   } = useApp();
 
@@ -80,12 +118,40 @@ export const VendorPortalView: React.FC = () => {
   const requestedVendorId = searchParams.get('vendorId') || '';
 
   const [portalTab, setPortalTab] = useState<
-    'profile' | 'services' | 'promotions' | 'billing' | 'rfqs' | 'appointments' | 'crm'
+    'profile' | 'services' | 'promotions' | 'products' | 'billing' | 'rfqs' | 'appointments' | 'crm'
   >('profile');
   const [overview, setOverview] = useState<VendorPortalOverviewPayload | null>(null);
   const [crmOverview, setCrmOverview] = useState<VendorCrmOverviewPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Stage 12 Vendor Physical Products State
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [prodSubmitting, setProdSubmitting] = useState(false);
+  const [prodDeletingId, setProdDeletingId] = useState<string | null>(null);
+  const [prodSearchFilter, setProdSearchFilter] = useState('');
+  const [prodCategoryFilter, setProdCategoryFilter] = useState('all');
+
+  const [prodNameAr, setProdNameAr] = useState('');
+  const [prodNameEn, setProdNameEn] = useState('');
+  const [prodCategory, setProdCategory] = useState('refrigerators');
+  const [prodCategoryAr, setProdCategoryAr] = useState('ثلاجات وديب فريزر');
+  const [prodCategoryEn, setProdCategoryEn] = useState('Refrigerators & Freezers');
+  const [prodTrousseauType, setProdTrousseauType] = useState<Product['trousseauType']>('shared');
+  const [prodBrand, setProdBrand] = useState('');
+  const [prodModel, setProdModel] = useState('');
+  const [prodPrice, setProdPrice] = useState<number>(15000);
+  const [prodOriginalPrice, setProdOriginalPrice] = useState<number | ''>('');
+  const [prodStock, setProdStock] = useState<number>(5);
+  const [prodImageUrl, setProdImageUrl] = useState('');
+  const [prodDescriptionAr, setProdDescriptionAr] = useState('');
+  const [prodDescriptionEn, setProdDescriptionEn] = useState('');
+  const [prodWarrantyMonths, setProdWarrantyMonths] = useState<number>(24);
+  const [prodWarrantyTermsAr, setProdWarrantyTermsAr] = useState('');
+  const [prodDimensions, setProdDimensions] = useState('');
+  const [prodCapacity, setProdCapacity] = useState('');
+  const [prodEnergyRating, setProdEnergyRating] = useState('A');
 
   // Stage 8 Vendor RFQ Quote Drafts & Messages
   const [quoteDrafts, setQuoteDrafts] = useState<
@@ -590,6 +656,136 @@ export const VendorPortalView: React.FC = () => {
     }
   };
 
+  const openAddProductModal = () => {
+    setEditingProductId(null);
+    setProdNameAr('');
+    setProdNameEn('');
+    setProdCategory('refrigerators');
+    setProdCategoryAr('ثلاجات وديب فريزر');
+    setProdCategoryEn('Refrigerators & Freezers');
+    setProdTrousseauType('shared');
+    setProdBrand('');
+    setProdModel('');
+    setProdPrice(15000);
+    setProdOriginalPrice('');
+    setProdStock(5);
+    setProdImageUrl('');
+    setProdDescriptionAr('');
+    setProdDescriptionEn('');
+    setProdWarrantyMonths(24);
+    setProdWarrantyTermsAr('ضمان الوكيل الرسمي المعتمد ضد عيوب الصناعة مع بطاقة الضمان الأصلية');
+    setProdDimensions('');
+    setProdCapacity('');
+    setProdEnergyRating('A');
+    setShowProductModal(true);
+  };
+
+  const openEditProductModal = (prod: Product) => {
+    setEditingProductId(prod.id);
+    setProdNameAr(prod.nameAr);
+    setProdNameEn(prod.nameEn || '');
+    setProdCategory(prod.category);
+    setProdCategoryAr(prod.categoryAr || '');
+    setProdCategoryEn(prod.categoryEn || '');
+    setProdTrousseauType(prod.trousseauType || 'shared');
+    setProdBrand(prod.brand);
+    setProdModel(prod.model || '');
+    setProdPrice(prod.price);
+    setProdOriginalPrice(prod.originalPrice ? prod.originalPrice : '');
+    setProdStock(prod.stock ?? 5);
+    setProdImageUrl(prod.imageUrl);
+    setProdDescriptionAr(prod.descriptionAr);
+    setProdDescriptionEn(prod.descriptionEn || '');
+    setProdWarrantyMonths(prod.warrantyMonths ?? 12);
+    setProdWarrantyTermsAr(prod.warrantyTermsAr || '');
+    setProdDimensions(prod.dimensions || '');
+    setProdCapacity(prod.capacity || '');
+    setProdEnergyRating(prod.energyRating || 'A');
+    setShowProductModal(true);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overview?.vendor) return;
+    setProdSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const payload = {
+        nameAr: prodNameAr.trim(),
+        nameEn: prodNameEn.trim() || undefined,
+        category: prodCategory.trim(),
+        categoryAr: prodCategoryAr.trim() || undefined,
+        categoryEn: prodCategoryEn.trim() || undefined,
+        trousseauType: prodTrousseauType,
+        brand: prodBrand.trim(),
+        model: prodModel.trim() || undefined,
+        price: Number(prodPrice),
+        originalPrice: prodOriginalPrice ? Number(prodOriginalPrice) : undefined,
+        stock: Number(prodStock),
+        imageUrl: prodImageUrl.trim(),
+        descriptionAr: prodDescriptionAr.trim(),
+        descriptionEn: prodDescriptionEn.trim() || undefined,
+        warrantyMonths: Number(prodWarrantyMonths),
+        warrantyTermsAr: prodWarrantyTermsAr.trim() || undefined,
+        dimensions: prodDimensions.trim() || undefined,
+        capacity: prodCapacity.trim() || undefined,
+        energyRating: prodEnergyRating.trim() || undefined,
+      };
+
+      if (editingProductId) {
+        const res = await apiRequest<{ product: Product; overview: VendorPortalOverviewPayload }>(
+          `/vendor-portal/products/${encodeURIComponent(editingProductId)}${activeVendorIdQuery}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          },
+        );
+        setOverview(res.overview);
+        showToast(language === 'ar' ? 'تم تحديث بيانات المنتج بنجاح.' : 'Product updated successfully.');
+      } else {
+        const res = await apiRequest<{ product: Product; overview: VendorPortalOverviewPayload }>(
+          `/vendor-portal/products${activeVendorIdQuery}`,
+          {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          },
+        );
+        setOverview(res.overview);
+        showToast(language === 'ar' ? 'تمت إضافة المنتج الجديد إلى المعرض.' : 'Product added to showroom.');
+      }
+
+      if (refreshProducts) {
+        await refreshProducts();
+      }
+      setShowProductModal(false);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Unable to save product');
+    } finally {
+      setProdSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!overview?.vendor) return;
+    setProdDeletingId(productId);
+    setErrorMsg(null);
+    try {
+      const res = await apiRequest<{ success: boolean; overview: VendorPortalOverviewPayload }>(
+        `/vendor-portal/products/${encodeURIComponent(productId)}${activeVendorIdQuery}`,
+        { method: 'DELETE' },
+      );
+      setOverview(res.overview);
+      if (refreshProducts) {
+        await refreshProducts();
+      }
+      showToast(language === 'ar' ? 'تم حذف المنتج من المعرض.' : 'Product removed from showroom.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Unable to delete product');
+    } finally {
+      setProdDeletingId(null);
+    }
+  };
+
   const handleSwitchSubscription = async (planCode: SubscriptionPlanCode) => {
     if (!overview?.vendor) return;
     setPlanSwitching(planCode);
@@ -1025,6 +1221,12 @@ export const VendorPortalView: React.FC = () => {
                   ar: `العروض الموسمية (${overview.promotions.length})`,
                   en: `Promotions (${overview.promotions.length})`,
                   icon: <Tag className="w-4 h-4" />,
+                },
+                {
+                  key: 'products' as const,
+                  ar: `منتجات المعرض (${overview.products?.length ?? 0})`,
+                  en: `Showroom Products (${overview.products?.length ?? 0})`,
+                  icon: <Package className="w-4 h-4" />,
                 },
                 {
                   key: 'billing' as const,
@@ -1553,6 +1755,664 @@ export const VendorPortalView: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* TAB: Showroom Physical Products */}
+            {portalTab === 'products' && (
+              <div className="space-y-6">
+                {/* Header & Overview Banner */}
+                <div className="bg-gradient-to-br from-white via-rose-50/30 to-amber-50/20 rounded-3xl p-6 border border-rose-100 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-black text-[#2A1D20] flex items-center gap-2">
+                        <Package className="w-5 h-5 text-[#D91B3E]" />
+                        <span>{language === 'ar' ? 'كتالوج منتجات وتجهيزات المعرض' : 'Showroom Physical Products Catalog'}</span>
+                      </h2>
+                      <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                        {language === 'ar'
+                          ? 'يمكنك هنا إضافة وإدارة الأجهزة والفرش والمنتجات المادية المعروضة في متجرك بأسعارها وصورها وضمانها الرسمي المعتمد لتظهر في متجر المنصة وملف معرضك التعريفي.'
+                          : 'Manage physical appliances, furniture, and products displayed in your showroom with authentic distributor pricing, photos, and warranties.'}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      data-testid="portal-add-product-btn"
+                      onClick={openAddProductModal}
+                      className="px-5 py-3 rounded-2xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition flex items-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{language === 'ar' ? 'إضافة منتج جديد للمعرض' : 'Add New Product'}</span>
+                    </button>
+                  </div>
+
+                  {/* KPI Gauges for Products */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 text-xs">
+                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                      <span className="text-[11px] text-gray-500 block">
+                        {language === 'ar' ? 'إجمالي المنتجات المعروضة' : 'Total Listed Products'}
+                      </span>
+                      <strong data-testid="portal-kpi-total-products" className="text-lg font-black text-[#2A1D20]">
+                        {overview.products?.length ?? 0} {language === 'ar' ? 'منتج' : 'items'}
+                      </strong>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                      <span className="text-[11px] text-gray-500 block">
+                        {language === 'ar' ? 'متوفر بالمخزن' : 'In Stock'}
+                      </span>
+                      <strong className="text-lg font-black text-emerald-700">
+                        {(overview.products || []).filter((p) => (p.stock ?? 0) > 0).length} {language === 'ar' ? 'منتج' : 'items'}
+                      </strong>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                      <span className="text-[11px] text-gray-500 block">
+                        {language === 'ar' ? 'قارب على النفاد / نفذ' : 'Low / Out of Stock'}
+                      </span>
+                      <strong className="text-lg font-black text-amber-700">
+                        {(overview.products || []).filter((p) => (p.stock ?? 0) <= 2).length} {language === 'ar' ? 'منتج' : 'items'}
+                      </strong>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                      <span className="text-[11px] text-gray-500 block">
+                        {language === 'ar' ? 'القيمة التقديرية للمخزون' : 'Est. Inventory Value'}
+                      </span>
+                      <strong className="text-lg font-black text-[#D91B3E]">
+                        {(overview.products || [])
+                          .reduce((sum, p) => sum + p.price * (p.stock ?? 1), 0)
+                          .toLocaleString()}{' '}
+                        {language === 'ar' ? 'ج.م' : 'EGP'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search & Filter Toolbar */}
+                <div className="bg-white rounded-2xl p-4 border border-rose-100 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search className="w-3.5 h-3.5 text-gray-400 absolute top-1/2 -translate-y-1/2 start-3" />
+                      <input
+                        type="text"
+                        value={prodSearchFilter}
+                        onChange={(e) => setProdSearchFilter(e.target.value)}
+                        placeholder={language === 'ar' ? 'بحث باسم المنتج أو الماركة أو الموديل...' : 'Search by name, brand or model...'}
+                        className="w-full ps-8 pe-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                      />
+                    </div>
+
+                    <select
+                      value={prodCategoryFilter}
+                      onChange={(e) => setProdCategoryFilter(e.target.value)}
+                      className="py-2 px-3 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                    >
+                      <option value="all">{language === 'ar' ? 'جميع الأقسام' : 'All Categories'}</option>
+                      {PRODUCT_CATEGORY_OPTIONS.map((cat) => (
+                        <option key={cat.slug} value={cat.slug}>
+                          {language === 'ar' ? cat.ar : cat.en}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <span className="text-xs text-gray-500 font-medium">
+                    {language === 'ar' ? 'النتائج:' : 'Showing:'}{' '}
+                    <strong className="text-[#2A1D20]">
+                      {(overview.products || []).filter((p) => {
+                        const q = prodSearchFilter.trim().toLowerCase();
+                        const matchQ =
+                          !q ||
+                          p.nameAr.toLowerCase().includes(q) ||
+                          (p.nameEn && p.nameEn.toLowerCase().includes(q)) ||
+                          p.brand.toLowerCase().includes(q) ||
+                          (p.model && p.model.toLowerCase().includes(q));
+                        const matchC = prodCategoryFilter === 'all' || p.category === prodCategoryFilter;
+                        return matchQ && matchC;
+                      }).length}
+                    </strong>
+                  </span>
+                </div>
+
+                {/* Products Grid */}
+                {(() => {
+                  const filtered = (overview.products || []).filter((p) => {
+                    const q = prodSearchFilter.trim().toLowerCase();
+                    const matchQ =
+                      !q ||
+                      p.nameAr.toLowerCase().includes(q) ||
+                      (p.nameEn && p.nameEn.toLowerCase().includes(q)) ||
+                      p.brand.toLowerCase().includes(q) ||
+                      (p.model && p.model.toLowerCase().includes(q));
+                    const matchC = prodCategoryFilter === 'all' || p.category === prodCategoryFilter;
+                    return matchQ && matchC;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-white rounded-3xl p-10 border border-dashed border-gray-200 text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-rose-50 text-[#D91B3E] flex items-center justify-center mx-auto">
+                          <Package className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-[#2A1D20]">
+                            {language === 'ar' ? 'لا توجد منتجات مسجلة حتى الآن' : 'No products found'}
+                          </h3>
+                          <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
+                            {language === 'ar'
+                              ? 'ابدأ بإضافة أول منتج لمعرضك ليظهر لآلاف المقبلين على الزواج في كتالوج وموسوعة الأجهزة والفرش.'
+                              : 'Add your first showroom product to present it to thousands of engaged couples browsing GAWAZ INN.'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openAddProductModal}
+                          className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition inline-flex items-center gap-2 cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>{language === 'ar' ? 'إضافة أول منتج للمعرض' : 'Add First Product'}</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {filtered.map((prod) => {
+                        const stock = prod.stock ?? 5;
+                        const isLowStock = stock > 0 && stock <= 2;
+                        const isOutOfStock = stock === 0;
+
+                        return (
+                          <div
+                            key={prod.id}
+                            data-testid={`vendor-product-card-${prod.id}`}
+                            className="bg-white rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-4"
+                          >
+                            <div className="space-y-3">
+                              {/* Product Thumbnail & Overlay Badges */}
+                              <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-50 border border-gray-100">
+                                <SmartImage
+                                  src={prod.imageUrl}
+                                  alt={prod.nameAr}
+                                  fallbackTitle={prod.nameAr}
+                                  className="w-full h-full object-cover"
+                                />
+
+                                {/* Stock Status Badge */}
+                                <div className="absolute top-2.5 start-2.5">
+                                  {isOutOfStock ? (
+                                    <span className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-bold shadow-xs">
+                                      {language === 'ar' ? 'نفذ من المخزن' : 'Out of stock'}
+                                    </span>
+                                  ) : isLowStock ? (
+                                    <span className="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-bold shadow-xs">
+                                      {language === 'ar' ? `متبقي ${stock} فقط` : `Only ${stock} left`}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold shadow-xs">
+                                      {language === 'ar' ? `متوفر (${stock} قطع)` : `In Stock (${stock})`}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Trousseau Side Badge */}
+                                <div className="absolute top-2.5 end-2.5">
+                                  <span className="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-xs text-[#2A1D20] text-[10px] font-bold border border-gray-200 shadow-xs">
+                                    {prod.trousseauType === 'bride'
+                                      ? language === 'ar' ? 'جهاز العروسة' : 'Bride Trousseau'
+                                      : prod.trousseauType === 'groom'
+                                      ? language === 'ar' ? 'جهاز العريس' : 'Groom Trousseau'
+                                      : prod.trousseauType === 'finishing'
+                                      ? language === 'ar' ? 'تشطيب' : 'Finishing'
+                                      : language === 'ar' ? 'مشترك' : 'Shared'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Category & Brand info */}
+                              <div className="flex items-center justify-between text-[11px] text-gray-500">
+                                <span className="font-bold text-[#D91B3E]">
+                                  {prod.brand}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 font-medium">
+                                  {language === 'ar' ? prod.categoryAr || prod.category : prod.categoryEn || prod.category}
+                                </span>
+                              </div>
+
+                              {/* Title & Model */}
+                              <div>
+                                <h3 className="text-sm font-black text-[#2A1D20] line-clamp-2 leading-snug">
+                                  {language === 'ar' ? prod.nameAr : prod.nameEn || prod.nameAr}
+                                </h3>
+                                {prod.model && (
+                                  <span className="text-[11px] text-gray-400 font-mono mt-0.5 block truncate">
+                                    {language === 'ar' ? `موديل: ${prod.model}` : `Model: ${prod.model}`}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Pricing & Discount */}
+                              <div className="pt-1">
+                                {prod.originalPrice && prod.originalPrice > prod.price && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-400 line-through">
+                                      {prod.originalPrice.toLocaleString()} {language === 'ar' ? 'ج.م' : 'EGP'}
+                                    </span>
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-100 text-[#D91B3E]">
+                                      -{Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)}%
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="text-lg font-black text-[#D91B3E]">
+                                  {prod.price.toLocaleString()}{' '}
+                                  <span className="text-xs font-bold">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
+                                </div>
+                              </div>
+
+                              {/* Warranty & Specs Pill */}
+                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-600 pt-1">
+                                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold flex items-center gap-1">
+                                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                  <span>
+                                    {(prod.warrantyMonths ?? 0) >= 12
+                                      ? language === 'ar'
+                                        ? `ضمان ${Math.floor((prod.warrantyMonths ?? 0) / 12)} سنة`
+                                        : `${Math.floor((prod.warrantyMonths ?? 0) / 12)} Yr Warranty`
+                                      : `${prod.warrantyMonths ?? 12} mo`}
+                                  </span>
+                                </span>
+                                {prod.capacity && (
+                                  <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700">
+                                    {prod.capacity}
+                                  </span>
+                                )}
+                                {prod.energyRating && (
+                                  <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 font-black">
+                                    {prod.energyRating}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Card Footer Actions */}
+                            <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                              <Link
+                                to={`/products/${prod.slug || prod.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 rounded-xl text-gray-600 hover:text-[#D91B3E] hover:bg-rose-50 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>{language === 'ar' ? 'معاينة' : 'View'}</span>
+                              </Link>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditProductModal(prod)}
+                                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:border-[#D91B3E] hover:text-[#D91B3E] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                  <span>{language === 'ar' ? 'تعديل' : 'Edit'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={prodDeletingId === prod.id}
+                                  onClick={() => {
+                                    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من رغبتك في حذف هذا المنتج من المعرض؟' : 'Are you sure you want to delete this product?')) {
+                                      handleDeleteProduct(prod.id);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Add / Edit Product Modal */}
+                {showProductModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-rose-100 p-6 sm:p-8 space-y-6">
+                      {/* Modal Header */}
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#D91B3E] flex items-center justify-center font-bold">
+                            <Package className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-black text-[#2A1D20]">
+                              {editingProductId
+                                ? language === 'ar' ? 'تعديل بيانات المنتج' : 'Edit Product'
+                                : language === 'ar' ? 'إضافة منتج جديد للمعرض' : 'Add New Product to Showroom'}
+                            </h3>
+                            <span className="text-xs text-gray-400 block">
+                              {language === 'ar' ? 'سيتم ربط المنتج تلقائياً بحساب معرضك المعتمد' : 'Directly linked to your vendor business listing'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowProductModal(false)}
+                          className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Form */}
+                      <form onSubmit={handleSaveProduct} className="space-y-5 text-xs">
+                        {/* Row 1: Names */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'اسم المنتج بالعربية *' : 'Product Name (Arabic) *'}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              minLength={2}
+                              value={prodNameAr}
+                              onChange={(e) => setProdNameAr(e.target.value)}
+                              placeholder={language === 'ar' ? 'مثال: ثلاجة شارب 450 لتر نوفروست إنفرتر' : 'e.g. Sharp 450L Inverter Refrigerator'}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'اسم المنتج بالإنجليزية (اختياري)' : 'Product Name (English)'}
+                            </label>
+                            <input
+                              type="text"
+                              value={prodNameEn}
+                              onChange={(e) => setProdNameEn(e.target.value)}
+                              placeholder="e.g. Sharp 450L No-Frost Inverter Refrigerator"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 2: Category & Trousseau Type */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'قسم المنتج *' : 'Product Category *'}
+                            </label>
+                            <select
+                              value={prodCategory}
+                              onChange={(e) => {
+                                const selectedCat = PRODUCT_CATEGORY_OPTIONS.find((c) => c.slug === e.target.value);
+                                setProdCategory(e.target.value);
+                                if (selectedCat) {
+                                  setProdCategoryAr(selectedCat.ar);
+                                  setProdCategoryEn(selectedCat.en);
+                                }
+                              }}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                            >
+                              {PRODUCT_CATEGORY_OPTIONS.map((cat) => (
+                                <option key={cat.slug} value={cat.slug}>
+                                  {language === 'ar' ? cat.ar : cat.en}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'تصنيف الجهاز في التجهيز *' : 'Trousseau Allocation *'}
+                            </label>
+                            <select
+                              value={prodTrousseauType}
+                              onChange={(e) => setProdTrousseauType(e.target.value as Product['trousseauType'])}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                            >
+                              <option value="shared">{language === 'ar' ? 'مشترك / تجهيز عام' : 'Shared Equipment'}</option>
+                              <option value="bride">{language === 'ar' ? 'جهاز العروسة' : 'Bride Trousseau'}</option>
+                              <option value="groom">{language === 'ar' ? 'جهاز العريس' : 'Groom Trousseau'}</option>
+                              <option value="finishing">{language === 'ar' ? 'تشطيب شقة الزوجية' : 'Apartment Finishing'}</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Row 3: Brand & Model */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'الماركة / العلامة التجارية *' : 'Brand Name *'}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={prodBrand}
+                              onChange={(e) => setProdBrand(e.target.value)}
+                              placeholder={language === 'ar' ? 'مثال: Sharp, LG, Beko, هابيتات' : 'e.g. Sharp, LG, Beko, Habitat'}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'رقم أو كود الموديل' : 'Model / SKU Code'}
+                            </label>
+                            <input
+                              type="text"
+                              value={prodModel}
+                              onChange={(e) => setProdModel(e.target.value)}
+                              placeholder="e.g. SJ-GV58G-BK"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 4: Pricing & Stock */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'السعر الحالي (ج.م) *' : 'Selling Price (EGP) *'}
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min={1}
+                              value={prodPrice}
+                              onChange={(e) => setProdPrice(Number(e.target.value))}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-bold text-[#D91B3E] focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'السعر قبل الخصم (اختياري)' : 'Original Price (EGP)'}
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={prodOriginalPrice}
+                              onChange={(e) => setProdOriginalPrice(e.target.value ? Number(e.target.value) : '')}
+                              placeholder={language === 'ar' ? 'لإظهار شارة الخصم' : 'To show discount %'}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'الكمية بالمخزن *' : 'Stock Quantity *'}
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min={0}
+                              value={prodStock}
+                              onChange={(e) => setProdStock(Number(e.target.value))}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 5: Image URL & Quick Photo Presets */}
+                        <div className="space-y-2">
+                          <label className="font-bold text-gray-700 block">
+                            {language === 'ar' ? 'رابط صورة المنتج (URL) *' : 'Product Image URL *'}
+                          </label>
+                          <input
+                            type="url"
+                            required
+                            value={prodImageUrl}
+                            onChange={(e) => setProdImageUrl(e.target.value)}
+                            placeholder="https://images.unsplash.com/..."
+                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                          />
+
+                          {/* Quick Sample Presets Chips */}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            <span className="text-[10px] text-gray-400">
+                              {language === 'ar' ? 'صور جاهزة للاختيار السريع:' : 'Quick sample presets:'}
+                            </span>
+                            {SAMPLE_PRODUCT_PHOTOS.map((sample) => (
+                              <button
+                                key={sample.label}
+                                type="button"
+                                onClick={() => setProdImageUrl(sample.url)}
+                                className="px-2 py-0.5 rounded-md bg-rose-50 text-[#D91B3E] hover:bg-rose-100 text-[10px] font-bold transition cursor-pointer"
+                              >
+                                {sample.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Live Image Preview */}
+                          {prodImageUrl && (
+                            <div className="mt-2 p-2 rounded-2xl bg-gray-50 border border-gray-200 flex items-center gap-3">
+                              <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shrink-0 border border-gray-200">
+                                <SmartImage
+                                  src={prodImageUrl}
+                                  alt="معاينة"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="text-[11px] text-gray-500 font-medium">
+                                {language === 'ar' ? 'معاينة الصورة المرفوعة بنجاح' : 'Image preview active'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Row 6: Warranty & Specs */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'مدة الضمان (بالأشهر) *' : 'Warranty (Months) *'}
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min={0}
+                              value={prodWarrantyMonths}
+                              onChange={(e) => setProdWarrantyMonths(Number(e.target.value))}
+                              placeholder="24"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'السعة أو الحجم' : 'Capacity / Size'}
+                            </label>
+                            <input
+                              type="text"
+                              value={prodCapacity}
+                              onChange={(e) => setProdCapacity(e.target.value)}
+                              placeholder={language === 'ar' ? 'مثال: 450 لتر / 65 بوصة' : 'e.g. 450L / 65 Inch'}
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-gray-700 block mb-1">
+                              {language === 'ar' ? 'كفاءة الطاقة' : 'Energy Rating'}
+                            </label>
+                            <input
+                              type="text"
+                              value={prodEnergyRating}
+                              onChange={(e) => setProdEnergyRating(e.target.value)}
+                              placeholder="A, A+, A++"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Warranty Terms */}
+                        <div>
+                          <label className="font-bold text-gray-700 block mb-1">
+                            {language === 'ar' ? 'شروط وتفاصيل الضمان' : 'Warranty Terms & Agent Details'}
+                          </label>
+                          <input
+                            type="text"
+                            value={prodWarrantyTermsAr}
+                            onChange={(e) => setProdWarrantyTermsAr(e.target.value)}
+                            placeholder={language === 'ar' ? 'مثال: ضمان الوكيل المعتمد في مصر لمدة عامين شامل قطع الغيار والصيانة المنزلية' : 'e.g. 2 years official warranty including spare parts'}
+                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <label className="font-bold text-gray-700 block mb-1">
+                            {language === 'ar' ? 'وصف المنتج ومميزاته بالعربية *' : 'Product Description (Arabic) *'}
+                          </label>
+                          <textarea
+                            required
+                            rows={3}
+                            minLength={2}
+                            value={prodDescriptionAr}
+                            onChange={(e) => setProdDescriptionAr(e.target.value)}
+                            placeholder={language === 'ar' ? 'اكتب وصفاً دقيقاً للمنتج ومميزاته ومواده ولماذا يناسب المقبلين على الزواج...' : 'Detailed description and features...'}
+                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                          />
+                        </div>
+
+                        {/* Modal Actions */}
+                        <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowProductModal(false)}
+                            className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition cursor-pointer"
+                          >
+                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={prodSubmitting}
+                            className="px-6 py-2.5 rounded-xl bg-red-gradient text-white font-bold shadow-md hover:opacity-95 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>
+                              {prodSubmitting
+                                ? language === 'ar' ? 'جاري الحفظ...' : 'Saving...'
+                                : editingProductId
+                                ? language === 'ar' ? 'حفظ التعديلات' : 'Save Changes'
+                                : language === 'ar' ? 'نشر المنتج بالمعرض' : 'Publish Product'}
+                            </span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

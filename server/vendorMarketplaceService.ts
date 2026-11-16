@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { listProductsForVendor } from './productShoppingService';
 import { estimateFinishingRange } from '../shared/catalogMeta';
 import type {
   LocalCategoryGuidePayload,
@@ -364,11 +365,14 @@ export function getVendorDetailBySlugOrId(
       .all(vendor.id) as Record<string, unknown>[]
   ).map(mapVendorReviewRow);
 
+  const products = listProductsForVendor(db, vendor.id);
+
   return {
     ...vendor,
     services,
     promotions,
     reviews,
+    products,
   };
 }
 
@@ -423,6 +427,7 @@ export function getVendorPortalOverview(
       promotions: [],
       reviews: [],
       billingRecords: [],
+      products: [],
       quotas: {
         servicesUsed: 0,
         maxServices: 0,
@@ -455,6 +460,8 @@ export function getVendorPortalOverview(
       .all(vendor.id) as Record<string, unknown>[]
   ).map(mapVendorReviewRow);
 
+  const products = listProductsForVendor(db, vendor.id);
+
   const billingRecords = (
     db
       .prepare(
@@ -468,13 +475,17 @@ export function getVendorPortalOverview(
   ).map(mapVendorBillingRow);
 
   return {
-    vendor,
+    vendor: {
+      ...vendor,
+      products,
+    },
     plan,
     allPlans,
     services,
     promotions,
     reviews,
     billingRecords,
+    products,
     quotas: {
       servicesUsed: services.length,
       maxServices: plan?.maxServices ?? 3,

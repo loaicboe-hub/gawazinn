@@ -127,10 +127,10 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
       .filter((f) => f.endsWith('.sql'))
       .sort();
 
-    expect(sqliteFiles.length).toBeGreaterThanOrEqual(11);
+    expect(sqliteFiles.length).toBeGreaterThanOrEqual(12);
     expect(sqliteFiles).toEqual(pgFiles);
     expect(sqliteFiles[0]).toMatch(/^001_/);
-    expect(sqliteFiles[sqliteFiles.length - 1]).toMatch(/^011_/);
+    expect(sqliteFiles[sqliteFiles.length - 1]).toMatch(/^012_/);
   });
 
   it('keeps /sitemap.xml valid XML containing all Stage 1-11 public routes and zero private/PII URLs', async () => {

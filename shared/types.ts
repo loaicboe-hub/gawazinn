@@ -142,6 +142,17 @@ export interface Product {
   isFeatured?: boolean;
   isReadyPackageItem?: boolean;
   isDemoData?: boolean;
+  vendorId?: string;
+  vendorSummary?: {
+    id: string;
+    slug: string;
+    businessNameAr: string;
+    businessNameEn: string;
+    phone?: string;
+    whatsapp?: string;
+    logoImage?: string;
+    verificationStatus: string;
+  };
 }
 
 export interface TrousseauPackage {
@@ -1673,6 +1684,7 @@ export interface VendorListing {
   services?: VendorServiceOffering[];
   promotions?: VendorPromotion[];
   reviews?: VendorReview[];
+  products?: Product[];
 }
 
 export interface VendorBillingRecord {
@@ -1704,6 +1716,7 @@ export interface VendorPortalOverviewPayload {
     portfolioUsed: number;
     maxPortfolioItems: number;
   };
+  products?: Product[];
 }
 
 export interface LocalCategoryGuidePayload {

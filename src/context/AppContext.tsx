@@ -393,6 +393,7 @@ interface AppContextType {
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  refreshProducts: () => Promise<Product[]>;
 
   weddingServices: WeddingServiceItem[];
   addWeddingService: (service: WeddingServiceItem) => Promise<void>;
@@ -2252,6 +2253,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setProducts((prev) => prev.filter((p) => p.id !== id));
     showToast(language === 'ar' ? 'تم حذف المنتج.' : 'Product deleted.');
   };
+
+  const refreshProducts = useCallback(async (): Promise<Product[]> => {
+    if (!apiConnected) return products;
+    try {
+      const items = await apiRequest<Product[]>('/products');
+      if (Array.isArray(items)) {
+        setProducts(items);
+        return items;
+      }
+    } catch {
+      // fallback to current
+    }
+    return products;
+  }, [apiConnected, products]);
 
   // Wedding Services Admin CRUD
   const addWeddingService = async (srv: WeddingServiceItem) => {
@@ -4535,6 +4550,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addProduct,
         updateProduct,
         deleteProduct,
+        refreshProducts,
         weddingServices,
         addWeddingService,
         updateWeddingService,

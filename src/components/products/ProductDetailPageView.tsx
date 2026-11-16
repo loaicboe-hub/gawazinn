@@ -15,10 +15,12 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShoppingBag,
+  Store,
   TrendingDown,
   Truck,
   XCircle,
   Zap,
+  MessageSquare,
 } from 'lucide-react';
 import { buildSeedPriceHistoryAndOffers } from '../../../shared/productEncyclopediaData';
 import { apiRequest } from '../../services/api';
@@ -404,6 +406,67 @@ export const ProductDetailPageView: React.FC = () => {
                   {isAr ? 'إدارة السلال' : 'Manage Lists'}
                 </Link>
               </div>
+
+              {/* Showroom & Authorized Vendor Card */}
+              {product.vendorSummary && (
+                <div
+                  data-testid="product-vendor-summary-card"
+                  className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-white to-[#FFF8F8] border border-rose-200 shadow-sm space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#FAF7F2] border border-rose-100 overflow-hidden flex items-center justify-center font-black text-[#D91B3E] shrink-0 shadow-2xs">
+                        {product.vendorSummary.logoImage ? (
+                          <SmartImage
+                            src={product.vendorSummary.logoImage}
+                            alt={product.vendorSummary.businessNameAr}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Store className="w-6 h-6 text-[#D91B3E]" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wide">
+                          {isAr ? 'المورد والمعرض المعتمد' : 'Verified Vendor / Showroom'}
+                        </span>
+                        <strong className="text-sm font-black text-[#2A1D20] block">
+                          {isAr ? product.vendorSummary.businessNameAr : product.vendorSummary.businessNameEn}
+                        </strong>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isAr ? 'معتمد رسمياً' : 'Verified'}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Link
+                      to={`/vendors/${product.vendorSummary.slug}`}
+                      className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-white border border-rose-200 text-[#D91B3E] font-bold text-xs text-center hover:bg-rose-50 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Store className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'زيارة معرض المورد' : 'View Showroom'}</span>
+                    </Link>
+                    {product.vendorSummary.whatsapp && (
+                      <a
+                        href={`https://wa.me/${product.vendorSummary.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                          isAr
+                            ? `مرحباً، أستفسر بخصوص المنتج المعروض في منصة جواز إن: ${product.nameAr} (سعر: ${product.price.toLocaleString()} ج.م)`
+                            : `Hello, inquiring about product: ${product.nameEn || product.nameAr} listed on GAWAZ INN`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs text-center hover:bg-emerald-700 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{isAr ? 'تواصل عبر واتساب' : 'WhatsApp Inquiry'}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

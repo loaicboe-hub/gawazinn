@@ -131,11 +131,15 @@ import {
 import {
   authorizeShoppingListAccess,
   compareProductsByIds,
+  createProductForVendor,
+  deleteProductForVendor,
   evaluateTriggeredPriceAlertsForProduct,
   getProductEncyclopediaDetail,
   listPriceAlertsForUser,
+  listProductsForVendor,
   listShoppingListsForUser,
   mapProductEncyclopediaRow,
+  updateProductForVendor,
   upsertUserPriceAlert,
 } from './productShoppingService';
 import {
@@ -153,6 +157,8 @@ import {
   submitRfqQuoteSchema,
   switchVendorSubscriptionSchema,
   updateVendorProfileSchema,
+  vendorProductCreateSchema,
+  vendorProductPatchSchema,
   vendorPromotionCreateSchema,
   vendorReviewCreateSchema,
   vendorServiceUpsertSchema,
@@ -1025,7 +1031,14 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
       // Bootstrap (safe public state + nullable authenticated user; returns 200 for zero anonymous console errors)
       if (method === 'GET' && route === '/bootstrap') {
         const products = (
-          db.prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC').all() as Record<string, unknown>[]
+          db
+            .prepare(
+              `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+               FROM products p
+               LEFT JOIN vendors v ON v.id = p.vendor_id
+               ORDER BY p.is_featured DESC, p.created_at DESC`,
+            )
+            .all() as Record<string, unknown>[]
         ).map(mapProductRow);
         const finishingPackages = (
           db.prepare('SELECT * FROM finishing_packages ORDER BY sort_order ASC').all() as Record<string, unknown>[]
@@ -1119,7 +1132,7 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
 
         const rawToken = generateSessionToken();
         const sessionTokenHash = hashSessionToken(rawToken);
-        const expiresAt = new Date(Date.now() + options.sessionTtlSeconds * 1000).toISOString();
+        const expiresAt = new Date(Date.now() + (options.sessionTtlSeconds ?? 7 * 24 * 3600) * 1000).toISOString();
         db.prepare(
           `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1192,7 +1205,7 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         const rawToken = generateSessionToken();
         const sessionTokenHash = hashSessionToken(rawToken);
         const now = new Date().toISOString();
-        const expiresAt = new Date(Date.now() + options.sessionTtlSeconds * 1000).toISOString();
+        const expiresAt = new Date(Date.now() + (options.sessionTtlSeconds ?? 7 * 24 * 3600) * 1000).toISOString();
         db.prepare(
           `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1411,10 +1424,14 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
         const sort = url.searchParams.get('sort') || url.searchParams.get('sortBy') || 'featured';
 
         let items = (
-          db.prepare('SELECT * FROM products ORDER BY is_featured DESC, created_at DESC').all() as Record<
-            string,
-            unknown
-          >[]
+          db
+            .prepare(
+              `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+               FROM products p
+               LEFT JOIN vendors v ON v.id = p.vendor_id
+               ORDER BY p.is_featured DESC, p.created_at DESC`,
+            )
+            .all() as Record<string, unknown>[]
         ).map(mapProductRow);
 
         if (typeFilter) items = items.filter((p) => p.trousseauType === typeFilter);
@@ -4590,6 +4607,95 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           }
           db.prepare('DELETE FROM vendor_promotions WHERE id = ?').run(promoId);
           sendJson(res, 200, { ok: true, data: getVendorPortalOverview(db, authUser, vendor.id) });
+          return;
+        }
+
+        if (method === 'GET' && route === '/vendor-portal/products') {
+          const products = listProductsForVendor(db, vendor.id);
+          sendJson(res, 200, { ok: true, data: products });
+          return;
+        }
+
+        if (method === 'POST' && route === '/vendor-portal/products') {
+          const body = await readJsonBody(req);
+          const parsed = vendorProductCreateSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid product fields', parsed.error.flatten());
+            return;
+          }
+          const product = createProductForVendor(db, vendor.id, parsed.data);
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor_portal.product_created',
+            targetType: 'product',
+            targetId: product.id,
+            metadata: { vendorId: vendor.id, nameAr: product.nameAr, price: product.price, brand: product.brand },
+          });
+          sendJson(res, 201, {
+            ok: true,
+            data: {
+              product,
+              overview: getVendorPortalOverview(db, authUser, vendor.id),
+            },
+          });
+          return;
+        }
+
+        const portalProdMatch = route.match(/^\/vendor-portal\/products\/([^/]+)$/);
+        if (method === 'PATCH' && portalProdMatch) {
+          const productId = decodeURIComponent(portalProdMatch[1]);
+          const body = await readJsonBody(req);
+          const parsed = vendorProductPatchSchema.safeParse(body);
+          if (!parsed.success) {
+            sendError(res, 400, 'VALIDATION_ERROR', 'Invalid product updates', parsed.error.flatten());
+            return;
+          }
+          const updated = updateProductForVendor(db, vendor.id, productId, parsed.data);
+          if (!updated) {
+            sendError(res, 404, 'NOT_FOUND', 'Product not found or not owned by your vendor account');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor_portal.product_updated',
+            targetType: 'product',
+            targetId: productId,
+            metadata: { vendorId: vendor.id, updates: Object.keys(parsed.data) },
+          });
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              product: updated,
+              overview: getVendorPortalOverview(db, authUser, vendor.id),
+            },
+          });
+          return;
+        }
+
+        if (method === 'DELETE' && portalProdMatch) {
+          const productId = decodeURIComponent(portalProdMatch[1]);
+          const deleted = deleteProductForVendor(db, vendor.id, productId);
+          if (!deleted) {
+            sendError(res, 404, 'NOT_FOUND', 'Product not found or not owned by your vendor account');
+            return;
+          }
+          writeAuditLog(db, {
+            actorUserId: authUser.id,
+            actorRole: authUser.role,
+            action: 'vendor_portal.product_deleted',
+            targetType: 'product',
+            targetId: productId,
+            metadata: { vendorId: vendor.id },
+          });
+          sendJson(res, 200, {
+            ok: true,
+            data: {
+              success: true,
+              overview: getVendorPortalOverview(db, authUser, vendor.id),
+            },
+          });
           return;
         }
 

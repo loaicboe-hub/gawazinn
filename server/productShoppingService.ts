@@ -68,6 +68,19 @@ export function mapProductEncyclopediaRow(row: Record<string, unknown>): Product
     isFeatured: Boolean(row.is_featured),
     isReadyPackageItem: Boolean(row.is_ready_package_item),
     isDemoData: Boolean(row.is_demo_data),
+    vendorId: row.vendor_id ? String(row.vendor_id) : undefined,
+    vendorSummary: row.vendor_business_name_ar
+      ? {
+          id: String(row.vendor_id),
+          slug: String(row.vendor_slug),
+          businessNameAr: String(row.vendor_business_name_ar),
+          businessNameEn: String(row.vendor_business_name_en || row.vendor_business_name_ar),
+          phone: row.vendor_phone ? String(row.vendor_phone) : undefined,
+          whatsapp: row.vendor_whatsapp ? String(row.vendor_whatsapp) : undefined,
+          logoImage: row.vendor_logo_image ? String(row.vendor_logo_image) : undefined,
+          verificationStatus: String(row.vendor_verification_status || 'registered'),
+        }
+      : undefined,
   };
 }
 
@@ -103,7 +116,12 @@ export function getProductEncyclopediaDetail(
   idOrSlug: string,
 ): ProductEncyclopediaDetail | null {
   const row = db
-    .prepare('SELECT * FROM products WHERE id = ? OR slug = ?')
+    .prepare(
+      `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+       FROM products p
+       LEFT JOIN vendors v ON v.id = p.vendor_id
+       WHERE p.id = ? OR p.slug = ?`,
+    )
     .get(idOrSlug, idOrSlug) as Record<string, unknown> | undefined;
   if (!row) return null;
 
@@ -505,5 +523,221 @@ export function ensureStarterShoppingListsForKarim(db: DatabaseSync): void {
     `INSERT OR IGNORE INTO price_alerts (id, user_id, product_id, target_price, current_price_snapshot, status, triggered_at, created_at)
      VALUES (?, 'usr-1', ?, ?, ?, 'triggered', ?, ?)`,
   ).run('pal-seed-2', 'groom-p9', 22000, 21400, now, now);
+}
+
+export function listProductsForVendor(db: DatabaseSync, vendorId: string): Product[] {
+  const rows = db
+    .prepare(
+      `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+       FROM products p
+       LEFT JOIN vendors v ON v.id = p.vendor_id
+       WHERE p.vendor_id = ?
+       ORDER BY p.created_at DESC`,
+    )
+    .all(vendorId) as Record<string, unknown>[];
+  return rows.map(mapProductEncyclopediaRow);
+}
+
+export function createProductForVendor(
+  db: DatabaseSync,
+  vendorId: string,
+  input: {
+    trousseauType?: Product['trousseauType'];
+    category: string;
+    categoryAr?: string;
+    categoryEn?: string;
+    nameAr: string;
+    nameEn?: string;
+    brand: string;
+    model?: string;
+    price: number;
+    originalPrice?: number;
+    stock?: number;
+    imageUrl: string;
+    galleryUrls?: string[];
+    descriptionAr: string;
+    descriptionEn?: string;
+    specsAr?: Record<string, string>;
+    specsEn?: Record<string, string>;
+    dimensions?: string;
+    capacity?: string;
+    energyRating?: string;
+    warrantyMonths?: number;
+    warrantyTermsAr?: string;
+    warrantyTermsEn?: string;
+  },
+): Product {
+  const id = `prd-vnd-${Date.now().toString().slice(-6)}-${crypto.randomUUID().slice(0, 4)}`;
+  const slugBase = (input.nameEn || input.brand || 'product')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 40);
+  const slug = `${slugBase || 'item'}-${crypto.randomUUID().slice(0, 6)}`;
+  const sku = `SKU-VND-${Date.now().toString().slice(-6)}`;
+  const now = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO products (
+      id, slug, sku, trousseau_type, category, category_ar, category_en,
+      name_ar, name_en, brand, model, price, original_price, stock,
+      image_url, gallery_json, description_ar, description_en,
+      specs_ar_json, specs_en_json, dimensions, capacity, energy_rating,
+      warranty_months, warranty_terms_ar, warranty_terms_en,
+      vendor_id, is_demo_data, created_at, updated_at, price_updated_at
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
+      ?, ?, ?,
+      ?, 0, ?, ?, ?
+    )`,
+  ).run(
+    id,
+    slug,
+    sku,
+    input.trousseauType || 'shared',
+    input.category,
+    input.categoryAr || input.category,
+    input.categoryEn || input.category,
+    input.nameAr,
+    input.nameEn || input.nameAr,
+    input.brand,
+    input.model ?? null,
+    input.price,
+    input.originalPrice ?? null,
+    input.stock ?? 5,
+    input.imageUrl,
+    JSON.stringify(input.galleryUrls || []),
+    input.descriptionAr,
+    input.descriptionEn || input.descriptionAr,
+    JSON.stringify(input.specsAr || {}),
+    JSON.stringify(input.specsEn || {}),
+    input.dimensions ?? null,
+    input.capacity ?? null,
+    input.energyRating ?? null,
+    input.warrantyMonths ?? 12,
+    input.warrantyTermsAr ?? null,
+    input.warrantyTermsEn ?? null,
+    vendorId,
+    now,
+    now,
+    now,
+  );
+
+  const row = db
+    .prepare(
+      `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+       FROM products p
+       LEFT JOIN vendors v ON v.id = p.vendor_id
+       WHERE p.id = ?`,
+    )
+    .get(id) as Record<string, unknown>;
+
+  return mapProductEncyclopediaRow(row);
+}
+
+export function updateProductForVendor(
+  db: DatabaseSync,
+  vendorId: string,
+  productId: string,
+  input: Partial<Parameters<typeof createProductForVendor>[2]>,
+): Product | null {
+  const existing = db
+    .prepare('SELECT id FROM products WHERE id = ? AND vendor_id = ?')
+    .get(productId, vendorId);
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  const sets: string[] = ['updated_at = ?'];
+  const values: (string | number | bigint | null | Uint8Array)[] = [now];
+
+  if (input.nameAr !== undefined) {
+    sets.push('name_ar = ?');
+    values.push(input.nameAr);
+  }
+  if (input.nameEn !== undefined) {
+    sets.push('name_en = ?');
+    values.push(input.nameEn);
+  }
+  if (input.brand !== undefined) {
+    sets.push('brand = ?');
+    values.push(input.brand);
+  }
+  if (input.model !== undefined) {
+    sets.push('model = ?');
+    values.push(input.model);
+  }
+  if (input.price !== undefined) {
+    sets.push('price = ?', 'price_updated_at = ?');
+    values.push(input.price, now);
+  }
+  if (input.originalPrice !== undefined) {
+    sets.push('original_price = ?');
+    values.push(input.originalPrice);
+  }
+  if (input.stock !== undefined) {
+    sets.push('stock = ?');
+    values.push(input.stock);
+  }
+  if (input.imageUrl !== undefined) {
+    sets.push('image_url = ?');
+    values.push(input.imageUrl);
+  }
+  if (input.category !== undefined) {
+    sets.push('category = ?');
+    values.push(input.category);
+  }
+  if (input.descriptionAr !== undefined) {
+    sets.push('description_ar = ?');
+    values.push(input.descriptionAr);
+  }
+  if (input.descriptionEn !== undefined) {
+    sets.push('description_en = ?');
+    values.push(input.descriptionEn);
+  }
+  if (input.dimensions !== undefined) {
+    sets.push('dimensions = ?');
+    values.push(input.dimensions);
+  }
+  if (input.capacity !== undefined) {
+    sets.push('capacity = ?');
+    values.push(input.capacity);
+  }
+  if (input.energyRating !== undefined) {
+    sets.push('energy_rating = ?');
+    values.push(input.energyRating);
+  }
+  if (input.warrantyMonths !== undefined) {
+    sets.push('warranty_months = ?');
+    values.push(input.warrantyMonths);
+  }
+
+  values.push(productId, vendorId);
+  db.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ? AND vendor_id = ?`).run(...values);
+
+  const row = db
+    .prepare(
+      `SELECT p.*, v.slug as vendor_slug, v.business_name_ar as vendor_business_name_ar, v.business_name_en as vendor_business_name_en, v.phone as vendor_phone, v.whatsapp as vendor_whatsapp, v.logo_image as vendor_logo_image, v.verification_status as vendor_verification_status
+       FROM products p
+       LEFT JOIN vendors v ON v.id = p.vendor_id
+       WHERE p.id = ?`,
+    )
+    .get(productId) as Record<string, unknown>;
+
+  return mapProductEncyclopediaRow(row);
+}
+
+export function deleteProductForVendor(
+  db: DatabaseSync,
+  vendorId: string,
+  productId: string,
+): boolean {
+  const res = db
+    .prepare('DELETE FROM products WHERE id = ? AND vendor_id = ?')
+    .run(productId, vendorId);
+  return Number(res.changes) > 0;
 }
 
