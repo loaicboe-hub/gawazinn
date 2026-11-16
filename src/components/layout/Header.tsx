@@ -560,14 +560,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
             <span>{language === 'ar' ? 'إدارة يوم الفرح والضيوف' : 'Wedding Day Ops'}</span>
           </Link>
           <Link
-            to="/newlyweds-guide"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-[#D91B3E] bg-[#FFF8F9] hover:bg-[#FDE8ED]"
-          >
-            <HeartHandshake className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'دليل المتزوجين الجدد (السنة الأولى)' : 'Newlyweds Year-One Guide'}</span>
-          </Link>
-          <Link
             to="/home-care"
             onClick={closeMenus}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"

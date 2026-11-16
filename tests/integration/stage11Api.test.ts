@@ -94,7 +94,7 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File API', (
     // 1. Sitemap includes public Stage 11 routes and excludes private /my/home-file
     const sitemapRes = await fetch(`${baseUrl}/sitemap.xml`);
     const xml = await sitemapRes.text();
-    expect(xml).toContain('/newlyweds-guide</loc>');
+    expect(xml).not.toContain('/newlyweds-guide</loc>');
     expect(xml).toContain('/home-care</loc>');
     expect(xml).not.toContain('/my/home-file</loc>');
 

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
-import { NewlywedsGuideView } from '../../src/components/postMarriage/NewlywedsGuideView';
 import { HomeCareDirectoryView } from '../../src/components/postMarriage/HomeCareDirectoryView';
 import {
   HOME_ASSET_CATEGORY_META,
@@ -85,26 +84,8 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File', () =>
     ).toBe(true);
   });
 
-  it('renders /newlyweds-guide and /home-care cleanly without removed home-file links', () => {
+  it('renders /home-care cleanly without removed home-file links', () => {
     localStorage.clear();
-    render(
-      <MemoryRouter initialEntries={['/newlyweds-guide']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('newlyweds-guide-heading')).toBeInTheDocument();
-    expect(screen.queryByTestId('guide-to-homefile-link')).not.toBeInTheDocument();
-    const firstStep = screen.getByTestId('track-step-m-1').querySelector('input')!;
-    expect(firstStep.checked).toBe(false);
-    fireEvent.click(firstStep);
-    expect(firstStep.checked).toBe(true);
-    expect(screen.getByTestId('newlyweds-progress-text').textContent).toContain('1 /');
-    cleanup();
-
     render(
       <MemoryRouter initialEntries={['/home-care']}>
         <AppProvider>

@@ -135,19 +135,7 @@ async function main() {
       }
     });
 
-    // 1. Guest visits public /newlyweds-guide -> verifies index, follow & toggles a checklist step
-    await page.goto(`${webUrl}/newlyweds-guide`, { waitUntil: 'networkidle' });
-    await dismissIntroIfPresent(page);
-    await page.getByTestId('newlyweds-guide-heading').waitFor({ state: 'visible' });
-    const guideRobots = await page.locator('meta[name="robots"]').getAttribute('content');
-    assert.equal(guideRobots, 'index, follow');
-
-    await page.getByTestId('track-step-m-1').locator('input').click();
-    const progText = await page.getByTestId('newlyweds-progress-text').innerText();
-    assert.ok(progText.startsWith('1 /'), `Expected progress to start with "1 /", got "${progText}"`);
-    await assertNoHorizontalOverflow(page, 'desktop /newlyweds-guide');
-
-    // 2. Guest visits public /home-care -> sees checklists & filters home maintenance partners
+    // 1. Guest visits public /home-care -> sees checklists & filters home maintenance partners
     await page.goto(`${webUrl}/home-care`, { waitUntil: 'networkidle' });
     await page.getByTestId('home-care-heading').waitFor({ state: 'visible' });
     const careRobots = await page.locator('meta[name="robots"]').getAttribute('content');
@@ -181,11 +169,6 @@ async function main() {
         errors.push(`mobile HTTP ${res.status()} on ${res.url()}`);
       }
     });
-
-    await mPage.goto(`${webUrl}/newlyweds-guide`, { waitUntil: 'networkidle' });
-    await dismissIntroIfPresent(mPage);
-    await mPage.getByTestId('newlyweds-guide-heading').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(mPage, 'mobile /newlyweds-guide');
 
     await mPage.goto(`${webUrl}/home-care`, { waitUntil: 'networkidle' });
     await mPage.getByTestId('home-care-heading').waitFor({ state: 'visible' });

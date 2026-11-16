@@ -20,7 +20,6 @@ import {
   Store,
   BadgeCheck,
   Users,
-  HeartHandshake,
   Wrench,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
@@ -330,16 +329,6 @@ export const SplashHome: React.FC = () => {
           >
             <Users className="w-3.5 h-3.5 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'يوم الفرح والطاولات والهدايا' : 'Wedding Day Ops & RSVP'}</span>
-          </Link>
-
-          <Link
-            to="/newlyweds-guide"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-newlyweds"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
-          >
-            <HeartHandshake className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'دليل المتزوجين الجدد (السنة الأولى)' : 'Newlyweds Year-One Guide'}</span>
           </Link>
 
           <Link
