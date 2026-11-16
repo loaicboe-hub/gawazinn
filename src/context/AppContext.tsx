@@ -180,7 +180,6 @@ export type SectionKey =
   | 'weddingDay'
   | 'newlywedsGuide'
   | 'homeCare'
-  | 'digitalHomeFile'
   | 'rfq'
   | 'vendorPortal'
   | 'myHub'
@@ -214,7 +213,6 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   weddingDay: '/wedding-day',
   newlywedsGuide: '/newlyweds-guide',
   homeCare: '/home-care',
-  digitalHomeFile: '/my/home-file',
   rfq: '/rfq',
   vendorPortal: '/vendor',
   myHub: '/my/workspace',
@@ -1150,7 +1148,6 @@ function resolveSectionFromPath(pathname: string): SectionKey {
   if (pathname.startsWith('/wedding-day') || pathname.startsWith('/rsvp/')) return 'weddingDay';
   if (pathname.startsWith('/newlyweds-guide')) return 'newlywedsGuide';
   if (pathname.startsWith('/home-care')) return 'homeCare';
-  if (pathname.startsWith('/my/home-file')) return 'digitalHomeFile';
   if (pathname === '/rfq' || pathname.startsWith('/rfq/')) return 'rfq';
   if (pathname.startsWith('/vendors')) return 'vendors';
   if (pathname === '/vendor' || pathname.startsWith('/vendor/')) return 'vendorPortal';
@@ -4325,7 +4322,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         body: JSON.stringify(input),
       });
       setHomeFileOverview(ov);
-      showToast(language === 'ar' ? 'تم حفظ الأصل في ملف البيت الرقمي.' : 'Asset saved to Digital Home File.');
+      showToast(language === 'ar' ? 'تم حفظ الأصل بنجاح.' : 'Asset saved successfully.');
       return ov;
     },
     [language, showToast],

@@ -5,7 +5,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
 import { NewlywedsGuideView } from '../../src/components/postMarriage/NewlywedsGuideView';
 import { HomeCareDirectoryView } from '../../src/components/postMarriage/HomeCareDirectoryView';
-import { DigitalHomeFileView } from '../../src/components/postMarriage/DigitalHomeFileView';
 import {
   HOME_ASSET_CATEGORY_META,
   HOME_ITEM_CONDITION_META,
@@ -86,7 +85,7 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File', () =>
     ).toBe(true);
   });
 
-  it('renders /newlyweds-guide, /home-care, and auth-guarded /my/home-file cleanly', () => {
+  it('renders /newlyweds-guide and /home-care cleanly without removed home-file links', () => {
     localStorage.clear();
     render(
       <MemoryRouter initialEntries={['/newlyweds-guide']}>
@@ -98,6 +97,7 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File', () =>
       </MemoryRouter>,
     );
     expect(screen.getByTestId('newlyweds-guide-heading')).toBeInTheDocument();
+    expect(screen.queryByTestId('guide-to-homefile-link')).not.toBeInTheDocument();
     const firstStep = screen.getByTestId('track-step-m-1').querySelector('input')!;
     expect(firstStep.checked).toBe(false);
     fireEvent.click(firstStep);
@@ -115,21 +115,9 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File', () =>
       </MemoryRouter>,
     );
     expect(screen.getByTestId('home-care-heading')).toBeInTheDocument();
+    expect(screen.queryByTestId('homecare-homefile-btn')).not.toBeInTheDocument();
     expect(screen.getByTestId('homecare-checklist-moving_logistics')).toBeInTheDocument();
     expect(screen.getByTestId('homecare-checklist-home_maintenance')).toBeInTheDocument();
-    cleanup();
-
-    render(
-      <MemoryRouter initialEntries={['/my/home-file']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/my/home-file" element={<DigitalHomeFileView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('home-file-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('home-file-signin-btn')).toBeInTheDocument();
     cleanup();
   });
 });

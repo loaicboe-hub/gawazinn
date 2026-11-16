@@ -1140,7 +1140,7 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <h2 className="text-lg font-black text-[#2A1D20]">
-                    {language === 'ar' ? 'خزنة المستندات وملف البيت الآمن' : 'Document Locker & Shared Home File'}
+                    {language === 'ar' ? 'خزنة المستندات وعقود الشقة الآمنة' : 'Document Locker & Apartment Contracts'}
                   </h2>
                   <p className="text-xs text-gray-500">
                     {language === 'ar'
@@ -1148,13 +1148,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                       : 'Choose whether each contract, floor plan or receipt stays Private or is Shared with your Partner.'}
                   </p>
                 </div>
-                <Link
-                  to="/my/home-file"
-                  data-testid="hub-open-homefile-docs-link"
-                  className="bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#B31331] hover:text-white border border-[#D91B3E]/25 font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0"
-                >
-                  {language === 'ar' ? 'ملف البيت الرقمي الكامل' : 'Open Digital Home File'}
-                </Link>
               </div>
 
               <form
@@ -1330,13 +1323,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                 <h2 className="text-lg font-black text-[#2A1D20]">
                   {language === 'ar' ? 'متابع ضمانات الأجهزة والتشطيب' : 'Appliance & Contractor Warranty Tracker'}
                 </h2>
-                <Link
-                  to="/my/home-file?tab=warranties"
-                  data-testid="hub-open-homefile-warranties-link"
-                  className="bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#B31331] hover:text-white border border-[#D91B3E]/25 font-bold text-xs px-4 py-2 rounded-xl transition shrink-0"
-                >
-                  {language === 'ar' ? 'ملف البيت والصيانة الدورية' : 'Digital Home File & Care'}
-                </Link>
               </div>
 
               <form

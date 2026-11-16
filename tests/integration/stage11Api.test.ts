@@ -185,7 +185,7 @@ describe('Stage 11 Married Life, Home Care Directory & Digital Home File API', (
     });
     expect(hubRes.status).toBe(200);
     expect(
-      hubRes.body.data!.notifications.some((n) => n.linkPath === '/my/home-file?tab=maintenance'),
+      hubRes.body.data!.notifications.some((n) => n.linkPath === '/home-care'),
     ).toBe(true);
 
     // 7. Karim creates a paint asset & inventory item & updates condition

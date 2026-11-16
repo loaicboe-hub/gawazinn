@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
-  FolderHeart,
   HeartHandshake,
   Home,
   ShieldCheck,
@@ -110,14 +109,6 @@ export const NewlywedsGuideView: React.FC = () => {
               <Truck className="w-4 h-4" />
               <span>{language === 'ar' ? 'دليل النقل والصيانة' : 'Moving & Home Care'}</span>
             </Link>
-            <Link
-              to="/my/home-file"
-              data-testid="guide-to-homefile-link"
-              className="px-5 py-3 rounded-2xl bg-white text-[#B31331] hover:bg-[#FDE8ED] font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 transition"
-            >
-              <FolderHeart className="w-4 h-4" />
-              <span>{language === 'ar' ? 'ملف البيت الرقمي' : 'Digital Home File'}</span>
-            </Link>
           </div>
         </div>
       </div>
@@ -144,8 +135,8 @@ export const NewlywedsGuideView: React.FC = () => {
             </div>
             <p className="text-[11px] text-gray-500">
               {language === 'ar'
-                ? 'تُحفظ علامات التنفيذ محلياً على جهازك، ويمكنك ربط مواعيد الصيانة والضمانات في ملف البيت الرقمي.'
-                : 'Checklist selections save automatically in your browser; sync real appliance warranties & reminders in Digital Home File.'}
+                ? 'تُحفظ علامات التنفيذ محلياً على متصفحك لمتابعة استقرار بيتك خطوة بخطوة.'
+                : 'Checklist selections save automatically in your browser to track your home readiness step by step.'}
             </p>
           </div>
 

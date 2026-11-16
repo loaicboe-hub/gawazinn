@@ -28,7 +28,6 @@ import {
   Store,
   Bot,
   Users,
-  FolderHeart,
 } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
@@ -428,16 +427,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                     </Link>
 
                     <Link
-                      to="/my/home-file"
-                      onClick={closeMenus}
-                      data-testid="usermenu-home-file"
-                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
-                    >
-                      <FolderHeart className="w-3.5 h-3.5 text-[#D91B3E]" />
-                      <span>{language === 'ar' ? 'ملف البيت الرقمي والصيانة' : 'Digital Home File & Care'}</span>
-                    </Link>
-
-                    <Link
                       to="/vendors"
                       onClick={closeMenus}
                       className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
@@ -651,14 +640,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
           >
             <Wrench className="w-4 h-4 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'دليل النقل والصيانة بعد الزواج' : 'Moving & Home Care Directory'}</span>
-          </Link>
-          <Link
-            to="/my/home-file"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-700 hover:bg-[#FDE8ED]"
-          >
-            <FolderHeart className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'ملف البيت الرقمي وجدول الصيانة' : 'Digital Home File & Care'}</span>
           </Link>
           <Link
             to="/rfq"

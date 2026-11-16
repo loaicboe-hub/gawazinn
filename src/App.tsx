@@ -204,11 +204,6 @@ const HomeCareDirectoryView = lazy(() =>
     default: m.HomeCareDirectoryView,
   })),
 );
-const DigitalHomeFileView = lazy(() =>
-  import('./components/postMarriage/DigitalHomeFileView').then((m) => ({
-    default: m.DigitalHomeFileView,
-  })),
-);
 
 const RouteLoadingFallback: React.FC = () => {
   const { language } = useApp();
@@ -280,7 +275,6 @@ const MainContent: React.FC = () => {
             <Route path="/rsvp/:code" element={<PublicRsvpView />} />
             <Route path="/newlyweds-guide" element={<NewlywedsGuideView />} />
             <Route path="/home-care" element={<HomeCareDirectoryView />} />
-            <Route path="/my/home-file" element={<DigitalHomeFileView />} />
             <Route path="/vendor" element={<VendorPortalView />} />
             <Route path="/rfq" element={<RfqCenterView />} />
             <Route path="/rfq/new" element={<RfqCenterView initialTab="new" />} />

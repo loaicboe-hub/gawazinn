@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  FolderHeart,
   MapPin,
   ShieldCheck,
   Truck,
@@ -104,14 +103,6 @@ export const HomeCareDirectoryView: React.FC = () => {
             >
               <FileText className="w-4 h-4" />
               <span>{language === 'ar' ? 'اطلب تسعير صيانة أو نقل' : 'Request Home Care Quote'}</span>
-            </Link>
-            <Link
-              to="/my/home-file"
-              data-testid="homecare-homefile-btn"
-              className="px-5 py-3 rounded-2xl bg-white text-[#B31331] hover:bg-[#FDE8ED] font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 transition"
-            >
-              <FolderHeart className="w-4 h-4" />
-              <span>{language === 'ar' ? 'ملف البيت الرقمي' : 'Digital Home File'}</span>
             </Link>
           </div>
         </div>

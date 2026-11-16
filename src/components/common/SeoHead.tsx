@@ -247,9 +247,6 @@ export const SeoHead: React.FC = () => {
         'شركات نقل عفش وونش هيدروليك وفنيو صيانة تكييف وسباكة موثقون في مصر مع قوائم فحص واضحة قبل التعاقد.';
       descEn =
         'Trusted Egyptian moving & hoist companies and preventive home maintenance partners with transparent pre-contract checklists.';
-    } else if (pathname.startsWith('/my/home-file')) {
-      titleAr = 'ملف البيت الرقمي وجدول الصيانة وجرد المنزل | جواز إن';
-      titleEn = 'Digital Home File, Maintenance Reminders & Inventory | GAWAZ INN';
     } else if (vendorMatch) {
       const slugOrId = decodeURIComponent(vendorMatch[1]);
       const vnd = vendors.find((v) => v.slug === slugOrId || v.id === slugOrId);

@@ -344,7 +344,7 @@ export function completeMaintenanceReminder(
     titleEn: `Maintenance Completed: ${String(row.title_en)}`,
     bodyAr: `تم تحديث الدورة تلقائياً؛ الموعد القادم للصيانة هو ${nextDue}.`,
     bodyEn: `Cycle advanced cleanly; your next scheduled maintenance is on ${nextDue}.`,
-    linkPath: '/my/home-file?tab=maintenance',
+    linkPath: '/home-care',
   });
 
   return buildUserHomeFileOverview(db, userId);

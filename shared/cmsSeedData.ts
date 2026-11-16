@@ -460,7 +460,7 @@ export const SEED_ARTICLES: Article[] = [
     excerptAr: 'لماذا تفقد معظم الأسر كروت الضمان ومقاسات الغرف خلال أول 6 أشهر؟ وما هي قائمة الفحص الربع سنوية؟',
     excerptEn: 'Keep appliance serial numbers, paint tint formulas, plumbing shutoff plans, and seasonal checklists intact.',
     bodyAr:
-      'لحظة دخول البيت الجديد تبدأ مرحلة لا تقل أهمية: الحفاظ على ما تم بناؤه.\n\nسجّل في ملف البيت الرقمي أرقام موديلات الأجهزة، فواتير الشراء، أرقام أكواد ألوان الدهان للترميم المستقبلي، وفحص فلاتر المياه والتكييف كل 6 أشهر.',
+      'لحظة دخول البيت الجديد تبدأ مرحلة لا تقل أهمية: الحفاظ على ما تم بناؤه.\n\nاحتفظ بأرقام موديلات الأجهزة، فواتير الشراء، أرقام أكواد ألوان الدهان للترميم المستقبلي، وفحص فلاتر المياه والتكييف كل 6 أشهر.',
     bodyEn:
       'Moving in begins an equally vital journey: protecting what you built.\n\nKeep all appliance serial numbers, receipts, wall paint codes for easy touch-ups, and semi-annual AC & water-filter maintenance reminders organized in one place.',
     featuredImage:

@@ -63,18 +63,6 @@ async function assertNoHorizontalOverflow(page: Page, contextLabel: string): Pro
   );
 }
 
-async function loginViaModal(page: Page, identifier: string, password: string): Promise<void> {
-  await page.getByTestId('header-login-btn').waitFor({ state: 'visible' });
-  await page.getByTestId('header-login-btn').click();
-  await page.getByTestId('auth-identifier-input').waitFor({ state: 'visible' });
-  await page.getByTestId('auth-identifier-input').fill(identifier);
-  await page.getByTestId('auth-password-input').fill(password);
-  const done = page.waitForResponse((res) => res.url().includes('/api/v1/auth/login'));
-  await page.getByTestId('auth-submit-btn').click();
-  const res = await done;
-  assert.equal(res.status(), 200, `Login failed for ${identifier} with HTTP ${res.status()}`);
-}
-
 async function main() {
   if (CHROME_CANDIDATES.length === 0) {
     throw new Error('No Chromium/Chrome executable found for Stage 11 E2E tests.');
@@ -170,70 +158,16 @@ async function main() {
     await page.getByTestId('homecare-vendor-baytk-home-maintenance-ac-care').waitFor({ state: 'visible' });
     await assertNoHorizontalOverflow(page, 'desktop /home-care');
 
-    // 3. Karim logs in -> visits /my/home-file -> noindex, nofollow + CRUD across Assets, Maintenance & Inventory
-    await loginViaModal(page, 'karim@gawazinn.demo', 'DemoPass@2026');
-    await page.goto(`${webUrl}/my/home-file`, { waitUntil: 'networkidle' });
-    await page.getByTestId('home-file-heading').waitFor({ state: 'visible' });
-    const privRobots = await page.locator('meta[name="robots"]').getAttribute('content');
-    assert.equal(privRobots, 'noindex, nofollow');
-
-    const initialAssets = Number(await page.getByTestId('kpi-total-assets').innerText());
-    const initialOverdue = Number(await page.getByTestId('kpi-overdue-reminders').innerText());
-    assert.ok(initialOverdue >= 1, `Expected initial overdue >= 1, got ${initialOverdue}`);
-
-    // Add a new home asset
-    await page.getByTestId('asset-room-input').fill('غرفة الطعام E2E');
-    await page.getByTestId('asset-title-input').fill('كود دهان ورق حائط ديكوري');
-    await page.getByTestId('asset-code-input').fill('Jotun 9918');
-    const createAssetDone = page.waitForResponse(
-      (res) => res.url().endsWith('/api/v1/home-care/assets') && res.status() === 201,
-    );
-    await page.getByTestId('create-home-asset-btn').click();
-    await createAssetDone;
-    const afterAssets = Number(await page.getByTestId('kpi-total-assets').innerText());
-    assert.equal(afterAssets, initialAssets + 1);
-
-    // Complete overdue reminder -> overdue KPI drops
-    await page.getByTestId('home-file-tab-maintenance').click();
-    await page.getByTestId('complete-reminder-btn-mrem-karim-1').waitFor({ state: 'visible' });
-    const completeDone = page.waitForResponse(
-      (res) => res.url().includes('/api/v1/home-care/reminders/mrem-karim-1/complete') && res.status() === 200,
-    );
-    await page.getByTestId('complete-reminder-btn-mrem-karim-1').click();
-    await completeDone;
-    const afterOverdue = Number(await page.getByTestId('kpi-overdue-reminders').innerText());
-    assert.equal(afterOverdue, 0);
-
-    // Add inventory item -> inventory value updates cleanly
-    await page.getByTestId('home-file-tab-inventory').click();
-    const initialInvText = await page.getByTestId('kpi-inventory-value').innerText();
-    await page.getByTestId('inv-room-input').fill('المطبخ');
-    await page.getByTestId('inv-name-input').fill('قلاية هوائية فيليبس E2E');
-    await page.getByTestId('inv-brand-input').fill('Philips HD9270');
-    await page.getByTestId('inv-price-input').fill('8500');
-    const createInvDone = page.waitForResponse(
-      (res) => res.url().endsWith('/api/v1/home-care/inventory') && res.status() === 201,
-    );
-    await page.getByTestId('create-inventory-btn').click();
-    await createInvDone;
-    const afterInvText = await page.getByTestId('kpi-inventory-value').innerText();
-    assert.notEqual(afterInvText, initialInvText);
-
-    // Check integrated Stage 5 Warranties & Document Vault tab
-    await page.getByTestId('home-file-tab-warranties').click();
-    await page.getByTestId('home-file-vault-section').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(page, 'desktop /my/home-file');
-
-    // Language switch check (EN LTR & back to AR RTL)
+    // 3. Language switch check (EN LTR & back to AR RTL) on /home-care
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'ltr');
-    await assertNoHorizontalOverflow(page, 'desktop /my/home-file LTR');
+    await assertNoHorizontalOverflow(page, 'desktop /home-care LTR');
     await page.getByTestId('lang-switch-btn').click();
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.dir), 'rtl');
 
-    // 4. Mobile 375px RTL checks across all 3 Stage 11 routes
+    // 4. Mobile 375px RTL checks across Stage 11 routes
     const mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 } });
     const mPage = await mobileContext.newPage();
     mPage.on('console', (msg) => {
@@ -256,11 +190,6 @@ async function main() {
     await mPage.goto(`${webUrl}/home-care`, { waitUntil: 'networkidle' });
     await mPage.getByTestId('home-care-heading').waitFor({ state: 'visible' });
     await assertNoHorizontalOverflow(mPage, 'mobile /home-care');
-
-    await loginViaModal(mPage, 'karim@gawazinn.demo', 'DemoPass@2026');
-    await mPage.goto(`${webUrl}/my/home-file`, { waitUntil: 'networkidle' });
-    await mPage.getByTestId('home-file-heading').waitFor({ state: 'visible' });
-    await assertNoHorizontalOverflow(mPage, 'mobile /my/home-file');
 
     assert.equal(errors.length, 0, `Stage 11 E2E captured errors:\n${errors.join('\n')}`);
     console.log('Stage 11 E2E Chrome verification PASSED (Desktop AR/EN + Mobile 375px RTL, 0 errors).');
