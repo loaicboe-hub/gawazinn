@@ -44,6 +44,7 @@ import {
   hasAnyRole,
 } from '../../../shared/rbac';
 import { SmartImage } from '../common/SmartImage';
+import { ImageUploader } from '../common/ImageUploader';
 import { ModalFrame } from '../common/ModalFrame';
 import {
   CommercialPlanBadge,
@@ -184,6 +185,9 @@ export const AdminDashboardView: React.FC = () => {
   const [artExcerptEn, setArtExcerptEn] = useState('');
   const [artBodyAr, setArtBodyAr] = useState('');
   const [artBodyEn, setArtBodyEn] = useState('');
+  const [artFeaturedImage, setArtFeaturedImage] = useState(
+    'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1000&q=80',
+  );
 
   const [settingsForm, setSettingsForm] = useState(settings);
   useEffect(() => {
@@ -406,6 +410,7 @@ export const AdminDashboardView: React.FC = () => {
       bodyAr: artBodyAr.trim(),
       bodyEn: artBodyEn.trim() || artBodyAr.trim(),
       featuredImage:
+        artFeaturedImage.trim() ||
         'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1000&q=80',
       tags: ['دليل', artDomain],
       faqs: [],
@@ -422,6 +427,9 @@ export const AdminDashboardView: React.FC = () => {
     setArtExcerptEn('');
     setArtBodyAr('');
     setArtBodyEn('');
+    setArtFeaturedImage(
+      'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1000&q=80',
+    );
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -2340,18 +2348,18 @@ export const AdminDashboardView: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">
-                {language === 'ar' ? 'رابط الصورة:' : 'Image URL:'}
-              </label>
-              <input
-                type="text"
-                required
-                value={prodImage}
-                onChange={(e) => setProdImage(e.target.value)}
-                className="w-full p-2.5 rounded-xl border text-xs"
-              />
-            </div>
+            <ImageUploader
+              value={prodImage}
+              onChange={setProdImage}
+              label={language === 'ar' ? 'صورة المنتج' : 'Product Image'}
+              required
+              language={language}
+              aspectRatioHint={
+                language === 'ar'
+                  ? 'رفع مباشر من جهازك أو لصق رابط'
+                  : 'Direct upload from device or paste link'
+              }
+            />
 
             <div className="flex justify-end gap-3 pt-3 border-t">
               <button
@@ -2459,6 +2467,19 @@ export const AdminDashboardView: React.FC = () => {
                 />
               </div>
             </div>
+
+            <ImageUploader
+              value={srvImage}
+              onChange={setSrvImage}
+              label={language === 'ar' ? 'صورة الخدمة / القاعة' : 'Service / Venue Image'}
+              required
+              language={language}
+              aspectRatioHint={
+                language === 'ar'
+                  ? 'رفع مباشر من جهازك أو لصق رابط'
+                  : 'Direct upload from device or paste link'
+              }
+            />
             <div className="flex justify-end gap-3 pt-3 border-t">
               <button
                 type="button"
@@ -2577,6 +2598,19 @@ export const AdminDashboardView: React.FC = () => {
                 />
               </div>
             </div>
+
+            <ImageUploader
+              value={artFeaturedImage}
+              onChange={setArtFeaturedImage}
+              label={language === 'ar' ? 'صورة الغلاف للمقال' : 'Article Featured Image'}
+              language={language}
+              aspectRatioHint={
+                language === 'ar'
+                  ? 'رفع مباشر من جهازك أو لصق رابط لصورة المقال'
+                  : 'Direct upload from device or paste link for article cover'
+              }
+            />
+
             <div className="flex justify-end gap-3 pt-3 border-t">
               <button
                 type="button"

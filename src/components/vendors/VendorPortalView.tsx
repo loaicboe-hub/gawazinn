@@ -34,6 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
+import { ImageUploader } from '../common/ImageUploader';
 import type {
   MarketplaceAppointmentStatus,
   Product,
@@ -707,6 +708,10 @@ export const VendorPortalView: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!overview?.vendor) return;
+    if (!prodImageUrl.trim()) {
+      setErrorMsg(language === 'ar' ? 'يرجى رفع أو تحديد صورة للمنتج أولاً.' : 'Please upload or select a product image first.');
+      return;
+    }
     setProdSubmitting(true);
     setErrorMsg(null);
     try {
@@ -2262,52 +2267,22 @@ export const VendorPortalView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Row 5: Image URL & Quick Photo Presets */}
-                        <div className="space-y-2">
-                          <label className="font-bold text-gray-700 block">
-                            {language === 'ar' ? 'رابط صورة المنتج (URL) *' : 'Product Image URL *'}
-                          </label>
-                          <input
-                            type="url"
-                            required
+                        {/* Row 5: Product Image Direct Upload or URL */}
+                        <div>
+                          <ImageUploader
+                            id="vendor-product-image-uploader"
                             value={prodImageUrl}
-                            onChange={(e) => setProdImageUrl(e.target.value)}
-                            placeholder="https://images.unsplash.com/..."
-                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            onChange={setProdImageUrl}
+                            label={language === 'ar' ? 'صورة المنتج' : 'Product Image'}
+                            required
+                            language={language}
+                            presets={SAMPLE_PRODUCT_PHOTOS}
+                            aspectRatioHint={
+                              language === 'ar'
+                                ? 'يدعم الرفع المباشر من الهاتف أو الكمبيوتر (يتم الضغط الذكي تلقائياً)'
+                                : 'Supports direct upload from mobile or PC (auto-compressed)'
+                            }
                           />
-
-                          {/* Quick Sample Presets Chips */}
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[10px] text-gray-400">
-                              {language === 'ar' ? 'صور جاهزة للاختيار السريع:' : 'Quick sample presets:'}
-                            </span>
-                            {SAMPLE_PRODUCT_PHOTOS.map((sample) => (
-                              <button
-                                key={sample.label}
-                                type="button"
-                                onClick={() => setProdImageUrl(sample.url)}
-                                className="px-2 py-0.5 rounded-md bg-rose-50 text-[#D91B3E] hover:bg-rose-100 text-[10px] font-bold transition cursor-pointer"
-                              >
-                                {sample.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Live Image Preview */}
-                          {prodImageUrl && (
-                            <div className="mt-2 p-2 rounded-2xl bg-gray-50 border border-gray-200 flex items-center gap-3">
-                              <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shrink-0 border border-gray-200">
-                                <SmartImage
-                                  src={prodImageUrl}
-                                  alt="معاينة"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <span className="text-[11px] text-gray-500 font-medium">
-                                {language === 'ar' ? 'معاينة الصورة المرفوعة بنجاح' : 'Image preview active'}
-                              </span>
-                            </div>
-                          )}
                         </div>
 
                         {/* Row 6: Warranty & Specs */}
