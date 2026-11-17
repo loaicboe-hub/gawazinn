@@ -2,9 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
-  Building2,
   Briefcase,
-  Sparkles,
   Heart,
   MessageSquare,
   HeartHandshake,
@@ -49,50 +47,6 @@ export const Footer: React.FC = () => {
 
           {/* Core Section Links */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-gray-700">
-            <Link
-              to="/finishing"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Building2 className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'تشطيب الشقة' : 'Apartment Finishing'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/groom"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Briefcase className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'جهاز العريس' : "Groom's Essentials"}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/bride"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'جهاز العروسة' : "Bride's Essentials"}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/wedding"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Heart className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'فرحي' : 'Wedding Planner'}</span>
-            </Link>
-
-            <span>•</span>
-
             <Link
               to="/installments"
               onClick={scrollTop}
