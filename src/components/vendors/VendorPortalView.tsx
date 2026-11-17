@@ -1212,74 +1212,119 @@ export const VendorPortalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Sub-Navigation Tabs */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                {
-                  key: 'profile' as const,
-                  ar: 'بيانات الملف والتغطية',
-                  en: 'Profile & Service Areas',
-                  icon: <Building2 className="w-4 h-4" />,
-                },
-                {
-                  key: 'services' as const,
-                  ar: `الخدمات (${overview.services.length})`,
-                  en: `Services (${overview.services.length})`,
-                  icon: <Layers className="w-4 h-4" />,
-                },
-                {
-                  key: 'promotions' as const,
-                  ar: `العروض الموسمية (${overview.promotions.length})`,
-                  en: `Promotions (${overview.promotions.length})`,
-                  icon: <Tag className="w-4 h-4" />,
-                },
-                {
-                  key: 'products' as const,
-                  ar: `منتجات المعرض (${overview.products?.length ?? 0})`,
-                  en: `Showroom Products (${overview.products?.length ?? 0})`,
-                  icon: <Package className="w-4 h-4" />,
-                },
-                {
-                  key: 'billing' as const,
-                  ar: 'الباقات التجارية والفواتير',
-                  en: 'Commercial Plans & Billing',
-                  icon: <CreditCard className="w-4 h-4" />,
-                },
-                {
-                  key: 'rfqs' as const,
-                  ar: `طلبات التسعير (${crmOverview?.rfqs.length ?? 0})`,
-                  en: `Invited RFQs (${crmOverview?.rfqs.length ?? 0})`,
-                  icon: <FileText className="w-4 h-4" />,
-                },
-                {
-                  key: 'appointments' as const,
-                  ar: `المواعيد المحجوزة (${crmOverview?.appointments.length ?? 0})`,
-                  en: `Slot Bookings (${crmOverview?.appointments.length ?? 0})`,
-                  icon: <Calendar className="w-4 h-4" />,
-                },
-                {
-                  key: 'crm' as const,
-                  ar: `نظام CRM (${crmOverview?.leads.length ?? 0})`,
-                  en: `8-Stage CRM (${crmOverview?.leads.length ?? 0})`,
-                  icon: <Briefcase className="w-4 h-4" />,
-                },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  data-testid={`portal-tab-${tab.key}`}
-                  onClick={() => setPortalTab(tab.key)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                    portalTab === tab.key
-                      ? 'bg-[#D91B3E] text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-[#D91B3E]/40'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{language === 'ar' ? tab.ar : tab.en}</span>
-                </button>
-              ))}
-            </div>
+            {/* 2-Column Dashboard Layout with Sidebar Menu */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Sidebar Navigation Menu */}
+              <aside className="lg:col-span-4 xl:col-span-3 bg-white rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-sm space-y-3 lg:sticky lg:top-24">
+                <div className="px-2 pb-3 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-xs font-black text-[#B31331] flex items-center gap-2">
+                    <Store className="w-4 h-4 text-[#D91B3E]" />
+                    <span>{language === 'ar' ? 'أقسام إدارة الشريك' : 'Partner Modules'}</span>
+                  </h2>
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                    8 {language === 'ar' ? 'أقسام' : 'tabs'}
+                  </span>
+                </div>
+
+                <nav aria-label="Vendor Portal Navigation" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
+                  {[
+                    {
+                      key: 'profile' as const,
+                      titleAr: 'بيانات الملف والتغطية',
+                      titleEn: 'Profile & Service Areas',
+                      icon: <Building2 className="w-4 h-4 shrink-0" />,
+                      count: undefined,
+                    },
+                    {
+                      key: 'services' as const,
+                      titleAr: 'الخدمات',
+                      titleEn: 'Services',
+                      icon: <Layers className="w-4 h-4 shrink-0" />,
+                      count: overview.services.length,
+                    },
+                    {
+                      key: 'promotions' as const,
+                      titleAr: 'العروض الموسمية',
+                      titleEn: 'Promotions',
+                      icon: <Tag className="w-4 h-4 shrink-0" />,
+                      count: overview.promotions.length,
+                    },
+                    {
+                      key: 'products' as const,
+                      titleAr: 'منتجات المعرض',
+                      titleEn: 'Showroom Products',
+                      icon: <Package className="w-4 h-4 shrink-0" />,
+                      count: overview.products?.length ?? 0,
+                    },
+                    {
+                      key: 'billing' as const,
+                      titleAr: 'الباقات التجارية والفواتير',
+                      titleEn: 'Commercial Plans & Billing',
+                      icon: <CreditCard className="w-4 h-4 shrink-0" />,
+                      count: undefined,
+                    },
+                    {
+                      key: 'rfqs' as const,
+                      titleAr: 'طلبات التسعير',
+                      titleEn: 'Invited RFQs',
+                      icon: <FileText className="w-4 h-4 shrink-0" />,
+                      count: crmOverview?.rfqs.length ?? 0,
+                    },
+                    {
+                      key: 'appointments' as const,
+                      titleAr: 'المواعيد المحجوزة',
+                      titleEn: 'Slot Bookings',
+                      icon: <Calendar className="w-4 h-4 shrink-0" />,
+                      count: crmOverview?.appointments.length ?? 0,
+                    },
+                    {
+                      key: 'crm' as const,
+                      titleAr: 'نظام CRM',
+                      titleEn: '8-Stage CRM',
+                      icon: <Briefcase className="w-4 h-4 shrink-0" />,
+                      count: crmOverview?.leads.length ?? 0,
+                    },
+                  ].map((tab) => {
+                    const isActive = portalTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        data-testid={`portal-tab-${tab.key}`}
+                        onClick={() => setPortalTab(tab.key)}
+                        className={`w-full px-3.5 py-3 rounded-2xl text-xs font-bold transition flex items-center justify-between gap-2.5 text-start cursor-pointer ${
+                          isActive
+                            ? 'bg-[#D91B3E] text-white shadow-md'
+                            : 'text-[#2A1D20] bg-gray-50/70 hover:bg-[#FDE8ED] hover:text-[#D91B3E] border border-gray-100 hover:border-[#D91B3E]/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={isActive ? 'text-white' : 'text-[#D91B3E]'}>
+                            {tab.icon}
+                          </span>
+                          <span className="truncate">
+                            {language === 'ar' ? tab.titleAr : tab.titleEn}
+                          </span>
+                        </div>
+                        {tab.count !== undefined && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                              isActive
+                                ? 'bg-white text-[#D91B3E]'
+                                : 'bg-[#FDE8ED] text-[#B31331]'
+                            }`}
+                          >
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </aside>
+
+              {/* Main Content Details Area */}
+              <main className="lg:col-span-8 xl:col-span-9 space-y-6 min-w-0">
 
             {/* TAB 1: Profile */}
             {portalTab === 'profile' && (
@@ -3255,6 +3300,8 @@ export const VendorPortalView: React.FC = () => {
                 </div>
               </div>
             )}
+              </main>
+            </div>
           </div>
         )}
       </div>
