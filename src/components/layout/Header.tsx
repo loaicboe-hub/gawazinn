@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  Languages,
   FileText,
   BookOpen,
   MapPin,
@@ -30,7 +29,6 @@ import {
 export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => {
   const {
     language,
-    setLanguage,
     dir,
     activeSection,
     currentUser,
@@ -155,18 +153,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
 
           {/* User Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Language Switcher */}
-            <button
-              type="button"
-              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              data-testid="lang-switch-btn"
-              className="p-2 sm:p-2.5 rounded-xl bg-gray-50 hover:bg-[#FDE8ED] text-[#D91B3E] hover:text-[#99132B] border border-gray-200 hover:border-[#D91B3E]/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-              title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
-            >
-              <Languages className="w-4 h-4 text-[#D91B3E]" />
-              <span className="hidden sm:inline font-bold text-[11px]">{language === 'ar' ? 'English' : 'العربية'}</span>
-            </button>
-
             {/* Cart Button */}
             <button
               type="button"

@@ -25,7 +25,7 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const Footer: React.FC = () => {
-  const { language, settings } = useApp();
+  const { language, setLanguage, settings } = useApp();
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -330,6 +330,15 @@ export const Footer: React.FC = () => {
               ? 'منصة جواز إن (GAWAZ INN). جميع الحقوق محفوظة.'
               : 'GAWAZ INN Platform. All rights reserved.'}
           </p>
+
+          <button
+            type="button"
+            onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+            data-testid="lang-switch-btn"
+            className="hover:text-[#D91B3E] hover:underline font-bold transition cursor-pointer"
+          >
+            {language === 'ar' ? 'English (LTR)' : 'العربية (RTL)'}
+          </button>
 
           <button
             type="button"
