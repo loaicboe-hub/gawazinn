@@ -60,7 +60,7 @@ const CRM_STAGE_META: {
     key: 'quotation_sent',
     ar: 'تم إرسال عرض',
     en: 'Quotation Sent',
-    cls: 'bg-[#FDE8ED] text-[#B31331] border-[#D91B3E]/30',
+    cls: 'bg-blue-50 text-blue-900 border-blue-200',
   },
   { key: 'negotiation', ar: 'تفاوض', en: 'Negotiation', cls: 'bg-amber-50 text-amber-900 border-amber-200' },
   { key: 'accepted', ar: 'مقبول / تعاقد', en: 'Accepted', cls: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
@@ -829,10 +829,10 @@ export const VendorPortalView: React.FC = () => {
         data-testid="vendor-portal-unauth"
         className="max-w-2xl mx-auto px-4 py-20 text-center space-y-5"
       >
-        <div className="w-16 h-16 rounded-2xl bg-[#FDE8ED] text-[#D91B3E] mx-auto flex items-center justify-center border border-[#D91B3E]/20 shadow-md">
+        <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 mx-auto flex items-center justify-center border border-blue-200 shadow-md">
           <Lock className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-[#2A1D20]">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
           {language === 'ar'
             ? 'بوابة شركاء ومقدمي خدمات جواز إن'
             : 'GAWAZ INN Vendor & Partners Portal'}
@@ -842,8 +842,8 @@ export const VendorPortalView: React.FC = () => {
             ? 'سجّل الدخول بحساب الشريك لإدارة خدماتك، الباقات، العروض الموسمية، وسجل الفواتير — أو أنشئ ملف شركتك الجديد في ثوانٍ.'
             : 'Sign in with your partner account to manage services, seasonal promotions, commercial subscriptions, and billing history.'}
         </p>
-        <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700 space-y-1 max-w-md mx-auto">
-          <p className="font-bold text-[#B31331]">
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1 max-w-md mx-auto">
+          <p className="font-bold text-blue-700">
             {language === 'ar' ? 'حساب شريك تجريبي معتمد:' : 'Demo Vendor Credential:'}
           </p>
           <p dir="ltr" className="font-mono text-[11px]">
@@ -855,13 +855,13 @@ export const VendorPortalView: React.FC = () => {
             type="button"
             onClick={() => setAuthModalOpen(true)}
             data-testid="vendor-portal-signin-btn"
-            className="px-6 py-3 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-md cursor-pointer"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
           >
             {language === 'ar' ? 'تسجيل الدخول لبوابة الشركاء' : 'Sign In to Vendor Portal'}
           </button>
           <Link
             to="/vendors"
-            className="px-6 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-xs font-bold"
+            className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition"
           >
             {language === 'ar' ? 'تصفح دليل الشركاء' : 'Browse Vendors'}
           </Link>
@@ -871,12 +871,12 @@ export const VendorPortalView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-8 pb-24 bg-[#F8FAFC] min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#800C22] via-[#9E122C] to-[#590717] text-white py-10 border-b border-white/10">
+      <div className="bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0A0F1D] text-white py-10 border-b border-slate-800 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-rose-100 text-xs font-bold border border-white/20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-bold border border-blue-400/30">
               <Store className="w-3.5 h-3.5" />
               <span>
                 {language === 'ar' ? 'إدارة ملف الشريك التجاري' : 'Partner Business Workspace'}
@@ -899,7 +899,7 @@ export const VendorPortalView: React.FC = () => {
                 value={overview?.vendor?.id || ''}
                 onChange={(e) => setSearchParams({ vendorId: e.target.value })}
                 data-testid="vendor-portal-switcher"
-                className="max-w-full min-w-0 truncate px-3.5 py-2.5 rounded-xl bg-white text-[#2A1D20] text-xs font-bold outline-none"
+                className="max-w-full min-w-0 truncate px-3.5 py-2.5 rounded-xl bg-slate-800 text-slate-100 border border-slate-700 text-xs font-bold outline-none"
               >
                 {ownedVendors.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -912,7 +912,7 @@ export const VendorPortalView: React.FC = () => {
             {overview?.vendor && (
               <Link
                 to={`/vendors/${overview.vendor.slug}`}
-                className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-blue-600/90 hover:bg-blue-600 text-white border border-blue-400/30 text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>{language === 'ar' ? 'عرض الصفحة العامة' : 'View Public Profile'}</span>
@@ -926,7 +926,7 @@ export const VendorPortalView: React.FC = () => {
         {errorMsg && (
           <div
             data-testid="vendor-portal-error"
-            className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-[#B31331] text-xs font-bold flex items-center gap-2"
+            className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2"
           >
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
@@ -934,7 +934,7 @@ export const VendorPortalView: React.FC = () => {
         )}
 
         {loading && !overview ? (
-          <div className="py-16 text-center text-xs font-bold text-[#B31331]">
+          <div className="py-16 text-center text-xs font-bold text-blue-600">
             {language === 'ar' ? 'جاري تحميل بيانات الشريك...' : 'Loading partner data...'}
           </div>
         ) : !overview?.vendor ? (
@@ -942,10 +942,10 @@ export const VendorPortalView: React.FC = () => {
           <form
             onSubmit={handleSelfRegister}
             data-testid="vendor-portal-register-form"
-            className="bg-white rounded-3xl p-6 sm:p-8 border border-rose-100 shadow-lg space-y-5 max-w-4xl mx-auto"
+            className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-lg space-y-5 max-w-4xl mx-auto"
           >
             <div className="space-y-1">
-              <h2 className="text-xl font-black text-[#2A1D20]">
+              <h2 className="text-xl font-black text-slate-900">
                 {language === 'ar'
                   ? 'أنشئ ملف شركتك على الباقة المجانية'
                   : 'Create Your Free Vendor Profile'}
@@ -1118,7 +1118,7 @@ export const VendorPortalView: React.FC = () => {
             <button
               type="submit"
               disabled={regSubmitting}
-              className="px-6 py-3 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow cursor-pointer transition"
             >
               {regSubmitting
                 ? language === 'ar'
@@ -1133,7 +1133,7 @@ export const VendorPortalView: React.FC = () => {
           /* Authenticated Active Vendor Workspace */
           <div className="space-y-6">
             {/* Status & Quota Summary Cards */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-rose-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <VerificationBadge status={overview.vendor.verificationStatus} language={language} />
@@ -1148,7 +1148,7 @@ export const VendorPortalView: React.FC = () => {
                     language={language}
                   />
                 </div>
-                <span className="text-xs font-bold text-[#B31331]">
+                <span className="text-xs font-bold text-blue-700">
                   {language === 'ar' ? 'الباقة التجارية الحالية:' : 'Current Plan:'}{' '}
                   {language === 'ar'
                     ? overview.plan?.nameAr || overview.vendor.subscriptionPlanCode
@@ -1159,7 +1159,7 @@ export const VendorPortalView: React.FC = () => {
               {/* Strict Decoupling Governance Notice */}
               <div
                 data-testid="portal-governance-notice"
-                className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700 flex items-center gap-2"
+                className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950 flex items-center gap-2"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
@@ -1171,41 +1171,41 @@ export const VendorPortalView: React.FC = () => {
 
               {/* Quota Gauges */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                   <span className="text-[11px] text-gray-500 block">
                     {language === 'ar' ? 'الخدمات المدرجة' : 'Services Quota'}
                   </span>
                   <strong
                     data-testid="portal-quota-services"
-                    className="text-base font-black text-[#2A1D20]"
+                    className="text-base font-black text-slate-900"
                   >
                     {overview.quotas.servicesUsed} / {overview.quotas.maxServices}
                   </strong>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                   <span className="text-[11px] text-gray-500 block">
                     {language === 'ar' ? 'العروض النشطة' : 'Promotions Quota'}
                   </span>
                   <strong
                     data-testid="portal-quota-promos"
-                    className="text-base font-black text-[#D91B3E]"
+                    className="text-base font-black text-blue-600"
                   >
                     {overview.quotas.promotionsUsed} / {overview.quotas.maxPromotions}
                   </strong>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                   <span className="text-[11px] text-gray-500 block">
                     {language === 'ar' ? 'صور سابقة الأعمال' : 'Portfolio Quota'}
                   </span>
-                  <strong className="text-base font-black text-[#2A1D20]">
+                  <strong className="text-base font-black text-slate-900">
                     {overview.quotas.portfolioUsed} / {overview.quotas.maxPortfolioItems}
                   </strong>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                   <span className="text-[11px] text-gray-500 block">
                     {language === 'ar' ? 'مشاهدات الملف' : 'Profile Views'}
                   </span>
-                  <strong className="text-base font-black text-[#2A1D20]">
+                  <strong className="text-base font-black text-slate-900">
                     {overview.vendor.profileViews}
                   </strong>
                 </div>
@@ -1215,13 +1215,13 @@ export const VendorPortalView: React.FC = () => {
             {/* 2-Column Dashboard Layout with Sidebar Menu */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Sidebar Navigation Menu */}
-              <aside className="lg:col-span-4 xl:col-span-3 bg-white rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-sm space-y-3 lg:sticky lg:top-24">
+              <aside className="lg:col-span-4 xl:col-span-3 bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-3 lg:sticky lg:top-24">
                 <div className="px-2 pb-3 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="text-xs font-black text-[#B31331] flex items-center gap-2">
-                    <Store className="w-4 h-4 text-[#D91B3E]" />
+                  <h2 className="text-xs font-black text-slate-900 flex items-center gap-2">
+                    <Store className="w-4 h-4 text-blue-600" />
                     <span>{language === 'ar' ? 'أقسام إدارة الشريك' : 'Partner Modules'}</span>
                   </h2>
-                  <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                     8 {language === 'ar' ? 'أقسام' : 'tabs'}
                   </span>
                 </div>
@@ -1294,12 +1294,12 @@ export const VendorPortalView: React.FC = () => {
                         onClick={() => setPortalTab(tab.key)}
                         className={`w-full px-3.5 py-3 rounded-2xl text-xs font-bold transition flex items-center justify-between gap-2.5 text-start cursor-pointer ${
                           isActive
-                            ? 'bg-[#D91B3E] text-white shadow-md'
-                            : 'text-[#2A1D20] bg-gray-50/70 hover:bg-[#FDE8ED] hover:text-[#D91B3E] border border-gray-100 hover:border-[#D91B3E]/30'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+                            : 'text-slate-700 bg-slate-50/80 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/80 hover:border-blue-300'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className={isActive ? 'text-white' : 'text-[#D91B3E]'}>
+                          <span className={isActive ? 'text-white' : 'text-blue-600'}>
                             {tab.icon}
                           </span>
                           <span className="truncate">
@@ -1310,8 +1310,8 @@ export const VendorPortalView: React.FC = () => {
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
                               isActive
-                                ? 'bg-white text-[#D91B3E]'
-                                : 'bg-[#FDE8ED] text-[#B31331]'
+                                ? 'bg-white text-blue-700'
+                                : 'bg-blue-100/70 text-blue-700'
                             }`}
                           >
                             {tab.count}
@@ -1330,9 +1330,9 @@ export const VendorPortalView: React.FC = () => {
             {portalTab === 'profile' && (
               <form
                 onSubmit={handleSaveProfile}
-                className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-4"
+                className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4"
               >
-                <h2 className="text-lg font-black text-[#2A1D20]">
+                <h2 className="text-lg font-black text-slate-900">
                   {language === 'ar' ? 'تحديث بيانات النشاط التجاري' : 'Update Business Details'}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1474,7 +1474,7 @@ export const VendorPortalView: React.FC = () => {
                   type="submit"
                   disabled={profSaving}
                   data-testid="portal-save-profile-btn"
-                  className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer transition"
                 >
                   <Save className="w-4 h-4" />
                   <span>
@@ -1495,13 +1495,13 @@ export const VendorPortalView: React.FC = () => {
               <div className="space-y-6">
                 <form
                   onSubmit={handleAddService}
-                  className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-4"
+                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-lg font-black text-[#2A1D20]">
+                    <h2 className="text-lg font-black text-slate-900">
                       {language === 'ar' ? 'إضافة خدمة أو باقة جديدة' : 'Add New Service Offering'}
                     </h2>
-                    <span className="text-xs font-bold text-[#B31331]">
+                    <span className="text-xs font-bold text-blue-700">
                       {overview.quotas.servicesUsed} / {overview.quotas.maxServices}
                     </span>
                   </div>
@@ -1516,7 +1516,7 @@ export const VendorPortalView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setPortalTab('billing')}
-                        className="px-3 py-1.5 rounded-xl bg-[#D91B3E] text-white text-[11px] font-bold cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold cursor-pointer transition"
                       >
                         {language === 'ar' ? 'عرض الباقات' : 'View Plans'}
                       </button>
@@ -1625,7 +1625,7 @@ export const VendorPortalView: React.FC = () => {
                     type="submit"
                     disabled={srvSubmitting}
                     data-testid="portal-add-service-btn"
-                    className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer transition"
                   >
                     <Plus className="w-4 h-4" />
                     <span>{language === 'ar' ? 'إضافة الخدمة للكتالوج' : 'Add Service'}</span>
@@ -1637,16 +1637,16 @@ export const VendorPortalView: React.FC = () => {
                     <div
                       key={srv.id}
                       data-testid={`portal-service-card-${srv.id}`}
-                      className="bg-white rounded-2xl p-5 border border-rose-100 flex items-start justify-between gap-3"
+                      className="bg-white rounded-2xl p-5 border border-slate-200 flex items-start justify-between gap-3"
                     >
                       <div className="space-y-1 min-w-0">
-                        <h3 className="text-sm font-black text-[#2A1D20]">
+                        <h3 className="text-sm font-black text-slate-900">
                           {language === 'ar' ? srv.titleAr : srv.titleEn}
                         </h3>
                         <p className="text-xs text-gray-600">
                           {language === 'ar' ? srv.descriptionAr : srv.descriptionEn}
                         </p>
-                        <strong className="text-xs font-black text-[#D91B3E] block pt-1">
+                        <strong className="text-xs font-black text-blue-600 block pt-1">
                           {srv.startingPriceEgp.toLocaleString()}{' '}
                           {language === 'ar' ? 'ج.م' : 'EGP'} •{' '}
                           {language === 'ar' ? srv.unitLabelAr : srv.unitLabelEn}
@@ -1655,7 +1655,7 @@ export const VendorPortalView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleDeleteService(srv.id)}
-                        className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer shrink-0"
+                        className="p-2 rounded-xl text-red-500 hover:bg-red-50 cursor-pointer shrink-0 transition"
                         title={language === 'ar' ? 'حذف' : 'Delete'}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1671,13 +1671,13 @@ export const VendorPortalView: React.FC = () => {
               <div className="space-y-6">
                 <form
                   onSubmit={handleAddPromotion}
-                  className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-4"
+                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-lg font-black text-[#2A1D20]">
+                    <h2 className="text-lg font-black text-slate-900">
                       {language === 'ar' ? 'إضافة عرض أو خصم موسمي' : 'Launch Seasonal Promotion'}
                     </h2>
-                    <span className="text-xs font-bold text-[#B31331]">
+                    <span className="text-xs font-bold text-blue-700">
                       {overview.quotas.promotionsUsed} / {overview.quotas.maxPromotions}
                     </span>
                   </div>
@@ -1695,7 +1695,7 @@ export const VendorPortalView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setPortalTab('billing')}
-                        className="px-3 py-1.5 rounded-xl bg-[#D91B3E] text-white text-[11px] font-bold cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold cursor-pointer transition"
                       >
                         {language === 'ar' ? 'الترقية التجارية' : 'Commercial Plans'}
                       </button>
@@ -1778,7 +1778,7 @@ export const VendorPortalView: React.FC = () => {
                     type="submit"
                     disabled={prmSubmitting}
                     data-testid="portal-add-promo-btn"
-                    className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow cursor-pointer transition"
                   >
                     {language === 'ar' ? 'نشر العرض' : 'Publish Promotion'}
                   </button>
@@ -1788,13 +1788,13 @@ export const VendorPortalView: React.FC = () => {
                   {overview.promotions.map((prm) => (
                     <div
                       key={prm.id}
-                      className="bg-white rounded-2xl p-5 border border-rose-100 flex items-start justify-between gap-3"
+                      className="bg-white rounded-2xl p-5 border border-slate-200 flex items-start justify-between gap-3"
                     >
                       <div className="space-y-1">
-                        <span className="px-2 py-0.5 rounded-full bg-[#FDE8ED] text-[#D91B3E] text-[10px] font-black">
+                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black">
                           -{prm.discountPercent}%
                         </span>
-                        <h3 className="text-sm font-black text-[#2A1D20]">
+                        <h3 className="text-sm font-black text-slate-900">
                           {language === 'ar' ? prm.titleAr : prm.titleEn}
                         </h3>
                         <p className="text-xs text-gray-600">
@@ -1804,7 +1804,7 @@ export const VendorPortalView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleDeletePromotion(prm.id)}
-                        className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer"
+                        className="p-2 rounded-xl text-red-500 hover:bg-red-50 cursor-pointer transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1818,11 +1818,11 @@ export const VendorPortalView: React.FC = () => {
             {portalTab === 'products' && (
               <div className="space-y-6">
                 {/* Header & Overview Banner */}
-                <div className="bg-gradient-to-br from-white via-rose-50/30 to-amber-50/20 rounded-3xl p-6 border border-rose-100 shadow-sm">
+                <div className="bg-gradient-to-br from-white via-slate-50 to-blue-50/30 rounded-3xl p-6 border border-slate-200 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-xl font-black text-[#2A1D20] flex items-center gap-2">
-                        <Package className="w-5 h-5 text-[#D91B3E]" />
+                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <Package className="w-5 h-5 text-blue-600" />
                         <span>{language === 'ar' ? 'كتالوج منتجات وتجهيزات المعرض' : 'Showroom Physical Products Catalog'}</span>
                       </h2>
                       <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
@@ -1836,7 +1836,7 @@ export const VendorPortalView: React.FC = () => {
                       type="button"
                       data-testid="portal-add-product-btn"
                       onClick={openAddProductModal}
-                      className="px-5 py-3 rounded-2xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition flex items-center gap-2 cursor-pointer shrink-0"
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center gap-2 cursor-pointer shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       <span>{language === 'ar' ? 'إضافة منتج جديد للمعرض' : 'Add New Product'}</span>
@@ -1845,16 +1845,16 @@ export const VendorPortalView: React.FC = () => {
 
                   {/* KPI Gauges for Products */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 text-xs">
-                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
                       <span className="text-[11px] text-gray-500 block">
                         {language === 'ar' ? 'إجمالي المنتجات المعروضة' : 'Total Listed Products'}
                       </span>
-                      <strong data-testid="portal-kpi-total-products" className="text-lg font-black text-[#2A1D20]">
+                      <strong data-testid="portal-kpi-total-products" className="text-lg font-black text-slate-900">
                         {overview.products?.length ?? 0} {language === 'ar' ? 'منتج' : 'items'}
                       </strong>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
                       <span className="text-[11px] text-gray-500 block">
                         {language === 'ar' ? 'متوفر بالمخزن' : 'In Stock'}
                       </span>
@@ -1863,7 +1863,7 @@ export const VendorPortalView: React.FC = () => {
                       </strong>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
                       <span className="text-[11px] text-gray-500 block">
                         {language === 'ar' ? 'قارب على النفاد / نفذ' : 'Low / Out of Stock'}
                       </span>
@@ -1872,11 +1872,11 @@ export const VendorPortalView: React.FC = () => {
                       </strong>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white border border-rose-100 shadow-2xs">
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
                       <span className="text-[11px] text-gray-500 block">
                         {language === 'ar' ? 'القيمة التقديرية للمخزون' : 'Est. Inventory Value'}
                       </span>
-                      <strong className="text-lg font-black text-[#D91B3E]">
+                      <strong className="text-lg font-black text-blue-600">
                         {(overview.products || [])
                           .reduce((sum, p) => sum + p.price * (p.stock ?? 1), 0)
                           .toLocaleString()}{' '}
@@ -1887,7 +1887,7 @@ export const VendorPortalView: React.FC = () => {
                 </div>
 
                 {/* Search & Filter Toolbar */}
-                <div className="bg-white rounded-2xl p-4 border border-rose-100 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
                     <div className="relative flex-1 min-w-[180px]">
                       <Search className="w-3.5 h-3.5 text-gray-400 absolute top-1/2 -translate-y-1/2 start-3" />
@@ -1896,14 +1896,14 @@ export const VendorPortalView: React.FC = () => {
                         value={prodSearchFilter}
                         onChange={(e) => setProdSearchFilter(e.target.value)}
                         placeholder={language === 'ar' ? 'بحث باسم المنتج أو الماركة أو الموديل...' : 'Search by name, brand or model...'}
-                        className="w-full ps-8 pe-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                        className="w-full ps-8 pe-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                       />
                     </div>
 
                     <select
                       value={prodCategoryFilter}
                       onChange={(e) => setProdCategoryFilter(e.target.value)}
-                      className="py-2 px-3 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                      className="py-2 px-3 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-blue-500"
                     >
                       <option value="all">{language === 'ar' ? 'جميع الأقسام' : 'All Categories'}</option>
                       {PRODUCT_CATEGORY_OPTIONS.map((cat) => (
@@ -1916,7 +1916,7 @@ export const VendorPortalView: React.FC = () => {
 
                   <span className="text-xs text-gray-500 font-medium">
                     {language === 'ar' ? 'النتائج:' : 'Showing:'}{' '}
-                    <strong className="text-[#2A1D20]">
+                    <strong className="text-slate-900">
                       {(overview.products || []).filter((p) => {
                         const q = prodSearchFilter.trim().toLowerCase();
                         const matchQ =
@@ -1949,11 +1949,11 @@ export const VendorPortalView: React.FC = () => {
                   if (filtered.length === 0) {
                     return (
                       <div className="bg-white rounded-3xl p-10 border border-dashed border-gray-200 text-center space-y-4">
-                        <div className="w-16 h-16 rounded-full bg-rose-50 text-[#D91B3E] flex items-center justify-center mx-auto">
+                        <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                           <Package className="w-8 h-8" />
                         </div>
                         <div>
-                          <h3 className="text-base font-black text-[#2A1D20]">
+                          <h3 className="text-base font-black text-slate-900">
                             {language === 'ar' ? 'لا توجد منتجات مسجلة حتى الآن' : 'No products found'}
                           </h3>
                           <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
@@ -1965,7 +1965,7 @@ export const VendorPortalView: React.FC = () => {
                         <button
                           type="button"
                           onClick={openAddProductModal}
-                          className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow-md hover:opacity-95 transition inline-flex items-center gap-2 cursor-pointer"
+                          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md transition inline-flex items-center gap-2 cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
                           <span>{language === 'ar' ? 'إضافة أول منتج للمعرض' : 'Add First Product'}</span>
@@ -1985,7 +1985,7 @@ export const VendorPortalView: React.FC = () => {
                           <div
                             key={prod.id}
                             data-testid={`vendor-product-card-${prod.id}`}
-                            className="bg-white rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-4"
+                            className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-4"
                           >
                             <div className="space-y-3">
                               {/* Product Thumbnail & Overlay Badges */}
@@ -2000,7 +2000,7 @@ export const VendorPortalView: React.FC = () => {
                                 {/* Stock Status Badge */}
                                 <div className="absolute top-2.5 start-2.5">
                                   {isOutOfStock ? (
-                                    <span className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-bold shadow-xs">
+                                    <span className="px-2 py-1 rounded-lg bg-red-600 text-white text-[10px] font-bold shadow-xs">
                                       {language === 'ar' ? 'نفذ من المخزن' : 'Out of stock'}
                                     </span>
                                   ) : isLowStock ? (
@@ -2016,7 +2016,7 @@ export const VendorPortalView: React.FC = () => {
 
                                 {/* Trousseau Side Badge */}
                                 <div className="absolute top-2.5 end-2.5">
-                                  <span className="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-xs text-[#2A1D20] text-[10px] font-bold border border-gray-200 shadow-xs">
+                                  <span className="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-xs text-slate-900 text-[10px] font-bold border border-gray-200 shadow-xs">
                                     {prod.trousseauType === 'bride'
                                       ? language === 'ar' ? 'جهاز العروسة' : 'Bride Trousseau'
                                       : prod.trousseauType === 'groom'
@@ -2030,7 +2030,7 @@ export const VendorPortalView: React.FC = () => {
 
                               {/* Category & Brand info */}
                               <div className="flex items-center justify-between text-[11px] text-gray-500">
-                                <span className="font-bold text-[#D91B3E]">
+                                <span className="font-bold text-blue-600">
                                   {prod.brand}
                                 </span>
                                 <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 font-medium">
@@ -2040,7 +2040,7 @@ export const VendorPortalView: React.FC = () => {
 
                               {/* Title & Model */}
                               <div>
-                                <h3 className="text-sm font-black text-[#2A1D20] line-clamp-2 leading-snug">
+                                <h3 className="text-sm font-black text-slate-900 line-clamp-2 leading-snug">
                                   {language === 'ar' ? prod.nameAr : prod.nameEn || prod.nameAr}
                                 </h3>
                                 {prod.model && (
@@ -2057,12 +2057,12 @@ export const VendorPortalView: React.FC = () => {
                                     <span className="text-xs text-gray-400 line-through">
                                       {prod.originalPrice.toLocaleString()} {language === 'ar' ? 'ج.م' : 'EGP'}
                                     </span>
-                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-100 text-[#D91B3E]">
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
                                       -{Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)}%
                                     </span>
                                   </div>
                                 )}
-                                <div className="text-lg font-black text-[#D91B3E]">
+                                <div className="text-lg font-black text-blue-600">
                                   {prod.price.toLocaleString()}{' '}
                                   <span className="text-xs font-bold">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
                                 </div>
@@ -2099,7 +2099,7 @@ export const VendorPortalView: React.FC = () => {
                                 to={`/products/${prod.slug || prod.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-2.5 py-1.5 rounded-xl text-gray-600 hover:text-[#D91B3E] hover:bg-rose-50 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                                className="px-2.5 py-1.5 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-blue-50 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                                 <span>{language === 'ar' ? 'معاينة' : 'View'}</span>
@@ -2109,7 +2109,7 @@ export const VendorPortalView: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => openEditProductModal(prod)}
-                                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:border-[#D91B3E] hover:text-[#D91B3E] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
                                 >
                                   <Pencil className="w-3 h-3" />
                                   <span>{language === 'ar' ? 'تعديل' : 'Edit'}</span>
@@ -2123,7 +2123,7 @@ export const VendorPortalView: React.FC = () => {
                                       handleDeleteProduct(prod.id);
                                     }
                                   }}
-                                  className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                                  className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition cursor-pointer disabled:opacity-50"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -2139,15 +2139,15 @@ export const VendorPortalView: React.FC = () => {
                 {/* Add / Edit Product Modal */}
                 {showProductModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-rose-100 p-6 sm:p-8 space-y-6">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6">
                       {/* Modal Header */}
                       <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#D91B3E] flex items-center justify-center font-bold">
+                          <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                             <Package className="w-5 h-5" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-black text-[#2A1D20]">
+                            <h3 className="text-lg font-black text-slate-900">
                               {editingProductId
                                 ? language === 'ar' ? 'تعديل بيانات المنتج' : 'Edit Product'
                                 : language === 'ar' ? 'إضافة منتج جديد للمعرض' : 'Add New Product to Showroom'}
@@ -2182,7 +2182,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodNameAr}
                               onChange={(e) => setProdNameAr(e.target.value)}
                               placeholder={language === 'ar' ? 'مثال: ثلاجة شارب 450 لتر نوفروست إنفرتر' : 'e.g. Sharp 450L Inverter Refrigerator'}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2195,7 +2195,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodNameEn}
                               onChange={(e) => setProdNameEn(e.target.value)}
                               placeholder="e.g. Sharp 450L No-Frost Inverter Refrigerator"
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
                         </div>
@@ -2216,7 +2216,7 @@ export const VendorPortalView: React.FC = () => {
                                   setProdCategoryEn(selectedCat.en);
                                 }
                               }}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-blue-500"
                             >
                               {PRODUCT_CATEGORY_OPTIONS.map((cat) => (
                                 <option key={cat.slug} value={cat.slug}>
@@ -2233,7 +2233,7 @@ export const VendorPortalView: React.FC = () => {
                             <select
                               value={prodTrousseauType}
                               onChange={(e) => setProdTrousseauType(e.target.value as Product['trousseauType'])}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-700 focus:outline-none focus:border-blue-500"
                             >
                               <option value="shared">{language === 'ar' ? 'مشترك / تجهيز عام' : 'Shared Equipment'}</option>
                               <option value="bride">{language === 'ar' ? 'جهاز العروسة' : 'Bride Trousseau'}</option>
@@ -2255,7 +2255,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodBrand}
                               onChange={(e) => setProdBrand(e.target.value)}
                               placeholder={language === 'ar' ? 'مثال: Sharp, LG, Beko, هابيتات' : 'e.g. Sharp, LG, Beko, Habitat'}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2268,7 +2268,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodModel}
                               onChange={(e) => setProdModel(e.target.value)}
                               placeholder="e.g. SJ-GV58G-BK"
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
                         </div>
@@ -2285,7 +2285,7 @@ export const VendorPortalView: React.FC = () => {
                               min={1}
                               value={prodPrice}
                               onChange={(e) => setProdPrice(Number(e.target.value))}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-bold text-[#D91B3E] focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2299,7 +2299,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodOriginalPrice}
                               onChange={(e) => setProdOriginalPrice(e.target.value ? Number(e.target.value) : '')}
                               placeholder={language === 'ar' ? 'لإظهار شارة الخصم' : 'To show discount %'}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2313,7 +2313,7 @@ export const VendorPortalView: React.FC = () => {
                               min={0}
                               value={prodStock}
                               onChange={(e) => setProdStock(Number(e.target.value))}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
                         </div>
@@ -2349,7 +2349,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodWarrantyMonths}
                               onChange={(e) => setProdWarrantyMonths(Number(e.target.value))}
                               placeholder="24"
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2362,7 +2362,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodCapacity}
                               onChange={(e) => setProdCapacity(e.target.value)}
                               placeholder={language === 'ar' ? 'مثال: 450 لتر / 65 بوصة' : 'e.g. 450L / 65 Inch'}
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
 
@@ -2375,7 +2375,7 @@ export const VendorPortalView: React.FC = () => {
                               value={prodEnergyRating}
                               onChange={(e) => setProdEnergyRating(e.target.value)}
                               placeholder="A, A+, A++"
-                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                              className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                             />
                           </div>
                         </div>
@@ -2390,7 +2390,7 @@ export const VendorPortalView: React.FC = () => {
                             value={prodWarrantyTermsAr}
                             onChange={(e) => setProdWarrantyTermsAr(e.target.value)}
                             placeholder={language === 'ar' ? 'مثال: ضمان الوكيل المعتمد في مصر لمدة عامين شامل قطع الغيار والصيانة المنزلية' : 'e.g. 2 years official warranty including spare parts'}
-                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                           />
                         </div>
 
@@ -2406,7 +2406,7 @@ export const VendorPortalView: React.FC = () => {
                             value={prodDescriptionAr}
                             onChange={(e) => setProdDescriptionAr(e.target.value)}
                             placeholder={language === 'ar' ? 'اكتب وصفاً دقيقاً للمنتج ومميزاته ومواده ولماذا يناسب المقبلين على الزواج...' : 'Detailed description and features...'}
-                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#D91B3E]"
+                            className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-blue-500"
                           />
                         </div>
 
@@ -2423,7 +2423,7 @@ export const VendorPortalView: React.FC = () => {
                           <button
                             type="submit"
                             disabled={prodSubmitting}
-                            className="px-6 py-2.5 rounded-xl bg-red-gradient text-white font-bold shadow-md hover:opacity-95 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
                           >
                             <Save className="w-4 h-4" />
                             <span>
@@ -2447,7 +2447,7 @@ export const VendorPortalView: React.FC = () => {
               <div className="space-y-8">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-black text-[#2A1D20]">
+                    <h2 className="text-lg font-black text-slate-900">
                       {language === 'ar'
                         ? 'الباقات التجارية وحدود النشر'
                         : 'Commercial Subscription Tiers'}
@@ -2459,14 +2459,14 @@ export const VendorPortalView: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="inline-flex rounded-xl bg-white border border-gray-200 p-1">
+                  <div className="inline-flex rounded-xl bg-slate-100 border border-slate-200 p-1">
                     <button
                       type="button"
                       onClick={() => setBillingCycle('monthly')}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
                         billingCycle === 'monthly'
-                          ? 'bg-[#D91B3E] text-white'
-                          : 'text-gray-700'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                          : 'text-slate-700 hover:text-slate-900'
                       }`}
                     >
                       {language === 'ar' ? 'شهري' : 'Monthly'}
@@ -2474,10 +2474,10 @@ export const VendorPortalView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setBillingCycle('annual')}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
                         billingCycle === 'annual'
-                          ? 'bg-[#D91B3E] text-white'
-                          : 'text-gray-700'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                          : 'text-slate-700 hover:text-slate-900'
                       }`}
                     >
                       {language === 'ar' ? 'سنوي (خصم شهرين)' : 'Annual (Save 2mo)'}
@@ -2496,22 +2496,22 @@ export const VendorPortalView: React.FC = () => {
                         data-testid={`portal-plan-card-${pl.code}`}
                         className={`rounded-3xl p-5 border flex flex-col justify-between space-y-4 ${
                           isCurrent
-                            ? 'bg-[#FFF8F9] border-[#D91B3E] shadow-lg'
-                            : 'bg-white border-rose-100 shadow-sm'
+                            ? 'bg-blue-50/70 border-2 border-blue-600 shadow-md ring-1 ring-blue-500/20'
+                            : 'bg-white border-slate-200 shadow-sm'
                         }`}
                       >
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-black text-[#B31331]">
+                            <span className="text-xs font-black text-blue-700">
                               {language === 'ar' ? pl.nameAr : pl.nameEn}
                             </span>
                             {isCurrent && (
-                              <span className="px-2 py-0.5 rounded-full bg-[#D91B3E] text-white text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
                                 {language === 'ar' ? 'الحالية' : 'Active'}
                               </span>
                             )}
                           </div>
-                          <div className="text-2xl font-black text-[#2A1D20]">
+                          <div className="text-2xl font-black text-slate-900">
                             {price.toLocaleString()}{' '}
                             <span className="text-xs font-bold text-gray-500">
                               {language === 'ar' ? 'ج.م' : 'EGP'} /{' '}
@@ -2554,7 +2554,7 @@ export const VendorPortalView: React.FC = () => {
                           className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             isCurrent
                               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 cursor-default'
-                              : 'bg-red-gradient text-white shadow hover:opacity-95'
+                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow'
                           }`}
                         >
                           <Sparkles className="w-3.5 h-3.5" />
@@ -2578,9 +2578,9 @@ export const VendorPortalView: React.FC = () => {
                 </div>
 
                 {/* Billing Ledger */}
-                <div className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-4">
-                  <h3 className="text-base font-black text-[#2A1D20] flex items-center gap-2">
-                    <BadgeDollarSign className="w-5 h-5 text-[#D91B3E]" />
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <BadgeDollarSign className="w-5 h-5 text-blue-600" />
                     <span>
                       {language === 'ar'
                         ? 'سجل فواتير الاشتراك التجاري'
@@ -2598,10 +2598,10 @@ export const VendorPortalView: React.FC = () => {
                       {overview.billingRecords.map((bill) => (
                         <div
                           key={bill.id}
-                          className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-rose-100 flex flex-wrap items-center justify-between gap-2 text-xs"
+                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs"
                         >
                           <div>
-                            <strong className="text-[#2A1D20]">
+                            <strong className="text-slate-900">
                               {language === 'ar'
                                 ? bill.planNameAr || bill.planId
                                 : bill.planNameEn || bill.planId}
@@ -2609,7 +2609,7 @@ export const VendorPortalView: React.FC = () => {
                             <span className="text-gray-500">({bill.billingCycle})</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="font-black text-[#D91B3E]">
+                            <span className="font-black text-blue-600">
                               {bill.amountEgp.toLocaleString()}{' '}
                               {language === 'ar' ? 'ج.م' : 'EGP'}
                             </span>
@@ -2628,8 +2628,8 @@ export const VendorPortalView: React.FC = () => {
             {/* TAB 5: Invited Multi-Vendor RFQs (Confidential Vendor Scope) */}
             {portalTab === 'rfqs' && (
               <div className="space-y-6" data-testid="portal-rfqs-panel">
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-blue-600 shrink-0" />
                   <span>
                     {language === 'ar'
                       ? 'سرية المنافسة: تشاهد هنا فقط طلبات التسعير المدعو لها نشاطك التجاري وعرض سعرك ومحادتك الخاصة مع العميل، ولا يمكنك الاطلاع على عروض أي منافس.'
@@ -2638,7 +2638,7 @@ export const VendorPortalView: React.FC = () => {
                 </div>
 
                 {(crmOverview?.rfqs || []).length === 0 ? (
-                  <div className="bg-white rounded-3xl p-10 border border-rose-100 text-center text-xs font-bold text-gray-600">
+                  <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center text-xs font-bold text-gray-600">
                     {language === 'ar'
                       ? 'لا توجد طلبات تسعير مدعو لها هذا الملف حالياً.'
                       : 'No RFQ invitations received for this vendor listing yet.'}
@@ -2670,12 +2670,12 @@ export const VendorPortalView: React.FC = () => {
                       <div
                         key={rfq.id}
                         data-testid={`portal-rfq-card-${rfq.id}`}
-                        className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm space-y-5"
+                        className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                              <span className="px-2.5 py-0.5 rounded-full bg-[#FDE8ED] text-[#B31331]">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                 {rfq.status}
                               </span>
                               <span className="text-gray-500">
@@ -2683,14 +2683,14 @@ export const VendorPortalView: React.FC = () => {
                               </span>
                               <span className="text-gray-500">• {rfq.governorateSlug}</span>
                             </div>
-                            <h3 className="text-base font-black text-[#2A1D20]">{rfq.title}</h3>
+                            <h3 className="text-base font-black text-slate-900">{rfq.title}</h3>
                             <p className="text-xs text-gray-700 leading-relaxed">{rfq.scopeDetails}</p>
                           </div>
-                          <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-rose-100 text-xs shrink-0">
+                          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs shrink-0">
                             <span className="text-[10px] text-gray-500 block">
                               {language === 'ar' ? 'الميزانية المقدرة من العميل' : 'Customer Budget'}
                             </span>
-                            <strong className="font-black text-[#D91B3E]">
+                            <strong className="font-black text-blue-600">
                               {rfq.budgetMin.toLocaleString()} – {rfq.budgetMax.toLocaleString()}{' '}
                               {language === 'ar' ? 'ج.م' : 'EGP'}
                             </strong>
@@ -2714,9 +2714,9 @@ export const VendorPortalView: React.FC = () => {
                         {rfq.status !== 'accepted' && rfq.status !== 'closed' && (
                           <form
                             onSubmit={(e) => handleSubmitRfqQuote(rfq, e)}
-                            className="bg-[#FAF7F2] rounded-2xl p-4 border border-rose-100 space-y-3"
+                            className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3"
                           >
-                            <h4 className="text-xs font-black text-[#2A1D20]">
+                            <h4 className="text-xs font-black text-slate-900">
                               {myQuote
                                 ? language === 'ar'
                                   ? 'تحديث عرض السعر المقدم'
@@ -2822,7 +2822,7 @@ export const VendorPortalView: React.FC = () => {
                               type="submit"
                               disabled={stage8BusyId === `quote-${rfq.id}`}
                               data-testid={`portal-rfq-submit-btn-${rfq.id}`}
-                              className="px-5 py-2.5 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5"
+                              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5 transition"
                             >
                               <Send className="w-3.5 h-3.5" />
                               <span>
@@ -2840,8 +2840,8 @@ export const VendorPortalView: React.FC = () => {
 
                         {/* Scoped Q&A Reply Thread */}
                         <div className="space-y-2 pt-2 border-t border-gray-100">
-                          <span className="text-xs font-black text-[#2A1D20] flex items-center gap-1.5">
-                            <MessageSquare className="w-3.5 h-3.5 text-[#D91B3E]" />
+                          <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                             <span>
                               {language === 'ar'
                                 ? `الاستفسارات المباشرة مع العميل (${rfq.messages?.length ?? 0})`
@@ -2851,9 +2851,9 @@ export const VendorPortalView: React.FC = () => {
                           {(rfq.messages || []).map((m) => (
                             <div
                               key={m.id}
-                              className="p-2.5 rounded-xl bg-[#FAF7F2] border border-rose-100 text-xs"
+                              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs"
                             >
-                              <strong className="text-[#2A1D20]">{m.senderName}:</strong>{' '}
+                              <strong className="text-slate-900">{m.senderName}:</strong>{' '}
                               <span className="text-gray-700">{m.body}</span>
                             </div>
                           ))}
@@ -2880,7 +2880,7 @@ export const VendorPortalView: React.FC = () => {
                               type="submit"
                               disabled={stage8BusyId === `reply-${rfq.id}`}
                               data-testid={`portal-rfq-msg-send-${rfq.id}`}
-                              className="px-4 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition"
                             >
                               {language === 'ar' ? 'رد' : 'Reply'}
                             </button>
@@ -2896,14 +2896,14 @@ export const VendorPortalView: React.FC = () => {
             {/* TAB 6: Vendor Slot Appointments Confirmation Desk */}
             {portalTab === 'appointments' && (
               <div className="space-y-4" data-testid="portal-appointments-panel">
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D91B3E]/15 text-xs text-gray-700">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
                   {language === 'ar'
                     ? 'إدارة حجوزات المعاينة وزيارة المعرض: تأكيد الموعد أو اقتراح ميعاد بديل يرسل إشعاراً فورياً للعميل ويسجل النشاط في CRM.'
                     : 'Manage customer slot bookings: Confirming or rescheduling notifies the customer immediately and logs a timeline entry in Vendor CRM.'}
                 </div>
 
                 {(crmOverview?.appointments || []).length === 0 ? (
-                  <div className="bg-white rounded-3xl p-10 border border-rose-100 text-center text-xs font-bold text-gray-600">
+                  <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center text-xs font-bold text-gray-600">
                     {language === 'ar'
                       ? 'لا توجد مواعيد محجوزة لهذا الشريك بعد.'
                       : 'No customer appointment requests yet.'}
@@ -2914,7 +2914,7 @@ export const VendorPortalView: React.FC = () => {
                       <div
                         key={apt.id}
                         data-testid={`portal-apt-${apt.id}`}
-                        className="bg-white rounded-2xl p-5 border border-rose-100 shadow-sm space-y-3"
+                        className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span
@@ -2922,7 +2922,7 @@ export const VendorPortalView: React.FC = () => {
                               apt.status === 'confirmed' || apt.status === 'completed'
                                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                                 : apt.status === 'cancelled'
-                                  ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                                  ? 'bg-red-50 text-red-800 border border-red-200'
                                   : 'bg-amber-50 text-amber-900 border border-amber-200'
                             }`}
                           >
@@ -2934,16 +2934,16 @@ export const VendorPortalView: React.FC = () => {
                         </div>
 
                         <div className="text-xs space-y-1">
-                          <strong className="text-sm font-black text-[#2A1D20] block">
+                          <strong className="text-sm font-black text-slate-900 block">
                             {apt.customerName || apt.userId} —{' '}
                             <span dir="ltr">{apt.customerPhone}</span>
                           </strong>
-                          <p className="font-bold text-[#D91B3E]">
+                          <p className="font-bold text-blue-600">
                             📅 <span dir="ltr">{apt.slotDate}</span> • ⏰{' '}
                             <span dir="ltr">{apt.slotTime}</span> ({apt.durationMinutes} min)
                           </p>
                           {apt.customerNotes && (
-                            <p className="text-gray-600 bg-[#FAF7F2] p-2.5 rounded-xl">
+                            <p className="text-gray-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                               {apt.customerNotes}
                             </p>
                           )}
@@ -2996,7 +2996,7 @@ export const VendorPortalView: React.FC = () => {
                                   disabled={stage8BusyId === `apt-${apt.id}`}
                                   data-testid={`portal-apt-confirm-${apt.id}`}
                                   onClick={() => handleUpdateVendorApt(apt.id, 'confirmed')}
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition"
                                 >
                                   {language === 'ar' ? 'تأكيد الموعد' : 'Confirm Slot'}
                                 </button>
@@ -3006,7 +3006,7 @@ export const VendorPortalView: React.FC = () => {
                                 disabled={stage8BusyId === `apt-${apt.id}`}
                                 data-testid={`portal-apt-reschedule-${apt.id}`}
                                 onClick={() => handleUpdateVendorApt(apt.id, 'rescheduled')}
-                                className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer"
+                                className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer transition"
                               >
                                 {language === 'ar' ? 'تعديل الميعاد' : 'Reschedule'}
                               </button>
@@ -3015,7 +3015,7 @@ export const VendorPortalView: React.FC = () => {
                                 disabled={stage8BusyId === `apt-${apt.id}`}
                                 data-testid={`portal-apt-complete-${apt.id}`}
                                 onClick={() => handleUpdateVendorApt(apt.id, 'completed')}
-                                className="px-3.5 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition"
                               >
                                 {language === 'ar' ? 'إتمام الزيارة' : 'Mark Completed'}
                               </button>
@@ -3034,19 +3034,19 @@ export const VendorPortalView: React.FC = () => {
               <div className="space-y-6" data-testid="portal-crm-panel">
                 {/* Pipeline Metrics Strip */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
                     <span className="text-[11px] text-gray-500 block">
                       {language === 'ar' ? 'إجمالي العملاء المحتملين' : 'Total CRM Leads'}
                     </span>
-                    <strong data-testid="crm-total-leads" className="text-xl font-black text-[#2A1D20]">
+                    <strong data-testid="crm-total-leads" className="text-xl font-black text-slate-900">
                       {crmOverview.leads.length}
                     </strong>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
                     <span className="text-[11px] text-gray-500 block">
                       {language === 'ar' ? 'قيمة خط المبيعات النشط' : 'Active Pipeline Value'}
                     </span>
-                    <strong className="text-xl font-black text-[#D91B3E]">
+                    <strong className="text-xl font-black text-blue-600">
                       {crmOverview.pipelineValueEgp.toLocaleString()}{' '}
                       {language === 'ar' ? 'ج.م' : 'EGP'}
                     </strong>
@@ -3060,11 +3060,11 @@ export const VendorPortalView: React.FC = () => {
                       {language === 'ar' ? 'ج.م' : 'EGP'}
                     </strong>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-sm">
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
                     <span className="text-[11px] text-gray-500 block">
                       {language === 'ar' ? 'ملفات مقبولة / قيد التنفيذ' : 'Accepted & In Progress'}
                     </span>
-                    <strong className="text-xl font-black text-[#2A1D20]">
+                    <strong className="text-xl font-black text-slate-900">
                       {(crmOverview.stageCounts.accepted ?? 0) +
                         (crmOverview.stageCounts.in_progress ?? 0) +
                         (crmOverview.stageCounts.completed ?? 0)}
@@ -3076,9 +3076,9 @@ export const VendorPortalView: React.FC = () => {
                 <form
                   onSubmit={handleCreateManualLead}
                   data-testid="crm-add-lead-form"
-                  className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-3"
+                  className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3"
                 >
-                  <h3 className="text-sm font-black text-[#2A1D20]">
+                  <h3 className="text-sm font-black text-slate-900">
                     {language === 'ar'
                       ? 'إضافة عميل محتمل جديد يدوياً لخط المتابعة'
                       : 'Add Manual CRM Lead'}
@@ -3137,7 +3137,7 @@ export const VendorPortalView: React.FC = () => {
                     type="submit"
                     disabled={stage8BusyId === 'new-lead'}
                     data-testid="crm-new-submit"
-                    className="px-5 py-2 rounded-xl bg-red-gradient text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow cursor-pointer flex items-center gap-1.5 transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{language === 'ar' ? 'إضافة للـ CRM' : 'Add Lead'}</span>
@@ -3149,10 +3149,10 @@ export const VendorPortalView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCrmStageFilter('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
                       crmStageFilter === 'all'
-                        ? 'bg-[#2A1D20] text-white'
-                        : 'bg-white border border-gray-200 text-gray-700'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-slate-300'
                     }`}
                   >
                     {language === 'ar' ? 'الكل' : 'All'} ({crmOverview.leads.length})
@@ -3163,10 +3163,10 @@ export const VendorPortalView: React.FC = () => {
                       type="button"
                       data-testid={`crm-filter-${st.key}`}
                       onClick={() => setCrmStageFilter(st.key)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer transition ${
                         crmStageFilter === st.key
-                          ? 'bg-[#D91B3E] text-white border-[#D91B3E]'
-                          : 'bg-white border-gray-200 text-gray-700'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white border-gray-200 text-gray-700 hover:border-slate-300'
                       }`}
                     >
                       {language === 'ar' ? st.ar : st.en} ({crmOverview.stageCounts[st.key] ?? 0})
@@ -3185,7 +3185,7 @@ export const VendorPortalView: React.FC = () => {
                         <div
                           key={lead.id}
                           data-testid={`crm-lead-card-${lead.id}`}
-                          className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4"
+                          className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="space-y-1 min-w-0">
@@ -3193,11 +3193,11 @@ export const VendorPortalView: React.FC = () => {
                                 <span className={`px-2.5 py-0.5 rounded-full border ${stMeta.cls}`}>
                                   {language === 'ar' ? stMeta.ar : stMeta.en}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-lg bg-[#FAF7F2] text-gray-600 border border-gray-200">
+                                <span className="px-2 py-0.5 rounded-lg bg-slate-50 text-gray-600 border border-gray-200">
                                   {lead.leadSource}
                                 </span>
                               </div>
-                              <h4 className="text-sm font-black text-[#2A1D20]">{lead.title}</h4>
+                              <h4 className="text-sm font-black text-slate-900">{lead.title}</h4>
                               <p className="text-xs text-gray-600">
                                 {lead.customerName}{' '}
                                 {lead.customerPhone ? `• ${lead.customerPhone}` : ''}
@@ -3209,7 +3209,7 @@ export const VendorPortalView: React.FC = () => {
                                 <span className="text-[10px] text-gray-500 block">
                                   {language === 'ar' ? 'القيمة المتوقعة' : 'Est. Value'}
                                 </span>
-                                <strong className="text-sm font-black text-[#D91B3E]">
+                                <strong className="text-sm font-black text-blue-600">
                                   {lead.estimatedValueEgp.toLocaleString()}{' '}
                                   {language === 'ar' ? 'ج.م' : 'EGP'}
                                 </strong>
@@ -3221,7 +3221,7 @@ export const VendorPortalView: React.FC = () => {
                                 onChange={(e) =>
                                   handleChangeLeadStage(lead.id, e.target.value as VendorLeadStage)
                                 }
-                                className="w-full sm:w-auto max-w-full min-w-0 truncate p-2 rounded-xl bg-[#FAF7F2] border border-gray-200 text-xs font-bold"
+                                className="w-full sm:w-auto max-w-full min-w-0 truncate p-2 rounded-xl bg-slate-50 border border-gray-200 text-xs font-bold"
                               >
                                 {CRM_STAGE_META.map((st) => (
                                   <option key={st.key} value={st.key}>
@@ -3233,7 +3233,7 @@ export const VendorPortalView: React.FC = () => {
                           </div>
 
                           {/* Activities & Add Activity */}
-                          <div className="bg-[#FAF7F2] rounded-2xl p-3.5 border border-rose-100 space-y-2.5">
+                          <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 space-y-2.5">
                             {(lead.activities || []).slice(0, 4).map((act) => (
                               <div key={act.id} className="text-xs text-gray-700 flex items-start gap-2">
                                 <span className="px-2 py-0.5 rounded bg-white border border-gray-200 text-[10px] font-bold shrink-0">
@@ -3288,7 +3288,7 @@ export const VendorPortalView: React.FC = () => {
                                 type="submit"
                                 disabled={stage8BusyId === `act-${lead.id}`}
                                 data-testid={`crm-lead-activity-btn-${lead.id}`}
-                                className="px-3.5 py-2 rounded-xl bg-[#D91B3E] text-white text-xs font-bold cursor-pointer"
+                                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition"
                               >
                                 {language === 'ar' ? 'تسجيل' : 'Log'}
                               </button>
