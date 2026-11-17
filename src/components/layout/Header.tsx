@@ -109,80 +109,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#D91B3E]/15 shadow-sm">
-      {/* Top Tagline Announcement Bar */}
-      <div className="bg-[#FFF8F9] text-[#B31331] text-[11px] sm:text-xs py-1.5 px-4 border-b border-[#FDE8ED]">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
-          <div className="flex items-center gap-2 font-medium min-w-0">
-            <Heart className="w-3.5 h-3.5 fill-[#D91B3E] text-[#D91B3E] shrink-0" />
-            <span className="font-bold truncate">
-              {language === 'ar' ? settings.sloganAr : settings.sloganEn}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              to="/vendors"
-              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <Store className="w-3 h-3" />
-              <span>{language === 'ar' ? 'دليل الشركاء' : 'Vendors'}</span>
-            </Link>
-            <Link
-              to="/real-weddings"
-              className="hidden xl:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <Heart className="w-3 h-3" />
-              <span>{language === 'ar' ? 'قصص الزفاف' : 'Real Weddings'}</span>
-            </Link>
-            <Link
-              to="/community"
-              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <HelpCircle className="w-3 h-3" />
-              <span>{language === 'ar' ? 'المجتمع' : 'Community'}</span>
-            </Link>
-            <Link
-              to="/products"
-              className="hidden lg:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <ShoppingBag className="w-3 h-3" />
-              <span>{language === 'ar' ? 'المنتجات والأسعار' : 'Products'}</span>
-            </Link>
-
-            <Link
-              to="/early-start"
-              className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <Compass className="w-3 h-3" />
-              <span>{language === 'ar' ? 'البداية المبكرة' : 'Early Start'}</span>
-            </Link>
-            <Link
-              to="/my/budget"
-              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <Wallet className="w-3 h-3" />
-              <span>{language === 'ar' ? 'ميزانية الزواج' : 'Wedding Budget'}</span>
-            </Link>
-            <Link
-              to="/installments"
-              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <CreditCard className="w-3 h-3" />
-              <span>{language === 'ar' ? 'التقسيط' : 'Installments'}</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              data-testid="lang-switch-btn"
-              className="text-[#D91B3E] hover:text-[#99132B] font-bold text-xs flex items-center gap-1 transition px-2 py-0.5 rounded-lg hover:bg-white cursor-pointer"
-            >
-              <Languages className="w-3.5 h-3.5" />
-              <span>{language === 'ar' ? 'English' : 'العربية'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
@@ -229,6 +155,18 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
 
           {/* User Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Language Switcher */}
+            <button
+              type="button"
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              data-testid="lang-switch-btn"
+              className="p-2 sm:p-2.5 rounded-xl bg-gray-50 hover:bg-[#FDE8ED] text-[#D91B3E] hover:text-[#99132B] border border-gray-200 hover:border-[#D91B3E]/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+              title={language === 'ar' ? 'Switch to English' : 'التحويل للعربية'}
+            >
+              <Languages className="w-4 h-4 text-[#D91B3E]" />
+              <span className="hidden sm:inline font-bold text-[11px]">{language === 'ar' ? 'English' : 'العربية'}</span>
+            </button>
+
             {/* Cart Button */}
             <button
               type="button"
