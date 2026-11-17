@@ -20,7 +20,6 @@ import {
   ListTodo,
   ShoppingBag,
   Store,
-  Users,
 } from 'lucide-react';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -288,17 +287,6 @@ export const Footer: React.FC = () => {
             >
               <HelpCircle className="w-3.5 h-3.5 text-[#D91B3E]" />
               <span>{language === 'ar' ? 'منتدى المجتمع' : 'Community Q&A'}</span>
-            </Link>
-
-            <span>•</span>
-
-            <Link
-              to="/wedding-day"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Users className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'يوم الفرح والطاولات' : 'Wedding Day Ops'}</span>
             </Link>
 
             <span>•</span>

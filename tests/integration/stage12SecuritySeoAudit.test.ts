@@ -179,8 +179,8 @@ describe('Stage 12 Release Security, Privacy, SEO & DB Parity Audit', () => {
     expect(robotsContent).toContain('Disallow: /my/');
     expect(robotsContent).toContain('Disallow: /admin');
     expect(robotsContent).not.toContain('Disallow: /rfq');
-    expect(robotsContent).toContain('Disallow: /wedding-day');
-    expect(robotsContent).toContain('Disallow: /rsvp/');
+    expect(robotsContent).not.toContain('Disallow: /wedding-day');
+    expect(robotsContent).not.toContain('Disallow: /rsvp/');
   });
 
   it('prevents password hash, National ID, unapproved content, or private financial leaks in public APIs', async () => {

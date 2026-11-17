@@ -19,7 +19,6 @@ import {
   ShoppingBag,
   Store,
   BadgeCheck,
-  Users,
   Wrench,
 } from 'lucide-react';
 import { SmartImage } from '../common/SmartImage';
@@ -319,16 +318,6 @@ export const SplashHome: React.FC = () => {
           >
             <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
             <span>{language === 'ar' ? 'منتدى الأسئلة والخبراء' : 'Community Q&A'}</span>
-          </Link>
-
-          <Link
-            to="/wedding-day"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-wedding-day"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#2A1D20] hover:text-[#D91B3E] border border-[#D91B3E]/15 text-xs font-bold transition shadow-xs"
-          >
-            <Users className="w-3.5 h-3.5 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'يوم الفرح والطاولات والهدايا' : 'Wedding Day Ops & RSVP'}</span>
           </Link>
 
           <Link

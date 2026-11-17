@@ -28,7 +28,5 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /vendor$
 Disallow: /vendor/
-Disallow: /wedding-day
-Disallow: /rsvp/
 
 Sitemap: https://gawazinn.vercel.app/sitemap.xml

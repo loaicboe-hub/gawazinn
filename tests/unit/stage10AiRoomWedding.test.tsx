@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
-import { WeddingDayOpsView } from '../../src/components/wedding/WeddingDayOpsView';
-import { PublicRsvpView } from '../../src/components/wedding/PublicRsvpView';
 import {
   AI_STARTER_PROMPTS,
   MEAL_PREFERENCE_META,
@@ -115,34 +113,6 @@ describe('Stage 10 Grounded AI, 2D Room Designer, Wedding Day Ops & Public RSVP'
         priority: 'nice_to_have',
       }).success,
     ).toBe(true);
-  });
-
-  it('renders auth-guarded /wedding-day and /rsvp/:code views cleanly', () => {
-
-    render(
-      <MemoryRouter initialEntries={['/wedding-day']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/wedding-day" element={<WeddingDayOpsView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('wedding-day-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('wedding-day-signin-btn')).toBeInTheDocument();
-    cleanup();
-
-    render(
-      <MemoryRouter initialEntries={['/rsvp/GI-KARIM-102']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/rsvp/:code" element={<PublicRsvpView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(document.body.textContent?.length).toBeGreaterThan(10);
-    cleanup();
   });
 });
 

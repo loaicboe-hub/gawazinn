@@ -36,8 +36,6 @@ export const SeoHead: React.FC = () => {
       pathname.startsWith('/portal') ||
       pathname.startsWith('/my') ||
       pathname.startsWith('/admin') ||
-      pathname.startsWith('/wedding-day') ||
-      pathname.startsWith('/rsvp') ||
       pathname === '/vendor' ||
       pathname.startsWith('/vendor/');
     const cleanPath = pathname === '/' ? '' : pathname;
@@ -209,12 +207,6 @@ export const SeoHead: React.FC = () => {
         'اطرح سؤالك حول التشطيب أو الجهاز أو الفرح أو الادخار المبكر واحصل على إجابات من أزواج مجربين وخبراء معتمدين.';
       descEn =
         'Ask questions about Egyptian apartment finishing, trousseau, wedding contracts & savings—with verified expert replies.';
-    } else if (pathname === '/wedding-day') {
-      titleAr = 'إدارة يوم الفرح والضيوف والطاولات والهدايا | جواز إن';
-      titleEn = 'Wedding Day Operations: Guests, Seating, Timeline & Gift Registry | GAWAZ INN';
-    } else if (pathname.startsWith('/rsvp/')) {
-      titleAr = 'تأكيد حضور الفرح وقائمة الهدايا | جواز إن';
-      titleEn = 'Wedding Invitation RSVP & Gift Registry | GAWAZ INN';
     } else if (pathname === '/home-care') {
       titleAr = 'دليل خدمات ما بعد الزواج: نقل العفش والصيانة المنزلية | جواز إن';
       titleEn = 'Post-Marriage Moving, Hoist & Preventive Home Care Directory | GAWAZ INN';
