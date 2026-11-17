@@ -35,6 +35,7 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
     logout,
     setAuthModalOpen,
     isStaff,
+    cartCount,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
@@ -118,11 +119,11 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
   return (
     <div className="space-y-12 pb-24">
       {/* Customer Header Banner */}
-      <div className="bg-red-gradient text-white py-12 border-b border-[#D91B3E]/30 shadow-md">
+      <div className="bg-red-gradient text-white py-8 border-b border-[#D91B3E]/30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-center sm:text-start">
-              <div className="w-16 h-16 rounded-2xl bg-white text-[#D91B3E] font-black text-2xl flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-white text-[#D91B3E] font-black text-2xl flex items-center justify-center shadow-lg shrink-0">
                 {currentUser.name.charAt(0)}
               </div>
               <div>
@@ -144,169 +145,230 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
                     <MapPin className="w-3.5 h-3.5 text-white" />
                     <span>{currentUser.city || (language === 'ar' ? 'القاهرة' : 'Cairo')}</span>
                   </span>
+                  {currentUser.currentStage && (
+                    <>
+                      <span>•</span>
+                      <span className="bg-white/15 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-white/20">
+                        {currentUser.currentStage}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3">
               <Link
-                to="/my/workspace"
-                data-testid="portal-open-workspace-link"
-                className="bg-white text-[#D91B3E] hover:bg-gray-50 font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2"
+                to="/"
+                className="bg-white/15 hover:bg-white/25 text-white text-xs font-bold py-2 px-3.5 rounded-xl border border-white/25 transition flex items-center gap-1.5"
               >
-                <Layers className="w-4 h-4 text-[#D91B3E]" />
-                <span>
-                  {language === 'ar' ? 'مركزي (17 وحدة) والشريك' : 'My 17-Module Hub'}
-                </span>
+                <span>{language === 'ar' ? 'الرئيسية' : 'Home'}</span>
               </Link>
-
-              <Link
-                to="/my/journey"
-                data-testid="portal-open-journey-link"
-                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-              >
-                <ListTodo className="w-4 h-4" />
-                <span>{language === 'ar' ? 'مخطط الرحلة' : 'Journey Planner'}</span>
-              </Link>
-
-              <Link
-                to="/my/future-fund"
-                data-testid="portal-open-future-fund-link"
-                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-              >
-                <Compass className="w-4 h-4" />
-                <span>{language === 'ar' ? 'صندوق مستقبلي' : 'My Future Fund'}</span>
-              </Link>
-
-              <Link
-                to="/my/budget"
-                data-testid="portal-open-budget-link"
-                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-              >
-                <Wallet className="w-4 h-4" />
-                <span>{language === 'ar' ? 'مدير الميزانية' : 'Budget Manager'}</span>
-              </Link>
-
-              <Link
-                to="/my/shopping-lists"
-                data-testid="portal-open-shopping-lists-link"
-                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>{language === 'ar' ? 'سلال المشتريات' : 'Shopping Baskets'}</span>
-              </Link>
-
-              <Link
-                to="/calculators"
-                className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-              >
-                <Calculator className="w-4 h-4" />
-                <span>{language === 'ar' ? 'الحاسبات الذكية' : 'Calculators'}</span>
-              </Link>
-
-              {isStaff && (
-                <Link
-                  to="/admin"
-                  className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-white/30 transition flex items-center gap-2"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{language === 'ar' ? 'لوحة الإدارة' : 'Admin OS'}</span>
-                </Link>
-              )}
-
               <button
                 type="button"
                 onClick={onOpenCart}
-                className="bg-white text-[#D91B3E] font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2 hover:bg-gray-50 cursor-pointer"
+                className="bg-white text-[#D91B3E] hover:bg-gray-50 font-bold text-xs py-2 px-3.5 rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
               >
-                <ShoppingBag className="w-4 h-4 text-[#D91B3E]" />
+                <ShoppingBag className="w-3.5 h-3.5 text-[#D91B3E]" />
                 <span>{t.nav.cart}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="bg-black/20 hover:bg-black/30 text-white font-semibold text-xs py-2.5 px-4 rounded-xl border border-white/20 transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>{t.nav.logout}</span>
+                {cartCount > 0 && (
+                  <span className="bg-[#D91B3E] text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    {cartCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'orders'
-              ? 'bg-[#D91B3E] text-white shadow-md'
-              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-              }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>
-              {t.customerPortal.tabs.orders} ({orders.length})
-            </span>
-          </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Side Menu Bar */}
+          <aside className="lg:col-span-4 xl:col-span-3 space-y-4 lg:sticky lg:top-24">
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-rose-100 shadow-md space-y-4">
+              <div className="px-1 pb-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-xs font-black text-[#D91B3E] flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-[#D91B3E]" />
+                  <span>{language === 'ar' ? 'معاملاتي وطلباتي' : 'My Requests & Hub'}</span>
+                </h2>
+                <span className="text-[10px] font-bold text-gray-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">
+                  {orders.length + finishingInquiries.length + weddingBookings.length + financingApplications.length}{' '}
+                  {language === 'ar' ? 'طلب' : 'items'}
+                </span>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('finishing')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'finishing'
-              ? 'bg-[#D91B3E] text-white shadow-md'
-              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-              }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>
-              {t.customerPortal.tabs.finishing} ({finishingInquiries.length})
-            </span>
-          </button>
+              {/* Portal Tabs Nav */}
+              <nav aria-label="Customer Portal Navigation" className="space-y-1.5">
+                {[
+                  {
+                    key: 'orders' as const,
+                    title: t.customerPortal.tabs.orders,
+                    icon: <ShoppingBag className="w-4 h-4 shrink-0" />,
+                    count: orders.length,
+                  },
+                  {
+                    key: 'finishing' as const,
+                    title: t.customerPortal.tabs.finishing,
+                    icon: <Building2 className="w-4 h-4 shrink-0" />,
+                    count: finishingInquiries.length,
+                  },
+                  {
+                    key: 'wedding' as const,
+                    title: t.customerPortal.tabs.bookings,
+                    icon: <Heart className="w-4 h-4 shrink-0" />,
+                    count: weddingBookings.length,
+                  },
+                  {
+                    key: 'financing' as const,
+                    title: t.customerPortal.tabs.installments,
+                    icon: <CreditCard className="w-4 h-4 shrink-0" />,
+                    count: financingApplications.length,
+                  },
+                  {
+                    key: 'profile' as const,
+                    title: t.customerPortal.tabs.profile,
+                    icon: <UserIcon className="w-4 h-4 shrink-0" />,
+                    count: undefined,
+                  },
+                ].map((tab) => {
+                  const isActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2 text-start cursor-pointer ${
+                        isActive
+                          ? 'bg-[#D91B3E] text-white shadow-sm font-black'
+                          : 'text-[#2A1D20] hover:bg-[#FDE8ED] hover:text-[#D91B3E]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {tab.icon}
+                        <span className="truncate">{tab.title}</span>
+                      </div>
+                      {typeof tab.count === 'number' && (
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                            isActive
+                              ? 'bg-white text-[#D91B3E]'
+                              : 'bg-rose-50 text-[#D91B3E] border border-rose-100'
+                          }`}
+                        >
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('wedding')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'wedding'
-              ? 'bg-[#D91B3E] text-white shadow-md'
-              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-              }`}
-          >
-            <Heart className="w-4 h-4" />
-            <span>
-              {t.customerPortal.tabs.bookings} ({weddingBookings.length})
-            </span>
-          </button>
+              {/* Quick Hub Links Section */}
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <div className="px-1 text-[11px] font-bold text-gray-400">
+                  {language === 'ar' ? 'أدوات وخدمات جواز إن' : 'Gawaz Inn Tools'}
+                </div>
+                <div className="space-y-1">
+                  <Link
+                    to="/my/workspace"
+                    data-testid="portal-open-workspace-link"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <Layers className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">
+                      {language === 'ar' ? 'مركزي (17 وحدة) والشريك' : 'My 17-Module Hub'}
+                    </span>
+                  </Link>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('financing')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'financing'
-              ? 'bg-[#D91B3E] text-white shadow-md'
-              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-              }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>
-              {t.customerPortal.tabs.installments} ({financingApplications.length})
-            </span>
-          </button>
+                  <Link
+                    to="/my/journey"
+                    data-testid="portal-open-journey-link"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <ListTodo className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">{language === 'ar' ? 'مخطط الرحلة' : 'Journey Planner'}</span>
+                  </Link>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === 'profile'
-              ? 'bg-[#D91B3E] text-white shadow-md'
-              : 'bg-white text-gray-700 hover:bg-[#FDE8ED] border border-gray-200'
-              }`}
-          >
-            <UserIcon className="w-4 h-4" />
-            <span>{t.customerPortal.tabs.profile}</span>
-          </button>
-        </div>
+                  <Link
+                    to="/my/future-fund"
+                    data-testid="portal-open-future-fund-link"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <Compass className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">{language === 'ar' ? 'صندوق مستقبلي' : 'My Future Fund'}</span>
+                  </Link>
+
+                  <Link
+                    to="/my/budget"
+                    data-testid="portal-open-budget-link"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <Wallet className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">{language === 'ar' ? 'مدير الميزانية' : 'Budget Manager'}</span>
+                  </Link>
+
+                  <Link
+                    to="/my/shopping-lists"
+                    data-testid="portal-open-shopping-lists-link"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">{language === 'ar' ? 'سلال المشتريات' : 'Shopping Baskets'}</span>
+                  </Link>
+
+                  <Link
+                    to="/calculators"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                  >
+                    <Calculator className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                    <span className="truncate">{language === 'ar' ? 'الحاسبات الذكية' : 'Calculators'}</span>
+                  </Link>
+
+                  {isStaff && (
+                    <Link
+                      to="/admin"
+                      className="w-full px-3.5 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-[#D91B3E] transition flex items-center gap-2.5"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#D91B3E] shrink-0" />
+                      <span className="truncate">{language === 'ar' ? 'لوحة الإدارة' : 'Admin OS'}</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <button
+                  type="button"
+                  onClick={onOpenCart}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold bg-[#FAF7F2] hover:bg-[#FDE8ED] text-[#D91B3E] border border-rose-100 transition flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>{t.nav.cart}</span>
+                  </div>
+                  {cartCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-[#D91B3E] text-white text-[10px] font-black">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-red-50 hover:text-red-700 border border-transparent hover:border-red-100 transition flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 shrink-0 text-red-500" />
+                  <span>{t.nav.logout}</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="lg:col-span-8 xl:col-span-9 min-w-0 space-y-6">
 
         {/* Tab 1: Orders */}
         {activeTab === 'orders' && (
@@ -659,6 +721,8 @@ export const CustomerPortalView: React.FC<{ onOpenCart: () => void }> = ({ onOpe
             </div>
           </div>
         )}
+          </main>
+        </div>
       </div>
     </div>
   );
