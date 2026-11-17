@@ -56,16 +56,7 @@ export const Footer: React.FC = () => {
               <span>{language === 'ar' ? 'التقسيط' : 'Installments'}</span>
             </Link>
 
-            <span>•</span>
 
-            <Link
-              to="/encyclopedia"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'الموسوعة' : 'Encyclopedia'}</span>
-            </Link>
 
             <span>•</span>
 
