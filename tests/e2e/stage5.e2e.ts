@@ -140,15 +140,13 @@ async function main() {
     await page.goto(webUrl, { waitUntil: 'networkidle' });
     await dismissIntroIfPresent(page);
 
-    // Guest explores 11-stage Onboarding
-    await page.getByTestId('home-discovery-onboarding').click();
-    await page.getByTestId('onboarding-signin-btn').waitFor({ state: 'visible' });
-    const stageCardsCount = await page.locator('[data-testid^="stage-card-"]').count();
-    assert.equal(stageCardsCount, 11, `Expected 11 lifecycle stage cards, got ${stageCardsCount}`);
-    await assertNoHorizontalOverflow(page, 'Desktop Guest /onboarding');
+    // Guest explores Journey Planner
+    await page.goto(`${webUrl}/journey`, { waitUntil: 'networkidle' });
+    await page.getByTestId('journey-signin-btn').waitFor({ state: 'visible' });
+    await assertNoHorizontalOverflow(page, 'Desktop Guest /journey');
 
     // Sign in as Karim
-    await page.getByTestId('onboarding-signin-btn').click();
+    await page.getByTestId('journey-signin-btn').click();
     await page.getByTestId('auth-identifier-input').fill('karim@gawazinn.demo');
     await page.getByTestId('auth-password-input').fill('DemoPass@2026');
     const hubHydrate = page.waitForResponse(
@@ -156,24 +154,6 @@ async function main() {
     );
     await page.getByTestId('auth-submit-btn').click();
     await hubHydrate;
-
-    // Transition lifecycle stage to planning_wedding + reload persistence
-    await page.getByTestId('onboarding-transition-note-input').fill('تم حجز قاعة الفرح مبدئياً');
-    const stageUpdateDone = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/onboarding/stage') &&
-        res.request().method() === 'POST' &&
-        res.status() === 200,
-    );
-    await page.getByTestId('select-stage-planning_wedding').click();
-    await stageUpdateDone;
-
-    await page.goto(`${webUrl}/onboarding`, { waitUntil: 'networkidle' });
-    const activeStageBadge = await page.getByTestId('current-lifecycle-stage-badge').textContent();
-    assert.ok(
-      activeStageBadge && activeStageBadge.includes('8'),
-      `Expected stage 8 active after reload, got: ${activeStageBadge}`,
-    );
 
     // Module I: Wedding Journey Planner -> List + Calendar Grid + Add Task
     await page.goto(`${webUrl}/my/journey`, { waitUntil: 'networkidle' });
@@ -308,7 +288,7 @@ async function main() {
       }
     });
 
-    for (const r of ['/onboarding', '/journey', '/my/workspace']) {
+    for (const r of ['/journey', '/my/workspace']) {
       await mobPage.goto(`${webUrl}${r}`, { waitUntil: 'networkidle' });
       await dismissIntroIfPresent(mobPage);
       await assertNoHorizontalOverflow(mobPage, `Mobile RTL ${r}`);

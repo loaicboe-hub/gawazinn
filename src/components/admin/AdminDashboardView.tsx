@@ -833,40 +833,8 @@ export const AdminDashboardView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Lifecycle Stages + Top Read Articles */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-3">
-                    <h3 className="font-black text-gray-900">
-                      {language === 'ar'
-                        ? 'توزيع المستخدمين على مراحل الرحلة (11 مرحلة)'
-                        : 'User Distribution Across 11 Lifecycle Stages'}
-                    </h3>
-                    <div className="space-y-2">
-                      {adminAnalytics.usersSummary.stageDistribution.map((row) => {
-                        const pct =
-                          adminAnalytics.usersSummary.totalUsers > 0
-                            ? Math.round((row.count / adminAnalytics.usersSummary.totalUsers) * 100)
-                            : 0;
-                        return (
-                          <div key={row.stage} className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-bold">
-                              <span className="font-mono text-gray-700">{row.stage}</span>
-                              <span className="text-[#D91B3E]">
-                                {row.count} ({pct}%)
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-white overflow-hidden border border-gray-200">
-                              <div
-                                className="h-full bg-[#D91B3E] rounded-full"
-                                style={{ width: `${Math.max(8, pct)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
+                {/* Top Read Articles */}
+                <div className="text-xs">
                   <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-gray-200 space-y-3">
                     <h3 className="font-black text-gray-900">
                       {language === 'ar'

@@ -167,12 +167,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
           >
             {language === 'ar' ? 'تسجيل الدخول الآن' : 'Sign In Now'}
           </button>
-          <Link
-            to="/onboarding"
-            className="bg-white border border-gray-200 text-gray-700 font-bold text-xs py-3 px-6 rounded-xl"
-          >
-            {language === 'ar' ? 'اختيار المرحلة الحياتية' : '11-Stage Onboarding'}
-          </Link>
         </div>
       </div>
     );
@@ -384,12 +378,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
 
           <div className="flex flex-wrap gap-2 shrink-0">
             <Link
-              to="/onboarding"
-              className="bg-white text-[#D91B3E] hover:bg-gray-50 font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition"
-            >
-              {language === 'ar' ? 'تغيير المرحلة (11 مرحلة)' : 'Switch Stage (11)'}
-            </Link>
-            <Link
               to="/portal"
               className="bg-black/20 hover:bg-black/30 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-white/25 transition"
             >
@@ -478,13 +466,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                   </strong>
                 </div>
               </div>
-              <Link
-                to="/onboarding"
-                className="inline-flex items-center gap-2 bg-red-gradient text-white font-bold text-xs px-5 py-2.5 rounded-xl"
-              >
-                <Compass className="w-4 h-4" />
-                <span>{language === 'ar' ? 'تعديل المرحلة الحياتية' : 'Update Lifecycle Stage'}</span>
-              </Link>
             </div>
           )}
 
@@ -1955,12 +1936,6 @@ export const MyGawazInnHubView: React.FC<{ onOpenCart?: () => void }> = ({ onOpe
                 >
                   {language === 'ar' ? 'التبديل إلى الإنجليزية (LTR)' : 'Switch to Arabic (RTL)'}
                 </button>
-                <Link
-                  to="/onboarding"
-                  className="bg-[#FAF7F2] text-[#2A1D20] font-bold text-xs px-5 py-2.5 rounded-xl border border-gray-200"
-                >
-                  {language === 'ar' ? 'المرحلة الحياتية (11 مرحلة)' : 'Lifecycle Onboarding'}
-                </Link>
               </div>
             </div>
           )}

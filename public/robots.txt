@@ -12,7 +12,6 @@ Allow: /discover
 Allow: /locations/
 Allow: /calculators
 Allow: /early-start
-Allow: /onboarding
 Allow: /journey
 Allow: /products
 Allow: /vendors

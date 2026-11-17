@@ -148,13 +148,7 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
               <ShoppingBag className="w-3 h-3" />
               <span>{language === 'ar' ? 'المنتجات والأسعار' : 'Products'}</span>
             </Link>
-            <Link
-              to="/onboarding"
-              className="hidden xl:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
-            >
-              <Layers className="w-3 h-3" />
-              <span>{language === 'ar' ? '11 مرحلة' : '11 Stages'}</span>
-            </Link>
+
             <Link
               to="/early-start"
               className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-[#B31331] hover:text-[#D91B3E] transition"
@@ -321,16 +315,7 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
                       </span>
                     </Link>
 
-                    <Link
-                      to="/onboarding"
-                      onClick={closeMenus}
-                      className="w-full px-4 py-2 text-start text-xs text-gray-700 hover:bg-[#FDE8ED] hover:text-[#D91B3E] font-medium flex items-center gap-2"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-[#D91B3E]" />
-                      <span>
-                        {language === 'ar' ? 'مسارك في 11 مرحلة' : '11-Stage Onboarding'}
-                      </span>
-                    </Link>
+
 
                     <Link
                       to="/journey"
@@ -476,14 +461,7 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
               </div>
             </Link>
           ))}
-          <Link
-            to="/onboarding"
-            onClick={closeMenus}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-[#D91B3E] bg-[#FFF8F9] hover:bg-[#FDE8ED]"
-          >
-            <Layers className="w-4 h-4 text-[#D91B3E]" />
-            <span>{language === 'ar' ? 'مسارك في 11 مرحلة + مركزي' : '11-Stage Onboarding & Hub'}</span>
-          </Link>
+
           <Link
             to="/journey"
             onClick={closeMenus}

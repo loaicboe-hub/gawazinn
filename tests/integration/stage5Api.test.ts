@@ -97,10 +97,10 @@ afterAll(async () => {
 });
 
 describe('Stage 5 Lifecycle Onboarding, Engagement, Journey Planner & Shared Workspace Security', () => {
-  it('exposes /onboarding, /journey in sitemap while keeping /my/* private & blocks unauthenticated calls with 401', async () => {
+  it('exposes /journey in sitemap while keeping /my/* private & blocks unauthenticated calls with 401', async () => {
     const sitemapRes = await fetch(`${baseUrl}/sitemap.xml`);
     const xml = await sitemapRes.text();
-    expect(xml).toContain('/onboarding</loc>');
+    expect(xml).not.toContain('/onboarding</loc>');
     expect(xml).not.toContain('/engagement</loc>');
     expect(xml).toContain('/journey</loc>');
     expect(xml).not.toContain('/my/workspace');

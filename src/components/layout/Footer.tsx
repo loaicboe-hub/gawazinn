@@ -181,16 +181,7 @@ export const Footer: React.FC = () => {
 
             <span>•</span>
 
-            <Link
-              to="/onboarding"
-              onClick={scrollTop}
-              className="hover:text-[#D91B3E] transition flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5 text-[#D91B3E]" />
-              <span>{language === 'ar' ? 'مسار 11 مرحلة' : '11-Stage Onboarding'}</span>
-            </Link>
 
-            <span>•</span>
 
             <Link
               to="/journey"

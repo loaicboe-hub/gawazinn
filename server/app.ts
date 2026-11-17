@@ -943,7 +943,6 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           '/calculators',
           '/early-start',
           '/early-start/academy',
-          '/onboarding',
           '/journey',
           '/products',
           '/products/compare',

@@ -155,7 +155,6 @@ import { apiRequest, ApiClientError } from '../services/api';
 
 export type SectionKey =
   | 'home'
-  | 'onboarding'
   | 'earlyStart'
   | 'journey'
   | 'finishing'
@@ -182,7 +181,6 @@ export type SectionKey =
 
 export const SECTION_ROUTES: Record<SectionKey, string> = {
   home: '/',
-  onboarding: '/onboarding',
   earlyStart: '/early-start',
   journey: '/journey',
   finishing: '/finishing',
@@ -1098,7 +1096,6 @@ function setStoredItem<T>(key: string, value: T): void {
 }
 
 function resolveSectionFromPath(pathname: string): SectionKey {
-  if (pathname.startsWith('/onboarding')) return 'onboarding';
   if (pathname.startsWith('/early-start') || pathname.startsWith('/my/future-fund')) {
     return 'earlyStart';
   }

@@ -14,7 +14,6 @@ import {
   Calculator,
   Wallet,
   Compass,
-  Layers,
   ListTodo,
   ShoppingBag,
   Store,
@@ -177,16 +176,6 @@ export const SplashHome: React.FC = () => {
 
         {/* Clean Ecosystem Discovery Links */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 pt-2">
-          <Link
-            to="/onboarding"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            data-testid="home-discovery-onboarding"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDE8ED] hover:bg-[#D91B3E] text-[#D91B3E] hover:text-white border border-[#D91B3E]/25 text-xs font-bold transition shadow-xs"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'رحلتك في 11 مرحلة' : '11-Stage Onboarding'}</span>
-          </Link>
-
           <Link
             to="/early-start"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

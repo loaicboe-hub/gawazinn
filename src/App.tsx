@@ -119,11 +119,6 @@ const EarlyStartDashboardView = lazy(() =>
     default: m.EarlyStartDashboardView,
   })),
 );
-const LifecycleOnboardingView = lazy(() =>
-  import('./components/workspace/LifecycleOnboardingView').then((m) => ({
-    default: m.LifecycleOnboardingView,
-  })),
-);
 const JourneyPlannerView = lazy(() =>
   import('./components/workspace/JourneyPlannerView').then((m) => ({
     default: m.JourneyPlannerView,
@@ -248,7 +243,6 @@ const MainContent: React.FC = () => {
               path="/my/future-fund"
               element={<EarlyStartDashboardView initialTab="fund" />}
             />
-            <Route path="/onboarding" element={<LifecycleOnboardingView />} />
             <Route path="/journey" element={<JourneyPlannerView />} />
             <Route path="/my/journey" element={<JourneyPlannerView />} />
             <Route

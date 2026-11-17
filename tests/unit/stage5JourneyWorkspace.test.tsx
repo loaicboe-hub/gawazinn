@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '../../src/context/AppContext';
-import { LifecycleOnboardingView } from '../../src/components/workspace/LifecycleOnboardingView';
 import { JourneyPlannerView } from '../../src/components/workspace/JourneyPlannerView';
 import { MyGawazInnHubView } from '../../src/components/workspace/MyGawazInnHubView';
 import {
@@ -89,19 +88,6 @@ describe('Stage 5 Domain Catalogs (11 Stages, 10 Journey Phases, 17 Hub Modules)
   });
 
   it('renders Stage 5 views cleanly for unauthenticated guests with explicit sign-in prompts', () => {
-    render(
-      <MemoryRouter initialEntries={['/onboarding']}>
-        <AppProvider>
-          <Routes>
-            <Route path="/onboarding" element={<LifecycleOnboardingView />} />
-          </Routes>
-        </AppProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByTestId('onboarding-signin-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('stage-card-maintaining_home')).toBeInTheDocument();
-    cleanup();
-
     render(
       <MemoryRouter initialEntries={['/journey']}>
         <AppProvider>
