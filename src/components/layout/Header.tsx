@@ -13,7 +13,6 @@ import {
   X,
   FileText,
   BookOpen,
-  MapPin,
   CreditCard,
   HeartHandshake,
   Wrench,
@@ -90,13 +89,6 @@ export const Header: React.FC<{ onOpenCart: () => void }> = ({ onOpenCart }) => 
       labelAr: 'الحاسبات',
       labelEn: 'Calculators',
       icon: <Calculator className="w-4 h-4 shrink-0" />,
-    },
-    {
-      key: 'discover',
-      to: '/discover',
-      labelAr: 'المحافظات',
-      labelEn: 'Locations',
-      icon: <MapPin className="w-4 h-4 shrink-0" />,
     },
   ];
 
