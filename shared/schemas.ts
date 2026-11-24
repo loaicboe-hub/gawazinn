@@ -29,6 +29,37 @@ export const loginSchema = z.object({
   password: z.string().min(4, 'Password is required').max(128),
 });
 
+export const googleAuthSchema = z.object({
+  email: z.string().trim().email('Invalid email address').toLowerCase(),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  avatarUrl: z.string().trim().optional(),
+  googleId: z.string().trim().max(120).optional(),
+});
+
+export const appleAuthSchema = z.object({
+  email: z.string().trim().email('Invalid email address').toLowerCase(),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  appleId: z.string().trim().max(120).optional(),
+});
+
+export const phoneOtpRequestSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .transform(normalizeEgyptianPhone)
+    .refine((v) => phoneRegex.test(v), 'Invalid Egyptian mobile number (01XXXXXXXXX)'),
+});
+
+export const phoneOtpVerifySchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .transform(normalizeEgyptianPhone)
+    .refine((v) => phoneRegex.test(v), 'Invalid Egyptian mobile number (01XXXXXXXXX)'),
+  otp: z.string().trim().min(4, 'OTP must be at least 4 digits').max(8),
+  name: z.string().trim().max(120).optional(),
+});
+
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   city: z.string().trim().max(120).optional(),

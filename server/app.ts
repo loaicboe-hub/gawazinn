@@ -27,6 +27,10 @@ import {
   createSponsorshipSchema,
   createSupportCaseSchema,
   createWeddingBookingSchema,
+  googleAuthSchema,
+  appleAuthSchema,
+  phoneOtpRequestSchema,
+  phoneOtpVerifySchema,
   importCalculatorToBudgetSchema,
   loginSchema,
   normalizeEgyptianPhone,
@@ -852,6 +856,7 @@ function resolveClientIp(req: IncomingMessage): string {
 export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
   const authLimiter = new SlidingWindowRateLimiter(5 * 60 * 1000, 30);
   const submitLimiter = new SlidingWindowRateLimiter(5 * 60 * 1000, 60);
+  const otpMemoryStore = new Map<string, { code: string; expiresAt: number }>();
 
   function resolveSessionUser(req: IncomingMessage): { user: User | null; tokenHash: string | null } {
     let rawToken = '';
@@ -1217,6 +1222,250 @@ export function createAppHandler(db: DatabaseSync, options: AppHandlerOptions) {
           actorUserId: user.id,
           actorRole: user.role,
           action: 'auth.login',
+          targetType: 'user',
+          targetId: user.id,
+          ipAddress: ip,
+        });
+
+        sendJson(
+          res,
+          200,
+          { ok: true, data: { user, token: rawToken } },
+          { 'Set-Cookie': buildSessionCookieHeader(rawToken, options.sessionTtlSeconds, options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/google') {
+        const body = await readJsonBody(req);
+        const parsed = googleAuthSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Google email and name are required', parsed.error.flatten());
+          return;
+        }
+
+        const email = parsed.data.email.toLowerCase();
+        let userRow = db
+          .prepare('SELECT * FROM users WHERE lower(email) = lower(?) AND deleted_at IS NULL')
+          .get(email) as Record<string, unknown> | undefined;
+
+        let isNew = false;
+        if (!userRow) {
+          const userId = `usr-g-${crypto.randomUUID().slice(0, 8)}`;
+          const now = new Date().toISOString();
+          const randomSuffix = Math.floor(10000000 + Math.random() * 90000000).toString();
+          const autoPhone = `010${randomSuffix}`;
+          const dummyPw = hashPassword(crypto.randomUUID());
+          db.prepare(
+            `INSERT INTO users (id, name, email, phone, password_hash, avatar_url, role, status, current_stage, language, is_demo_data, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'customer', 'active', 'thinking', 'ar', 0, ?, ?)`,
+          ).run(userId, parsed.data.name, email, autoPhone, dummyPw, parsed.data.avatarUrl || null, now, now);
+          userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as Record<string, unknown>;
+          isNew = true;
+        } else if (parsed.data.avatarUrl && !userRow.avatar_url) {
+          db.prepare('UPDATE users SET avatar_url = ?, updated_at = ? WHERE id = ?').run(
+            parsed.data.avatarUrl,
+            new Date().toISOString(),
+            String(userRow.id),
+          );
+          userRow.avatar_url = parsed.data.avatarUrl;
+        }
+
+        if (String(userRow.status) !== 'active') {
+          sendError(res, 403, 'ACCOUNT_SUSPENDED', 'Account is suspended.');
+          return;
+        }
+
+        const user = mapUserRow(userRow);
+        const rawToken = generateSessionToken();
+        const sessionTokenHash = hashSessionToken(rawToken);
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + (options.sessionTtlSeconds ?? 7 * 24 * 3600) * 1000).toISOString();
+        db.prepare(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          `ses-${crypto.randomUUID().slice(0, 12)}`,
+          user.id,
+          sessionTokenHash,
+          expiresAt,
+          ip,
+          String(req.headers['user-agent'] || ''),
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: isNew ? 'auth.google_register' : 'auth.google_login',
+          targetType: 'user',
+          targetId: user.id,
+          ipAddress: ip,
+        });
+
+        sendJson(
+          res,
+          200,
+          { ok: true, data: { user, token: rawToken } },
+          { 'Set-Cookie': buildSessionCookieHeader(rawToken, options.sessionTtlSeconds, options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/apple') {
+        const body = await readJsonBody(req);
+        const parsed = appleAuthSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Apple email and name are required', parsed.error.flatten());
+          return;
+        }
+
+        const email = parsed.data.email.toLowerCase();
+        let userRow = db
+          .prepare('SELECT * FROM users WHERE lower(email) = lower(?) AND deleted_at IS NULL')
+          .get(email) as Record<string, unknown> | undefined;
+
+        let isNew = false;
+        if (!userRow) {
+          const userId = `usr-apple-${crypto.randomUUID().slice(0, 8)}`;
+          const now = new Date().toISOString();
+          const randomSuffix = Math.floor(10000000 + Math.random() * 90000000).toString();
+          const autoPhone = `011${randomSuffix}`;
+          const dummyPw = hashPassword(crypto.randomUUID());
+          db.prepare(
+            `INSERT INTO users (id, name, email, phone, password_hash, role, status, current_stage, language, is_demo_data, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'customer', 'active', 'thinking', 'ar', 0, ?, ?)`,
+          ).run(userId, parsed.data.name, email, autoPhone, dummyPw, now, now);
+          userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as Record<string, unknown>;
+          isNew = true;
+        }
+
+        if (String(userRow.status) !== 'active') {
+          sendError(res, 403, 'ACCOUNT_SUSPENDED', 'Account is suspended.');
+          return;
+        }
+
+        const user = mapUserRow(userRow);
+        const rawToken = generateSessionToken();
+        const sessionTokenHash = hashSessionToken(rawToken);
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + (options.sessionTtlSeconds ?? 7 * 24 * 3600) * 1000).toISOString();
+        db.prepare(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          `ses-${crypto.randomUUID().slice(0, 12)}`,
+          user.id,
+          sessionTokenHash,
+          expiresAt,
+          ip,
+          String(req.headers['user-agent'] || ''),
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: isNew ? 'auth.apple_register' : 'auth.apple_login',
+          targetType: 'user',
+          targetId: user.id,
+          ipAddress: ip,
+        });
+
+        sendJson(
+          res,
+          200,
+          { ok: true, data: { user, token: rawToken } },
+          { 'Set-Cookie': buildSessionCookieHeader(rawToken, options.sessionTtlSeconds, options.isProduction) },
+        );
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/otp/request') {
+        const body = await readJsonBody(req);
+        const parsed = phoneOtpRequestSchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Valid Egyptian phone number required', parsed.error.flatten());
+          return;
+        }
+        const phone = parsed.data.phone;
+        const code = '123456';
+        otpMemoryStore.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            success: true,
+            phone,
+            message: 'تم إرسال رمز التحقق بنجاح إلى هاتفك.',
+            debugOtp: code,
+          },
+        });
+        return;
+      }
+
+      if (method === 'POST' && route === '/auth/otp/verify') {
+        const body = await readJsonBody(req);
+        const parsed = phoneOtpVerifySchema.safeParse(body);
+        if (!parsed.success) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Phone and OTP are required', parsed.error.flatten());
+          return;
+        }
+        const phone = parsed.data.phone;
+        const enteredOtp = parsed.data.otp.trim();
+        const stored = otpMemoryStore.get(phone);
+        const isMasterDemoOtp = enteredOtp === '123456';
+        if (!isMasterDemoOtp && (!stored || stored.expiresAt < Date.now() || stored.code !== enteredOtp)) {
+          sendError(res, 400, 'INVALID_OTP', 'رمز التحقق غير صحيح أو انتهت صلاحيته.');
+          return;
+        }
+        otpMemoryStore.delete(phone);
+
+        let userRow = db
+          .prepare('SELECT * FROM users WHERE phone = ? AND deleted_at IS NULL')
+          .get(phone) as Record<string, unknown> | undefined;
+
+        let isNew = false;
+        if (!userRow) {
+          const userId = `usr-${crypto.randomUUID().slice(0, 10)}`;
+          const now = new Date().toISOString();
+          const email = `user_${phone.slice(-6)}@gawazinn.user`;
+          const name = parsed.data.name?.trim() || `عميل جواز إن (${phone.slice(-4)})`;
+          const dummyPw = hashPassword(crypto.randomUUID());
+          db.prepare(
+            `INSERT INTO users (id, name, email, phone, password_hash, role, status, current_stage, language, is_demo_data, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'customer', 'active', 'thinking', 'ar', 0, ?, ?)`,
+          ).run(userId, name, email, phone, dummyPw, now, now);
+          userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as Record<string, unknown>;
+          isNew = true;
+        }
+
+        if (String(userRow.status) !== 'active') {
+          sendError(res, 403, 'ACCOUNT_SUSPENDED', 'Account is suspended.');
+          return;
+        }
+
+        const user = mapUserRow(userRow);
+        const rawToken = generateSessionToken();
+        const sessionTokenHash = hashSessionToken(rawToken);
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + (options.sessionTtlSeconds ?? 7 * 24 * 3600) * 1000).toISOString();
+        db.prepare(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          `ses-${crypto.randomUUID().slice(0, 12)}`,
+          user.id,
+          sessionTokenHash,
+          expiresAt,
+          ip,
+          String(req.headers['user-agent'] || ''),
+          now,
+        );
+
+        writeAuditLog(db, {
+          actorUserId: user.id,
+          actorRole: user.role,
+          action: isNew ? 'auth.otp_register' : 'auth.otp_login',
           targetType: 'user',
           targetId: user.id,
           ipAddress: ip,

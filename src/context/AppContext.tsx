@@ -285,6 +285,10 @@ interface AppContextType {
   // Authentication
   currentUser: User | null;
   loginWithCredentials: (identifier: string, password: string) => Promise<User>;
+  loginWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; googleId?: string }) => Promise<User>;
+  loginWithApple: (payload?: { email?: string; name?: string }) => Promise<User>;
+  requestPhoneOtp: (phone: string) => Promise<{ success: boolean; message?: string; debugOtp?: string }>;
+  verifyPhoneOtp: (phone: string, otp: string, name?: string) => Promise<User>;
   registerAccount: (input: {
     name: string;
     email: string;
@@ -1712,6 +1716,127 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentUser(res.user);
     await loadUserScopedData(res.user, true);
     showToast(language === 'ar' ? `تم إنشاء حسابك بنجاح، ${res.user.name}!` : `Account created for ${res.user.name}!`);
+    return res.user;
+  };
+
+  const loginWithGoogle = async (payload: {
+    email: string;
+    name: string;
+    avatarUrl?: string;
+    googleId?: string;
+  }): Promise<User> => {
+    if (!apiConnected) {
+      const mockUser: User = {
+        id: `usr-g-${Date.now()}`,
+        name: payload.name,
+        email: payload.email,
+        phone: '01099887766',
+        role: 'customer',
+        status: 'active',
+        currentStage: 'thinking',
+        language,
+        avatarUrl: payload.avatarUrl,
+        createdAt: new Date().toISOString(),
+      };
+      setCurrentUser(mockUser);
+      showToast(
+        language === 'ar'
+          ? `تم تسجيل الدخول بحساب Google: ${mockUser.name}`
+          : `Signed in with Google as ${mockUser.name}`,
+      );
+      return mockUser;
+    }
+    const res = await apiRequest<{ user: User; token: string }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    await loadUserScopedData(res.user, true);
+    setCurrentUser(res.user);
+    showToast(
+      language === 'ar'
+        ? `أهلاً بك، ${res.user.name} عبر حساب Google!`
+        : `Welcome back, ${res.user.nameEn || res.user.name} via Google!`,
+    );
+    return res.user;
+  };
+
+  const loginWithApple = async (payload?: { email?: string; name?: string }): Promise<User> => {
+    const email = payload?.email || 'user.apple@icloud.com';
+    const name = payload?.name || 'مستخدم Apple';
+    if (!apiConnected) {
+      const mockUser: User = {
+        id: `usr-apple-${Date.now()}`,
+        name,
+        email,
+        phone: '01122334455',
+        role: 'customer',
+        status: 'active',
+        currentStage: 'thinking',
+        language,
+        createdAt: new Date().toISOString(),
+      };
+      setCurrentUser(mockUser);
+      showToast(
+        language === 'ar'
+          ? `تم تسجيل الدخول بحساب Apple: ${mockUser.name}`
+          : `Signed in with Apple as ${mockUser.name}`,
+      );
+      return mockUser;
+    }
+    const res = await apiRequest<{ user: User; token: string }>('/auth/apple', {
+      method: 'POST',
+      body: JSON.stringify({ email, name }),
+    });
+    await loadUserScopedData(res.user, true);
+    setCurrentUser(res.user);
+    showToast(
+      language === 'ar'
+        ? `أهلاً بك، ${res.user.name} عبر Apple!`
+        : `Welcome back, ${res.user.name} via Apple!`,
+    );
+    return res.user;
+  };
+
+  const requestPhoneOtp = async (phone: string): Promise<{ success: boolean; message?: string; debugOtp?: string }> => {
+    if (!apiConnected) {
+      return { success: true, message: 'كود التحقق التجريبي هو: 123456', debugOtp: '123456' };
+    }
+    const res = await apiRequest<{ success: boolean; phone: string; message: string; debugOtp?: string }>(
+      '/auth/otp/request',
+      {
+        method: 'POST',
+        body: JSON.stringify({ phone }),
+      },
+    );
+    return { success: res.success, message: res.message, debugOtp: res.debugOtp };
+  };
+
+  const verifyPhoneOtp = async (phone: string, otp: string, name?: string): Promise<User> => {
+    if (!apiConnected) {
+      const mockUser: User = {
+        id: `usr-otp-${Date.now()}`,
+        name: name || `عميل جواز إن (${phone.slice(-4)})`,
+        email: `${phone}@gawazinn.demo`,
+        phone,
+        role: 'customer',
+        status: 'active',
+        currentStage: 'thinking',
+        language,
+        createdAt: new Date().toISOString(),
+      };
+      setCurrentUser(mockUser);
+      showToast(language === 'ar' ? `تم تأكيد رقم الموبايل والدخول بنجاح!` : `Phone verified successfully!`);
+      return mockUser;
+    }
+    const res = await apiRequest<{ user: User; token: string }>('/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp, name }),
+    });
+    await loadUserScopedData(res.user, true);
+    setCurrentUser(res.user);
+    showToast(
+      language === 'ar' ? `أهلاً بك، ${res.user.name}!` : `Welcome back, ${res.user.nameEn || res.user.name}!`,
+    );
     return res.user;
   };
 
@@ -4465,6 +4590,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveSection,
         currentUser,
         loginWithCredentials,
+        loginWithGoogle,
+        loginWithApple,
+        requestPhoneOtp,
+        verifyPhoneOtp,
         registerAccount,
         logout,
         isLoggedIn,
